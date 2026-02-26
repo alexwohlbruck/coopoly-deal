@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Card, ClientGameState, PropertyColor } from "../../types/game";
 import { GamePhase, TurnPhase, CardType } from "../../types/game";
 import { useSoundSettings } from "../../hooks/useSoundManager";
@@ -263,8 +263,8 @@ export function GameTable({
           })}
         </div>
 
-        {/* Center area — current turn info */}
-        <div className="flex items-center justify-center py-3">
+        {/* Center area — current turn info and End Turn */}
+        <div className="flex items-center justify-center gap-4 py-3">
           {gameState.turn && gameState.turn.rentMultiplier > 1 && (
             <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
               <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
@@ -294,6 +294,15 @@ export function GameTable({
               </div>
             )}
           </div>
+
+          {isMyTurn && !needsDiscard && turnPhase !== TurnPhase.ActionPending && (
+            <button
+              onClick={onEndTurn}
+              className={`px-6 py-2 ${colors.primary} ${colors.primaryHover} text-white font-semibold rounded-lg transition-colors text-sm shrink-0`}
+            >
+              {t.game.endTurn}
+            </button>
+          )}
         </div>
 
         {/* My hand and controls */}
@@ -309,18 +318,6 @@ export function GameTable({
                 onDragToBank={(card) => onPlayToBank(card.id)}
               />
             </div>
-
-            {/* Turn controls */}
-            {isMyTurn && !needsDiscard && turnPhase !== TurnPhase.ActionPending && (
-              <div className="flex justify-center gap-3 px-4 py-2 bg-black/30">
-                <button
-                  onClick={onEndTurn}
-                  className={`px-6 py-2 ${colors.primary} ${colors.primaryHover} text-white font-semibold rounded-lg transition-colors text-sm`}
-                >
-                  End Turn
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>

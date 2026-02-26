@@ -16,6 +16,8 @@ interface GameCardProps {
   small?: boolean;
   disabled?: boolean;
   orientation?: "top" | "bottom"; // For two-color wildcards, which color is on top
+  disableHover?: boolean; // Disable hover animation when card is scaled
+  scale?: number; // Scale factor (0-1) to shrink the card
 }
 
 const ACTION_COLORS: Partial<Record<CardType, string>> = {
@@ -103,7 +105,7 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
   );
 }
 
-function WildcardPropertyContent({ card, small, orientation }: { card: Card; small?: boolean; orientation?: "top" | "bottom" }) {
+function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean; orientation?: "top" | "bottom" }) {
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
 
@@ -322,15 +324,19 @@ function renderCardContent(card: Card, small?: boolean, orientation?: "top" | "b
   }
 }
 
-export function GameCard({ card, onClick, selected, small, disabled, orientation }: GameCardProps) {
+export function GameCard({ card, onClick, selected, small, disabled, orientation, disableHover, scale = 1 }: GameCardProps) {
   const w = small ? "w-16" : "w-24";
   const h = small ? "h-24" : "h-36";
 
   return (
     <motion.div
-      whileHover={onClick && !disabled ? { y: -8, scale: 1.05 } : undefined}
+      whileHover={onClick && !disabled && !disableHover ? { y: -8, scale: 1.05 } : undefined}
       whileTap={onClick && !disabled ? { scale: 0.95 } : undefined}
       onClick={disabled ? undefined : onClick}
+      style={{
+        transform: `scale(${scale})`,
+        transformOrigin: 'top center',
+      }}
       className={`
         ${w} ${h} rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative
         ${onClick && !disabled ? "cursor-pointer" : ""}
@@ -338,7 +344,7 @@ export function GameCard({ card, onClick, selected, small, disabled, orientation
         ${disabled ? "opacity-50" : ""}
         select-none shrink-0
       `}
-      style={{ backgroundColor: "#FFFEF5" }}
+      style={{ backgroundColor: "#FFFEF5", transform: `scale(${scale})`, transformOrigin: 'top center' }}
     >
       {renderCardContent(card, small, orientation)}
     </motion.div>

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import type { ClientPlayer, PropertySet } from "../../types/game";
 import {
+  CardType,
   PROPERTY_COLOR_HEX,
   PROPERTY_COLOR_LABEL,
   isSetComplete,
@@ -164,7 +165,7 @@ export function PlayerArea({ player, isCurrentTurn, isYou, compact, isWaitingFor
           <FannedCards 
             cards={Array.from({ length: player.handCount }, (_, i) => ({
               id: `back-${i}`,
-              type: 0,
+              type: CardType.Money,
               value: 0,
             }))}
             small={true}

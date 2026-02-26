@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && bun dev\" --names \"client,server\" --prefix-colors \"cyan,yellow\"",
     "build": "cd client && npm run build && cd ../server && rm -rf public && cp -r ../client/dist public",
-    "start": "cd server && bun start"
+    "start": "cd server && bun start",
+    "docker:deploy": "docker buildx build --platform linux/amd64,linux/arm64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} --push ."
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

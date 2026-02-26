@@ -1,0 +1,12 @@
+# Example: run from the published Docker Hub image (no local build).
+# Usage: docker compose -f docker-compose.remote.example.yml up -d
+# Or copy to docker-compose.yml / docker-compose.override.yml as needed.
+
+services:
+  coopoly-deal:
+    image: alexwohlbruck/coopoly-deal:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    restart: unless-stopped
