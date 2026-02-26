@@ -100,6 +100,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleRearrangeProperty(ws, msg.payload.cardId, msg.payload.toColor);
           break;
 
+        case "MOVE_PROPERTY_TO_STACK":
+          handleMovePropertyToStack(ws, msg.payload.cardId, msg.payload.toColor);
+          break;
+
         case "UPDATE_SETTINGS":
           handleUpdateSettings(ws, msg.payload.settings);
           break;
@@ -290,6 +294,21 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
+    roomManager.getEngine().rearrangeProperty(game, playerId, cardId, toColor);
+    sendStateToAll(roomCode);
+  }
+
+  function handleMovePropertyToStack(ws: GameWebSocket, cardId: string, toColor: any): void {
+    const { roomCode, playerId } = ws.data;
+    if (!roomCode || !playerId) throw new Error("Not in a room");
+
+    const game = roomManager.getRoom(roomCode)!;
+    
+    // Only allow during player's turn
+    if (game.turn?.playerId !== playerId) {
+      throw new Error("Can only rearrange properties during your turn");
+    }
+    
     roomManager.getEngine().rearrangeProperty(game, playerId, cardId, toColor);
     sendStateToAll(roomCode);
   }

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { PendingAction, ClientPlayer, Card } from "../../types/game";
 import { CardType } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
+import { BottomSheet } from "../common/BottomSheet";
 
 interface ActionPromptProps {
   action: PendingAction;
@@ -181,17 +181,47 @@ export function ActionPrompt({
   const showTradePreview = (action.type === "slyDeal" || action.type === "forceDeal") && targetCard;
   const showDealBreakerPreview = action.type === "dealBreaker" && targetSet;
 
+  const footerButtons = (
+    <div className="flex gap-2">
+      {needsPayment && (
+        <button
+          onClick={() => onPayWithCards(selectedCardIds)}
+          disabled={!canSubmitPayment}
+          className={`flex-1 py-3 ${canSubmitPayment ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 cursor-not-allowed opacity-50'} text-white font-semibold rounded-lg transition-colors`}
+        >
+          {totalTableValue === 0 ? "I Can't Pay" : selectedCardIds.length > 0 ? `Pay ${selectedTotal}M` : "Select Cards"}
+        </button>
+      )}
+
+      {!needsPayment && (
+        <button
+          onClick={onAccept}
+          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
+        >
+          Accept
+        </button>
+      )}
+
+      {hasJustSayNo && (
+        <button
+          onClick={onJustSayNo}
+          className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-lg transition-colors"
+        >
+          Just Say No!
+        </button>
+      )}
+    </div>
+  );
+
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 20 }}
-        className="fixed inset-x-0 bottom-44 z-50 flex justify-center px-4"
-      >
-        <div className="bg-gray-900/95 backdrop-blur-lg rounded-2xl p-5 shadow-2xl border border-white/20 max-w-lg w-full">
-          <h3 className="text-white font-bold text-lg mb-2">Action!</h3>
-          <p className="text-gray-300 text-sm mb-4">{getActionDescription()}</p>
+    <BottomSheet
+      isOpen={true}
+      onClose={() => {}} // No close button for action prompts - must respond
+      title="Action!"
+      height="h-96"
+      footer={footerButtons}
+    >
+      <p className="text-gray-300 text-sm mb-3">{getActionDescription()}</p>
 
           {/* Show Deal Breaker preview - complete set being stolen */}
           {showDealBreakerPreview && (
@@ -204,6 +234,12 @@ export function ActionPrompt({
                     {targetSet.cards.map(card => (
                       <GameCard key={card.id} card={card} small />
                     ))}
+                    {targetSet.house && (
+                      <GameCard key={targetSet.house.id} card={targetSet.house} small />
+                    )}
+                    {targetSet.hotel && (
+                      <GameCard key={targetSet.hotel.id} card={targetSet.hotel} small />
+                    )}
                   </div>
                 </div>
 
@@ -302,38 +338,6 @@ export function ActionPrompt({
               )}
             </>
           )}
-
-          <div className="flex gap-2">
-            {needsPayment && (
-              <button
-                onClick={() => onPayWithCards(selectedCardIds)}
-                disabled={!canSubmitPayment}
-                className={`flex-1 py-2.5 ${canSubmitPayment ? 'bg-blue-600 hover:bg-blue-500' : 'bg-gray-700 cursor-not-allowed opacity-50'} text-white font-semibold rounded-lg transition-colors text-sm`}
-              >
-                {totalTableValue === 0 ? "I Can't Pay" : selectedCardIds.length > 0 ? `Pay ${selectedTotal}M` : "Select Cards"}
-              </button>
-            )}
-
-            {!needsPayment && (
-              <button
-                onClick={onAccept}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors text-sm"
-              >
-                Accept
-              </button>
-            )}
-
-            {hasJustSayNo && (
-              <button
-                onClick={onJustSayNo}
-                className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-lg transition-colors text-sm"
-              >
-                Just Say No!
-              </button>
-            )}
-          </div>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+    </BottomSheet>
   );
 }

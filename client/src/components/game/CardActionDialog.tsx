@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   type Card,
   type ClientPlayer,
@@ -12,6 +11,7 @@ import {
 } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { calculateRent } from "../../utils/rent-calculator";
+import { BottomSheet } from "../common/BottomSheet";
 
 interface CardActionDialogProps {
   card: Card;
@@ -32,11 +32,37 @@ export function CardActionDialog({
   onPlayToProperty,
   onPlayAction,
 }: CardActionDialogProps) {
+  console.log('[CardActionDialog] Component rendered', {
+    cardType: card.type,
+    cardId: card.id
+  });
+  
   const [step, setStep] = useState<"choose" | "selectColor" | "selectTarget" | "selectTargetCard" | "selectMyCard" | "selectTargetSet">("choose");
   const [selectedColor, setSelectedColor] = useState<PropertyColor | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<ClientPlayer | null>(null);
   const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
   const [autoTriggered, setAutoTriggered] = useState(false);
+  const [actionDispatched, setActionDispatched] = useState(false);
+  const closedRef = useRef(false);
+  const lastCardIdRef = useRef<string | null>(null);
+  
+  useEffect(() => {
+    console.log('[CardActionDialog] Component mounted for card', card.id);
+    // Only reset flags when the card ID changes (new card selected)
+    // Do NOT reset on remount of the same card
+    if (lastCardIdRef.current !== card.id) {
+      console.log('[CardActionDialog] New card detected, resetting flags');
+      closedRef.current = false;
+      setActionDispatched(false);
+      lastCardIdRef.current = card.id;
+    } else {
+      console.log('[CardActionDialog] Remount of same card detected, keeping closedRef:', closedRef.current);
+    }
+    
+    return () => {
+      console.log('[CardActionDialog] Component unmounting for card', card.id);
+    };
+  }, [card.id]);
 
   const canPlayToProperty = card.type === CardType.Property || card.type === CardType.PropertyWildcard;
 
@@ -52,6 +78,14 @@ export function CardActionDialog({
     card.type === CardType.DoubleTheRent ||
     card.type === CardType.House ||
     card.type === CardType.Hotel;
+
+  // Helper to mark as dispatched and close
+  // NOTE: This should be called BEFORE onPlayAction to prevent remounts
+  const markDispatchedAndClose = useCallback(() => {
+    console.log('[CardActionDialog] markDispatchedAndClose called');
+    setActionDispatched(true);
+    closedRef.current = true;
+  }, []);
 
   const canUseAction = (() => {
     if (card.type === CardType.House) {
@@ -84,19 +118,49 @@ export function CardActionDialog({
   })();
 
   function handlePlayAction() {
+    console.log('[CardActionDialog] handlePlayAction called', {
+      cardType: card.type,
+      cardId: card.id,
+      actionDispatched,
+      closedRef: closedRef.current,
+      step
+    });
+    
+    // CRITICAL: Check closedRef FIRST to prevent remount from re-executing
+    if (closedRef.current) {
+      console.log('[CardActionDialog] Dialog already closed (remount detected), returning');
+      return;
+    }
+    
+    // Check for simple actions that dispatch immediately
+    const actionPayload = (() => {
+      switch (card.type) {
+        case CardType.PassGo:
+          return { action: "passGo", cardId: card.id };
+        case CardType.Birthday:
+          return { action: "birthday", cardId: card.id };
+        case CardType.DoubleTheRent:
+          return { action: "doubleTheRent", cardId: card.id };
+        default:
+          return null;
+      }
+    })();
+
+    if (actionPayload) {
+      console.log('[CardActionDialog] Dispatching simple action', actionPayload);
+      markDispatchedAndClose();
+      onPlayAction(actionPayload);
+      onClose();
+      console.log('[CardActionDialog] Action dispatched');
+      return;
+    }
+
     switch (card.type) {
-      case CardType.PassGo:
-        onPlayAction({ action: "passGo", cardId: card.id });
-        return;
-      case CardType.Birthday:
-        onPlayAction({ action: "birthday", cardId: card.id });
-        return;
-      case CardType.DoubleTheRent:
-        onPlayAction({ action: "doubleTheRent", cardId: card.id });
-        return;
       case CardType.DebtCollector:
         if (opponents.length === 1) {
+          markDispatchedAndClose();
           onPlayAction({ action: "debtCollector", cardId: card.id, targetPlayerId: opponents[0].id });
+          onClose();
           return;
         }
         setStep("selectTarget");
@@ -114,7 +178,9 @@ export function CardActionDialog({
         const colors = card.colors ?? [];
         const validColors = colors.filter(c => player.properties.some(s => s.color === c && s.cards.length > 0));
         if (validColors.length === 1) {
+          markDispatchedAndClose();
           onPlayAction({ action: "rentDual", cardId: card.id, color: validColors[0] });
+          onClose();
           return;
         }
         setStep("selectColor");
@@ -131,7 +197,9 @@ export function CardActionDialog({
           : sets.filter(s => s.house && !s.hotel);
         if (validSets.length === 1) {
           const action = card.type === CardType.House ? "house" : "hotel";
+          markDispatchedAndClose();
           onPlayAction({ action, cardId: card.id, setColor: validSets[0].color });
+          onClose();
           return;
         }
         setStep("selectColor");
@@ -141,32 +209,50 @@ export function CardActionDialog({
   }
 
   function handleSelectColor(color: PropertyColor) {
+    if (closedRef.current) return;
+    
     setSelectedColor(color);
     if (card.type === CardType.RentDual) {
+      markDispatchedAndClose();
       onPlayAction({ action: "rentDual", cardId: card.id, color });
+      onClose();
     } else if (card.type === CardType.RentWild) {
       if (opponents.length === 1) {
+        markDispatchedAndClose();
         onPlayAction({ action: "rentWild", cardId: card.id, color, targetPlayerId: opponents[0].id });
+        onClose();
         return;
       }
       setStep("selectTarget");
     } else if (card.type === CardType.House) {
+      markDispatchedAndClose();
       onPlayAction({ action: "house", cardId: card.id, setColor: color });
+      onClose();
     } else if (card.type === CardType.Hotel) {
+      markDispatchedAndClose();
       onPlayAction({ action: "hotel", cardId: card.id, setColor: color });
+      onClose();
     }
   }
 
   function handleSelectTarget(target: ClientPlayer) {
+    if (closedRef.current) return;
+    
     setSelectedTarget(target);
     if (card.type === CardType.DebtCollector) {
+      markDispatchedAndClose();
       onPlayAction({ action: "debtCollector", cardId: card.id, targetPlayerId: target.id });
+      onClose();
     } else if (card.type === CardType.RentWild && selectedColor) {
+      markDispatchedAndClose();
       onPlayAction({ action: "rentWild", cardId: card.id, color: selectedColor, targetPlayerId: target.id });
+      onClose();
     } else if (card.type === CardType.SlyDeal) {
       const stealable = target.properties.filter((s) => !isSetComplete(s)).flatMap((s) => s.cards);
       if (stealable.length === 1) {
+        markDispatchedAndClose();
         onPlayAction({ action: "slyDeal", cardId: card.id, targetPlayerId: target.id, targetCardId: stealable[0].id });
+        onClose();
         return;
       }
       setStep("selectTargetCard");
@@ -176,6 +262,7 @@ export function CardActionDialog({
         setSelectedTargetCard(stealable[0].id);
         const myCards = player.properties.filter((s) => !isSetComplete(s)).flatMap((s) => s.cards);
         if (myCards.length === 1) {
+          markDispatchedAndClose();
           onPlayAction({
             action: "forceDeal",
             cardId: card.id,
@@ -183,6 +270,7 @@ export function CardActionDialog({
             targetPlayerId: target.id,
             targetCardId: stealable[0].id,
           });
+          onClose();
           return;
         }
         setStep("selectMyCard");
@@ -192,7 +280,9 @@ export function CardActionDialog({
     } else if (card.type === CardType.DealBreaker) {
       const completeSets = target.properties.filter(isSetComplete);
       if (completeSets.length === 1) {
+        markDispatchedAndClose();
         onPlayAction({ action: "dealBreaker", cardId: card.id, targetPlayerId: target.id, targetSetColor: completeSets[0].color });
+        onClose();
         return;
       }
       setStep("selectTargetSet");
@@ -200,16 +290,22 @@ export function CardActionDialog({
   }
 
   function handleSelectTargetCard(cardId: string) {
+    if (closedRef.current) return;
+    
     setSelectedTargetCard(cardId);
     if (card.type === CardType.SlyDeal && selectedTarget) {
+      markDispatchedAndClose();
       onPlayAction({ action: "slyDeal", cardId: card.id, targetPlayerId: selectedTarget.id, targetCardId: cardId });
+      onClose();
     } else if (card.type === CardType.ForceDeal) {
       setStep("selectMyCard");
     }
   }
 
   function handleSelectMyCard(myCardId: string) {
+    if (closedRef.current) return;
     if (selectedTarget && selectedTargetCard) {
+      markDispatchedAndClose();
       onPlayAction({
         action: "forceDeal",
         cardId: card.id,
@@ -217,12 +313,16 @@ export function CardActionDialog({
         targetPlayerId: selectedTarget.id,
         targetCardId: selectedTargetCard,
       });
+      onClose();
     }
   }
 
   function handleSelectTargetSet(color: PropertyColor) {
+    if (closedRef.current) return;
     if (selectedTarget) {
+      markDispatchedAndClose();
       onPlayAction({ action: "dealBreaker", cardId: card.id, targetPlayerId: selectedTarget.id, targetSetColor: color });
+      onClose();
     }
   }
 
@@ -246,71 +346,80 @@ export function CardActionDialog({
             : card.colors ?? [];
 
   useEffect(() => {
-    if (autoTriggered) return;
+    console.log('[CardActionDialog] useEffect triggered', {
+      autoTriggered,
+      step,
+      cardType: card.type,
+      canPlayToProperty,
+      isActionCard,
+      actionDispatched
+    });
+    
+    if (autoTriggered) {
+      console.log('[CardActionDialog] Already auto-triggered, skipping');
+      return;
+    }
+    if (step !== "choose") {
+      console.log('[CardActionDialog] Not in choose step, skipping');
+      return;
+    }
 
-    if (step === "choose") {
-      const actionCount = [canPlayToProperty, isActionCard && !canPlayToProperty].filter(Boolean).length;
-      
-      if (actionCount === 1) {
-        setAutoTriggered(true);
-        if (canPlayToProperty && !isActionCard) {
-          handlePlayToProperty();
-        } else if (isActionCard && !canPlayToProperty) {
-          handlePlayAction();
-        }
+    const actionCount = [canPlayToProperty, isActionCard && !canPlayToProperty].filter(Boolean).length;
+    
+    console.log('[CardActionDialog] Action count:', actionCount);
+    
+    if (actionCount === 1) {
+      setAutoTriggered(true);
+      if (canPlayToProperty && !isActionCard) {
+        console.log('[CardActionDialog] Auto-triggering property play');
+        handlePlayToProperty();
+      } else if (isActionCard && !canPlayToProperty) {
+        console.log('[CardActionDialog] Auto-triggering action play');
+        handlePlayAction();
       }
     }
-  }, [step, autoTriggered]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const footerButtons = step === "choose" ? (
+    <div className="space-y-2">
+      {canPlayToProperty && (
+        <button
+          onClick={handlePlayToProperty}
+          className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
+        >
+          Play as Property
+        </button>
+      )}
+      {isActionCard && !canPlayToProperty && (
+        <button
+          onClick={handlePlayAction}
+          disabled={!canUseAction}
+          className={`w-full py-3 ${canUseAction ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-600 cursor-not-allowed'} text-white font-semibold rounded-lg transition-colors`}
+        >
+          Use Action
+        </button>
+      )}
+    </div>
+  ) : null;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 20 }}
-          className="bg-gray-900 rounded-2xl p-5 shadow-2xl border border-white/20 max-w-sm w-full"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-white font-bold text-lg">Play Card</h3>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
-          </div>
+    <BottomSheet
+      isOpen={true}
+      onClose={onClose}
+      title="Play Card"
+      height="h-96"
+      footer={footerButtons}
+    >
+      <div className="flex justify-center mb-3">
+        <GameCard card={card} />
+      </div>
 
-          <div className="flex justify-center mb-4">
-            <GameCard card={card} />
-          </div>
-
-          {step === "choose" && (
-            <div className="space-y-2">
-              {canPlayToProperty && (
-                <button
-                  onClick={handlePlayToProperty}
-                  className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors text-sm"
-                >
-                  Play as Property
-                </button>
-              )}
-              {isActionCard && !canPlayToProperty && (
-                <button
-                  onClick={handlePlayAction}
-                  disabled={!canUseAction}
-                  className={`w-full py-2.5 ${canUseAction ? 'bg-purple-600 hover:bg-purple-500' : 'bg-gray-600 cursor-not-allowed'} text-white font-semibold rounded-lg transition-colors text-sm`}
-                >
-                  Use Action
-                </button>
-              )}
-              <p className="text-gray-400 text-xs text-center mt-3">
-                💡 Drag cards to your bank to add them
-              </p>
-            </div>
-          )}
+      {step === "choose" && (
+        <p className="text-gray-400 text-xs text-center">
+          💡 Drag cards to your bank to add them
+        </p>
+      )}
 
           {step === "selectColor" && (
             <div>
@@ -430,8 +539,6 @@ export function CardActionDialog({
               </div>
             </div>
           )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    </BottomSheet>
   );
 }

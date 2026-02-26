@@ -7,6 +7,7 @@ import {
   SET_SIZE,
   isSetComplete,
   type PendingAction,
+  GamePhase,
 } from "../models/types.ts";
 import { GameEngine } from "./game-engine.ts";
 
@@ -50,7 +51,8 @@ export class BotPlayer {
       plays < maxPlays &&
       player.hand.length > 0 &&
       state.turn?.playerId === botPlayerId &&
-      state.turn.phase === "play"
+      state.turn.phase === "play" &&
+      state.phase === GamePhase.Playing
     ) {
       const action = this.decideBestAction(state, player);
       if (!action) break;
@@ -71,7 +73,8 @@ export class BotPlayer {
 
     while (
       player.hand.length > (state.settings?.maxHandSize ?? 7) &&
-      state.turn?.playerId === botPlayerId
+      state.turn?.playerId === botPlayerId &&
+      state.phase === GamePhase.Playing
     ) {
       const worst = this.findLeastValuableCard(player.hand);
       if (worst) {
@@ -85,7 +88,7 @@ export class BotPlayer {
       } else break;
     }
 
-    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play") {
+    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play" && state.phase === GamePhase.Playing) {
       try {
         this.engine.endTurn(state, botPlayerId);
         if (onStateChange) onStateChange();
@@ -108,7 +111,8 @@ export class BotPlayer {
       plays < maxPlays &&
       player.hand.length > 0 &&
       state.turn?.playerId === botPlayerId &&
-      state.turn.phase === "play"
+      state.turn.phase === "play" &&
+      state.phase === GamePhase.Playing
     ) {
       const action = this.decideBestAction(state, player);
       if (!action) break;
@@ -123,7 +127,8 @@ export class BotPlayer {
 
     while (
       player.hand.length > (state.settings?.maxHandSize ?? 7) &&
-      state.turn?.playerId === botPlayerId
+      state.turn?.playerId === botPlayerId &&
+      state.phase === GamePhase.Playing
     ) {
       const worst = this.findLeastValuableCard(player.hand);
       if (worst) {
@@ -135,7 +140,7 @@ export class BotPlayer {
       } else break;
     }
 
-    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play") {
+    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play" && state.phase === GamePhase.Playing) {
       try {
         this.engine.endTurn(state, botPlayerId);
       } catch {

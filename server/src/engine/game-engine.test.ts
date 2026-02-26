@@ -1694,6 +1694,31 @@ describe("GameEngine", () => {
       expect(state.turn!.phase).toBe(TurnPhase.Play);
       expect(state.phase).toBe(GamePhase.Playing);
     });
+
+    it("previous winner goes first in rematch", () => {
+      const { state, engine, players } = startTestGame(3);
+      const winner = players[2]!; // Third player wins
+      
+      // Simulate a win
+      state.winner = winner.id;
+      state.phase = GamePhase.Finished;
+      
+      // Rematch
+      engine.rematchGame(state);
+      
+      // Winner should go first
+      expect(state.currentPlayerIndex).toBe(2);
+      expect(state.turn!.playerId).toBe(winner.id);
+    });
+
+    it("starts with first player if no previous winner", () => {
+      const { state, engine } = startTestGame(2);
+      state.winner = null;
+      
+      engine.rematchGame(state);
+      
+      expect(state.currentPlayerIndex).toBe(0);
+    });
   });
 
   // -------------------------------------------------------------------------

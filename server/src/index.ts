@@ -17,9 +17,12 @@ app.route("/api", createApiRoutes(roomManager));
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", rooms: roomManager.getRoomCount() }));
 
-// Serve static frontend files in production
-app.use("/*", serveStatic({ root: "./public" }));
-app.use("/*", serveStatic({ root: "./public", path: "index.html" }));
+// Serve static frontend files (only in production, not when Vite dev server is running)
+const isDev = process.env.NODE_ENV !== "production";
+if (!isDev) {
+  app.use("/*", serveStatic({ root: "./public" }));
+  app.use("/*", serveStatic({ root: "./public", path: "index.html" }));
+}
 
 const server = Bun.serve({
   port: PORT,

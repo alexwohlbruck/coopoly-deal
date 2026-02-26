@@ -90,9 +90,20 @@ export class GameEngine {
   }
 
   rematchGame(state: GameState): void {
+    // Remember the winner to make them go first
+    const previousWinner = state.winner;
+    
     state.deck = shuffleDeck(createDeck());
     state.discardPile = [];
-    state.currentPlayerIndex = 0;
+    
+    // Set the starting player to the previous winner
+    if (previousWinner) {
+      const winnerIndex = state.players.findIndex(p => p.id === previousWinner);
+      state.currentPlayerIndex = winnerIndex >= 0 ? winnerIndex : 0;
+    } else {
+      state.currentPlayerIndex = 0;
+    }
+    
     state.phase = GamePhase.Playing;
     state.turn = null;
     state.winner = null;

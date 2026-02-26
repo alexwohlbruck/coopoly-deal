@@ -255,8 +255,11 @@ export default function App() {
             send({ type: "PLAY_CARD_TO_PROPERTY", payload: { cardId, asColor } });
           }}
           onPlayAction={(payload) => {
+            console.log('[App] onPlayAction called', payload);
             play("actionPlayed");
+            console.log('[App] Sending PLAY_ACTION_CARD to server');
             send({ type: "PLAY_ACTION_CARD", payload });
+            console.log('[App] PLAY_ACTION_CARD sent');
           }}
           onEndTurn={() => send({ type: "END_TURN" })}
           onDiscardCards={(cardIds) =>

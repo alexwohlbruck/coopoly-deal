@@ -15,6 +15,7 @@ interface GameCardProps {
   selected?: boolean;
   small?: boolean;
   disabled?: boolean;
+  orientation?: "top" | "bottom"; // For two-color wildcards, which color is on top
 }
 
 const ACTION_COLORS: Partial<Record<CardType, string>> = {
@@ -102,10 +103,11 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
   );
 }
 
-function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean }) {
+function WildcardPropertyContent({ card, small, orientation }: { card: Card; small?: boolean; orientation?: "top" | "bottom" }) {
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
 
+  // For two-color wildcards, show as top/bottom split like the real card
   const bannerStyle: React.CSSProperties = isMulti
     ? {
         background: `conic-gradient(${Object.values(PROPERTY_COLOR_HEX)
@@ -117,7 +119,7 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean 
       }
     : colors.length === 2
       ? {
-          background: `linear-gradient(to right, ${PROPERTY_COLOR_HEX[colors[0]]} 50%, ${PROPERTY_COLOR_HEX[colors[1]]} 50%)`,
+          background: `linear-gradient(to bottom, ${PROPERTY_COLOR_HEX[colors[0]]} 50%, ${PROPERTY_COLOR_HEX[colors[1]]} 50%)`,
         }
       : { backgroundColor: "#888" };
 
@@ -125,36 +127,95 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean 
     <>
       <ValueBadge value={card.value} color="#555" small={small} />
 
-      {/* Color banner */}
-      <div className={`${small ? "h-9" : "h-12"} w-full border-b-2 border-gray-300`} style={bannerStyle} />
-
-      {/* Card content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
-        <div className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-lg border-4 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}>
-          <p className={`font-black text-center text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase leading-tight px-1`}>
-            Property Wild Card
-          </p>
+      {/* Color banner - for two-color, this is the full card background */}
+      {colors.length === 2 ? (
+        <div className="flex-1 w-full relative" style={bannerStyle}>
+          {/* Top color label */}
+          <div className="absolute top-2 left-0 right-0 flex justify-center">
+            <div className="bg-white/90 px-2 py-0.5 rounded shadow">
+              <p className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`} style={{ color: PROPERTY_COLOR_HEX[colors[0]] }}>
+                {PROPERTY_COLOR_LABEL[colors[0]].toUpperCase()}
+              </p>
+            </div>
+          </div>
+          
+          {/* Center wildcard indicator */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className={`${small ? "w-10 h-10" : "w-14 h-14"} rounded-full bg-white border-4 border-gray-300 flex items-center justify-center shadow-lg`}>
+              <p className={`font-black text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase`}>
+                WILD
+              </p>
+            </div>
+          </div>
+          
+          {/* Bottom color label */}
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+            <div className="bg-white/90 px-2 py-0.5 rounded shadow">
+              <p className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`} style={{ color: PROPERTY_COLOR_HEX[colors[1]] }}>
+                {PROPERTY_COLOR_LABEL[colors[1]].toUpperCase()}
+              </p>
+            </div>
+          </div>
         </div>
-        {!isMulti && !small && colors.length === 2 && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
-            {PROPERTY_COLOR_LABEL[colors[0]]} / {PROPERTY_COLOR_LABEL[colors[1]]}
-          </p>
-        )}
-        {isMulti && !small && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
-            Any Color
-          </p>
-        )}
-      </div>
+      ) : (
+        <>
+          <div className={`${small ? "h-9" : "h-12"} w-full border-b-2 border-gray-300`} style={bannerStyle} />
+          <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
+            <div className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-lg border-4 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}>
+              <p className={`font-black text-center text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase leading-tight px-1`}>
+                Property Wild Card
+              </p>
+            </div>
+            {isMulti && !small && (
+              <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+                Any Color
+              </p>
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 }
 
+function getMoneyCardColors(value: number): { bg: string; border: string; text: string } {
+  switch (value) {
+    case 1:
+      return { bg: "#F59E0B", border: "#D97706", text: "#92400E" }; // Yellow
+    case 2:
+      return { bg: "#FB923C", border: "#F97316", text: "#7C2D12" }; // Salmon
+    case 3:
+      return { bg: "#BEF264", border: "#A3E635", text: "#365314" }; // Faded yellow/green
+    case 4:
+      return { bg: "#7DD3FC", border: "#38BDF8", text: "#0C4A6E" }; // Light blue
+    case 5:
+      return { bg: "#C084FC", border: "#A855F7", text: "#581C87" }; // Purple
+    case 10:
+      return { bg: "#FBBF24", border: "#F59E0B", text: "#78350F" }; // Yellow-orange
+    default:
+      return { bg: "#10B981", border: "#059669", text: "#064E3B" };
+  }
+}
+
 function MoneyCardContent({ card, small }: { card: Card; small?: boolean }) {
+  const colors = getMoneyCardColors(card.value);
+  
   return (
-    <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-600 w-full h-full rounded-b-lg border-t-4 border-emerald-300">
-      <div className={`${small ? "w-12 h-12" : "w-16 h-16"} bg-white rounded-full flex items-center justify-center shadow-lg border-2 border-emerald-700`}>
-        <p className={`font-black text-emerald-700 ${small ? "text-sm" : "text-xl"}`}>
+    <div 
+      className="flex-1 flex flex-col items-center justify-center w-full h-full rounded-b-lg border-t-4"
+      style={{ 
+        background: `linear-gradient(to bottom right, ${colors.bg}, ${colors.border})`,
+        borderTopColor: colors.border
+      }}
+    >
+      <div 
+        className={`${small ? "w-12 h-12" : "w-16 h-16"} bg-white rounded-full flex items-center justify-center shadow-lg border-2`}
+        style={{ borderColor: colors.border }}
+      >
+        <p 
+          className={`font-black ${small ? "text-sm" : "text-xl"}`}
+          style={{ color: colors.text }}
+        >
           ${card.value}M
         </p>
       </div>
@@ -245,12 +306,12 @@ function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
   );
 }
 
-function renderCardContent(card: Card, small?: boolean) {
+function renderCardContent(card: Card, small?: boolean, orientation?: "top" | "bottom") {
   switch (card.type) {
     case CardType.Property:
       return <PropertyCardContent card={card} small={small} />;
     case CardType.PropertyWildcard:
-      return <WildcardPropertyContent card={card} small={small} />;
+      return <WildcardPropertyContent card={card} small={small} orientation={orientation} />;
     case CardType.Money:
       return <MoneyCardContent card={card} small={small} />;
     case CardType.RentDual:
@@ -261,7 +322,7 @@ function renderCardContent(card: Card, small?: boolean) {
   }
 }
 
-export function GameCard({ card, onClick, selected, small, disabled }: GameCardProps) {
+export function GameCard({ card, onClick, selected, small, disabled, orientation }: GameCardProps) {
   const w = small ? "w-16" : "w-24";
   const h = small ? "h-24" : "h-36";
 
@@ -279,7 +340,7 @@ export function GameCard({ card, onClick, selected, small, disabled }: GameCardP
       `}
       style={{ backgroundColor: "#FFFEF5" }}
     >
-      {renderCardContent(card, small)}
+      {renderCardContent(card, small, orientation)}
     </motion.div>
   );
 }

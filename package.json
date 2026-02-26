@@ -1,0 +1,13 @@
+{
+  "name": "coopoly-deal",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"cd client && npm run dev\" \"cd server && bun dev\" --names \"client,server\" --prefix-colors \"cyan,yellow\"",
+    "build": "cd client && npm run build && cd ../server && rm -rf public && cp -r ../client/dist public",
+    "start": "cd server && bun start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

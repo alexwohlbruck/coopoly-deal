@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { Card, ClientGameState, PropertyColor } from "../../types/game";
 import { GamePhase, TurnPhase, CardType } from "../../types/game";
 import { useSoundSettings } from "../../hooks/useSoundManager";
@@ -71,8 +71,19 @@ export function GameTable({
   const { theme } = useGameStore();
   const colors = getTheme(theme);
   const { t } = useI18n();
-
+  
   const me = gameState.players.find((p) => p.id === playerId);
+  
+  // Check if selected card is still in hand
+  const isCardStillInHand = selectedCard && me?.hand?.some(c => c.id === selectedCard.id);
+  
+  // Auto-close dialog if card is no longer in hand
+  useEffect(() => {
+    if (selectedCard && !isCardStillInHand) {
+      console.log('[GameTable] Card no longer in hand, closing dialog');
+      setSelectedCard(null);
+    }
+  }, [selectedCard, isCardStillInHand]);
   const allPlayers = gameState.players;
   const opponents = gameState.players.filter((p) => p.id !== playerId);
   const isMyTurn = gameState.turn?.playerId === playerId;
@@ -88,6 +99,14 @@ export function GameTable({
 
   const handleCardClick = useCallback(
     (card: Card) => {
+      console.log('[GameTable] handleCardClick', {
+        cardType: card.type,
+        cardId: card.id,
+        isMyTurn,
+        turnPhase,
+        needsDiscard
+      });
+      
       if (!isMyTurn) return;
       if (turnPhase === TurnPhase.ActionPending) return;
 
@@ -112,10 +131,10 @@ export function GameTable({
       }
 
       // For all other cards (action cards, wildcards), show dialog for selection
-
+      console.log('[GameTable] Opening dialog for card', card.id);
       setSelectedCard(card);
     },
-    [isMyTurn, turnPhase, needsDiscard, onDiscardCards, onPlayToBank]
+    [isMyTurn, turnPhase, needsDiscard, onDiscardCards, onPlayToBank, onPlayToProperty]
   );
 
   const handlePlayToProperty = useCallback(
@@ -128,7 +147,9 @@ export function GameTable({
 
   const handlePlayAction = useCallback(
     (payload: Record<string, unknown>) => {
+      console.log('[GameTable] handlePlayAction called', payload);
       onPlayAction(payload);
+      console.log('[GameTable] Setting selectedCard to null');
       setSelectedCard(null);
     },
     [onPlayAction]
@@ -158,12 +179,6 @@ export function GameTable({
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-400">
-            Deck: {gameState.deckCount}
-          </span>
-          <span className="text-gray-400">
-            Discard: {gameState.discardPile.length}
-          </span>
           <button
             onClick={() => setShowSettings(true)}
             className="text-gray-400 hover:text-white bg-white/10 p-1.5 rounded transition-colors"
@@ -191,9 +206,37 @@ export function GameTable({
       </div>
 
       {/* Game area */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 relative">
+        {/* Deck and Discard in top-right corner - hidden on mobile */}
+        <div className="hidden md:flex absolute top-4 right-4 z-20 flex-col gap-3">
+          {/* Deck */}
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-lg p-2 border border-white/10">
+            <div className="relative">
+              <CardBack small />
+              <span className="absolute -bottom-1 -right-1 bg-emerald-600 text-white text-[9px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {gameState.deckCount}
+              </span>
+            </div>
+            <span className="text-gray-300 text-xs font-semibold">Deck</span>
+          </div>
+          
+          {/* Discard Pile */}
+          <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-lg p-2 border border-white/10">
+            <div className="relative">
+              <CardBack small />
+              <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+                <span className="text-white text-[10px] font-bold">Discard</span>
+              </div>
+              <span className="absolute -bottom-1 -right-1 bg-gray-600 text-white text-[9px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {gameState.discardPile.length}
+              </span>
+            </div>
+            <span className="text-gray-300 text-xs font-semibold">Discard</span>
+          </div>
+        </div>
+
         {/* All players area */}
-        <div className="flex-1 flex items-start justify-center gap-3 p-3 overflow-x-auto">
+        <div className="flex-1 flex flex-wrap items-start justify-center gap-3 md:gap-4 p-2 md:p-4 overflow-y-auto">
           {allPlayers.map((player) => {
             const isMe = player.id === playerId;
             const isWaiting = !!(pendingAction &&
@@ -220,8 +263,8 @@ export function GameTable({
           })}
         </div>
 
-        {/* Center area — deck, current turn info */}
-        <div className="flex items-center justify-center gap-6 py-3">
+        {/* Center area — current turn info */}
+        <div className="flex items-center justify-center py-3">
           {gameState.turn && gameState.turn.rentMultiplier > 1 && (
             <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
               <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
@@ -229,14 +272,6 @@ export function GameTable({
               </div>
             </div>
           )}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <CardBack small />
-              <span className="absolute -bottom-1 -right-1 bg-emerald-600 text-white text-[9px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {gameState.deckCount}
-              </span>
-            </div>
-          </div>
 
           <div className="text-center">
             {isMyTurn ? (
@@ -259,15 +294,6 @@ export function GameTable({
               </div>
             )}
           </div>
-
-          {gameState.discardPile.length > 0 && (
-            <div className="relative opacity-60">
-              <CardBack small />
-              <span className="absolute -bottom-1 -right-1 bg-gray-600 text-white text-[9px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {gameState.discardPile.length}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* My hand and controls */}
@@ -299,14 +325,17 @@ export function GameTable({
         )}
       </div>
 
-      {/* Card action dialog */}
-      {selectedCard && me && (
+      {/* Card action dialog - only show if card is still in hand */}
+      {selectedCard && me && isCardStillInHand && (
         <CardActionDialog
           card={selectedCard}
           player={me}
           opponents={opponents}
           rentMultiplier={gameState.turn?.rentMultiplier ?? 1}
-          onClose={() => setSelectedCard(null)}
+          onClose={() => {
+            console.log('[GameTable] Dialog onClose called (user canceled)');
+            setSelectedCard(null);
+          }}
           onPlayToProperty={handlePlayToProperty}
           onPlayAction={handlePlayAction}
         />
