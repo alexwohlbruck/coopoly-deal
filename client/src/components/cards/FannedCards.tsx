@@ -42,7 +42,7 @@ export function FannedCards({
       y: 0,
       rotate: 0,
       scale: 1,
-      zIndex: index,
+      zIndex: isHovered ? 100 + index : index, // Elevated z-index when expanded
     };
   };
 
@@ -50,8 +50,8 @@ export function FannedCards({
 
   const cardHeight = small ? 96 : 144;
   
-  // Use max spread for container width to prevent layout shift
-  const containerWidth = cardWidth + (visibleCount - 1) * expandedSpread;
+  // Use collapsed spread for container width (only expand on hover)
+  const containerWidth = cardWidth + (visibleCount - 1) * collapsedSpread;
 
   return (
     <div 
@@ -59,6 +59,7 @@ export function FannedCards({
       style={{
         width: `${containerWidth}px`,
         height: `${cardHeight}px`,
+        zIndex: isHovered ? 100 : 'auto', // Elevate entire container on hover
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

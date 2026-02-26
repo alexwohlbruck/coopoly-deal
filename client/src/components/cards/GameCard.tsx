@@ -35,21 +35,40 @@ const ACTION_COLORS: Partial<Record<CardType, string>> = {
 
 function getActionSubtitle(type: CardType): string | null {
   switch (type) {
-    case CardType.DebtCollector: return "Pay 5M";
-    case CardType.Birthday: return "Everyone pays 2M";
-    case CardType.PassGo: return "Draw 2 cards";
-    case CardType.DoubleTheRent: return "2× Rent";
-    case CardType.SlyDeal: return "Steal 1 property";
-    case CardType.ForceDeal: return "Swap properties";
-    case CardType.DealBreaker: return "Steal full set";
-    case CardType.JustSayNo: return "Block action";
-    case CardType.House: return "+3M rent";
-    case CardType.Hotel: return "+4M rent";
-    default: return null;
+    case CardType.DebtCollector:
+      return "Pay 5M";
+    case CardType.Birthday:
+      return "Everyone pays 2M";
+    case CardType.PassGo:
+      return "Draw 2 cards";
+    case CardType.DoubleTheRent:
+      return "2× Rent";
+    case CardType.SlyDeal:
+      return "Steal 1 property";
+    case CardType.ForceDeal:
+      return "Swap properties";
+    case CardType.DealBreaker:
+      return "Steal full set";
+    case CardType.JustSayNo:
+      return "Block action";
+    case CardType.House:
+      return "+3M rent";
+    case CardType.Hotel:
+      return "+4M rent";
+    default:
+      return null;
   }
 }
 
-function ValueBadge({ value, color, small }: { value: number; color: string; small?: boolean }) {
+function ValueBadge({
+  value,
+  color,
+  small,
+}: {
+  value: number;
+  color: string;
+  small?: boolean;
+}) {
   if (value <= 0) return null;
   return (
     <div className="absolute top-0.5 left-0.5 z-10">
@@ -78,7 +97,9 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
         className={`${small ? "h-9" : "h-14"} w-full flex items-center justify-center px-2 border-b-2 border-gray-300`}
         style={{ backgroundColor: bgColor }}
       >
-        <p className={`text-white font-black text-center leading-tight ${small ? "text-[7px]" : "text-[10px]"} drop-shadow-md`}>
+        <p
+          className={`text-white font-black text-center leading-tight ${small ? "text-[7px]" : "text-[10px]"} drop-shadow-md`}
+        >
           {card.name ?? PROPERTY_COLOR_LABEL[color!]}
         </p>
       </div>
@@ -87,12 +108,18 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
       {!small && (
         <div className="flex-1 px-2 py-1.5 bg-white">
           <div className="bg-gray-50 rounded px-1.5 py-1 border border-gray-200">
-            <p className="text-[7px] text-gray-600 text-center mb-1 font-bold uppercase tracking-wide">Rent</p>
+            <p className="text-[7px] text-gray-600 text-center mb-1 font-bold uppercase tracking-wide">
+              Rent
+            </p>
             <div className="space-y-0.5">
               {rents.map((rent, i) => (
-                <div key={i} className="flex justify-between items-center text-[8px] px-1">
+                <div
+                  key={i}
+                  className="flex justify-between items-center text-[8px] px-1"
+                >
                   <span className="text-gray-700 font-semibold">
-                    {i + 1}{i + 1 === setSize ? " ★" : ""}
+                    {i + 1}
+                    {i + 1 === setSize ? " ★" : ""}
                   </span>
                   <span className="font-black text-gray-900">${rent}M</span>
                 </div>
@@ -105,7 +132,14 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
   );
 }
 
-function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean; orientation?: "top" | "bottom" }) {
+function WildcardPropertyContent({
+  card,
+  small,
+}: {
+  card: Card;
+  small?: boolean;
+  orientation?: "top" | "bottom";
+}) {
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
 
@@ -115,7 +149,7 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean;
         background: `conic-gradient(${Object.values(PROPERTY_COLOR_HEX)
           .map(
             (c, i, arr) =>
-              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`
+              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`,
           )
           .join(", ")})`,
       }
@@ -135,25 +169,35 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean;
           {/* Top color label */}
           <div className="absolute top-2 left-0 right-0 flex justify-center">
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
-              <p className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`} style={{ color: PROPERTY_COLOR_HEX[colors[0]] }}>
+              <p
+                className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
+                style={{ color: PROPERTY_COLOR_HEX[colors[0]] }}
+              >
                 {PROPERTY_COLOR_LABEL[colors[0]].toUpperCase()}
               </p>
             </div>
           </div>
-          
+
           {/* Center wildcard indicator */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className={`${small ? "w-10 h-10" : "w-14 h-14"} rounded-full bg-white border-4 border-gray-300 flex items-center justify-center shadow-lg`}>
-              <p className={`font-black text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase`}>
+            <div
+              className={`${small ? "w-10 h-10" : "w-14 h-14"} rounded-full bg-white border-4 border-gray-300 flex items-center justify-center shadow-lg`}
+            >
+              <p
+                className={`font-black text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase`}
+              >
                 WILD
               </p>
             </div>
           </div>
-          
+
           {/* Bottom color label */}
           <div className="absolute bottom-2 left-0 right-0 flex justify-center">
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
-              <p className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`} style={{ color: PROPERTY_COLOR_HEX[colors[1]] }}>
+              <p
+                className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
+                style={{ color: PROPERTY_COLOR_HEX[colors[1]] }}
+              >
                 {PROPERTY_COLOR_LABEL[colors[1]].toUpperCase()}
               </p>
             </div>
@@ -161,10 +205,17 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean;
         </div>
       ) : (
         <>
-          <div className={`${small ? "h-9" : "h-12"} w-full border-b-2 border-gray-300`} style={bannerStyle} />
+          <div
+            className={`${small ? "h-9" : "h-12"} w-full border-b-2 border-gray-300`}
+            style={bannerStyle}
+          />
           <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
-            <div className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-lg border-4 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}>
-              <p className={`font-black text-center text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase leading-tight px-1`}>
+            <div
+              className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-lg border-4 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}
+            >
+              <p
+                className={`font-black text-center text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase leading-tight px-1`}
+              >
                 Property Wild Card
               </p>
             </div>
@@ -180,7 +231,11 @@ function WildcardPropertyContent({ card, small }: { card: Card; small?: boolean;
   );
 }
 
-function getMoneyCardColors(value: number): { bg: string; border: string; text: string } {
+function getMoneyCardColors(value: number): {
+  bg: string;
+  border: string;
+  text: string;
+} {
   switch (value) {
     case 1:
       return { bg: "#F59E0B", border: "#D97706", text: "#92400E" }; // Yellow
@@ -201,20 +256,20 @@ function getMoneyCardColors(value: number): { bg: string; border: string; text: 
 
 function MoneyCardContent({ card, small }: { card: Card; small?: boolean }) {
   const colors = getMoneyCardColors(card.value);
-  
+
   return (
-    <div 
+    <div
       className="flex-1 flex flex-col items-center justify-center w-full h-full rounded-b-lg border-t-4"
-      style={{ 
+      style={{
         background: `linear-gradient(to bottom right, ${colors.bg}, ${colors.border})`,
-        borderTopColor: colors.border
+        borderTopColor: colors.border,
       }}
     >
-      <div 
+      <div
         className={`${small ? "w-12 h-12" : "w-16 h-16"} bg-white rounded-full flex items-center justify-center shadow-lg border-2`}
         style={{ borderColor: colors.border }}
       >
-        <p 
+        <p
           className={`font-black ${small ? "text-sm" : "text-xl"}`}
           style={{ color: colors.text }}
         >
@@ -223,7 +278,7 @@ function MoneyCardContent({ card, small }: { card: Card; small?: boolean }) {
       </div>
       {!small && (
         <p className="text-[8px] text-white font-bold uppercase tracking-wider mt-2 drop-shadow">
-          Monopoly Money
+          Money
         </p>
       )}
     </div>
@@ -239,7 +294,10 @@ function ActionCardContent({ card, small }: { card: Card; small?: boolean }) {
       <ValueBadge value={card.value} color={color} small={small} />
 
       {/* Colored top banner */}
-      <div className={`${small ? "h-3" : "h-4"} w-full border-b-2 border-gray-300`} style={{ backgroundColor: color }} />
+      <div
+        className={`${small ? "h-3" : "h-4"} w-full border-b-2 border-gray-300`}
+        style={{ backgroundColor: color }}
+      />
 
       {/* Card content */}
       <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
@@ -247,12 +305,17 @@ function ActionCardContent({ card, small }: { card: Card; small?: boolean }) {
           className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-full flex items-center justify-center border-4 shadow-md bg-white`}
           style={{ borderColor: color }}
         >
-          <p className={`font-black text-center leading-tight ${small ? "text-[6px]" : "text-[8px]"} uppercase px-1`} style={{ color }}>
+          <p
+            className={`font-black text-center leading-tight ${small ? "text-[6px]" : "text-[8px]"} uppercase px-1`}
+            style={{ color }}
+          >
             {CARD_TYPE_LABEL[card.type]}
           </p>
         </div>
         {subtitle && !small && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">{subtitle}</p>
+          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+            {subtitle}
+          </p>
         )}
       </div>
     </>
@@ -268,7 +331,7 @@ function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
         background: `conic-gradient(${Object.values(PROPERTY_COLOR_HEX)
           .map(
             (c, i, arr) =>
-              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`
+              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`,
           )
           .join(", ")})`,
       }
@@ -283,7 +346,9 @@ function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
       <ValueBadge value={card.value} color="#555" small={small} />
 
       {/* Top banner */}
-      <div className={`${small ? "h-3" : "h-4"} w-full bg-gradient-to-b from-gray-700 to-gray-800 border-b-2 border-gray-300`} />
+      <div
+        className={`${small ? "h-3" : "h-4"} w-full bg-gradient-to-b from-gray-700 to-gray-800 border-b-2 border-gray-300`}
+      />
 
       {/* Card content */}
       <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
@@ -291,29 +356,44 @@ function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
           className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-full flex items-center justify-center border-4 border-white shadow-lg`}
           style={circleStyle}
         >
-          <p className={`font-black text-white text-center ${small ? "text-[8px]" : "text-sm"} drop-shadow-md`}>
+          <p
+            className={`font-black text-white text-center ${small ? "text-[8px]" : "text-sm"} drop-shadow-md`}
+          >
             RENT
           </p>
         </div>
         {!small && !isWild && colors.length === 2 && (
           <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
-            {PROPERTY_COLOR_LABEL[colors[0]]} / {PROPERTY_COLOR_LABEL[colors[1]]}
+            {PROPERTY_COLOR_LABEL[colors[0]]} /{" "}
+            {PROPERTY_COLOR_LABEL[colors[1]]}
           </p>
         )}
         {!small && isWild && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">Any color</p>
+          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+            Any color
+          </p>
         )}
       </div>
     </>
   );
 }
 
-function renderCardContent(card: Card, small?: boolean, orientation?: "top" | "bottom") {
+function renderCardContent(
+  card: Card,
+  small?: boolean,
+  orientation?: "top" | "bottom",
+) {
   switch (card.type) {
     case CardType.Property:
       return <PropertyCardContent card={card} small={small} />;
     case CardType.PropertyWildcard:
-      return <WildcardPropertyContent card={card} small={small} orientation={orientation} />;
+      return (
+        <WildcardPropertyContent
+          card={card}
+          small={small}
+          orientation={orientation}
+        />
+      );
     case CardType.Money:
       return <MoneyCardContent card={card} small={small} />;
     case CardType.RentDual:
@@ -324,18 +404,31 @@ function renderCardContent(card: Card, small?: boolean, orientation?: "top" | "b
   }
 }
 
-export function GameCard({ card, onClick, selected, small, disabled, orientation, disableHover, scale = 1 }: GameCardProps) {
+export function GameCard({
+  card,
+  onClick,
+  selected,
+  small,
+  disabled,
+  orientation,
+  disableHover,
+  scale = 1,
+}: GameCardProps) {
   const w = small ? "w-16" : "w-24";
   const h = small ? "h-24" : "h-36";
 
   return (
     <motion.div
-      whileHover={onClick && !disabled && !disableHover ? { y: -8, scale: 1.05 } : undefined}
+      whileHover={
+        onClick && !disabled && !disableHover
+          ? { y: -8, scale: 1.05 }
+          : undefined
+      }
       whileTap={onClick && !disabled ? { scale: 0.95 } : undefined}
       onClick={disabled ? undefined : onClick}
       style={{
         transform: `scale(${scale})`,
-        transformOrigin: 'top center',
+        transformOrigin: "top center",
       }}
       className={`
         ${w} ${h} rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative
@@ -344,7 +437,11 @@ export function GameCard({ card, onClick, selected, small, disabled, orientation
         ${disabled ? "opacity-50" : ""}
         select-none shrink-0
       `}
-      style={{ backgroundColor: "#FFFEF5", transform: `scale(${scale})`, transformOrigin: 'top center' }}
+      style={{
+        backgroundColor: "#FFFEF5",
+        transform: `scale(${scale})`,
+        transformOrigin: "top center",
+      }}
     >
       {renderCardContent(card, small, orientation)}
     </motion.div>
@@ -360,7 +457,9 @@ export function CardBack({ small }: { small?: boolean }) {
       className={`${w} ${h} rounded-lg shadow-lg bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center border-2 border-red-600 select-none shrink-0`}
     >
       <div className="w-[80%] h-[80%] rounded border-2 border-red-400/30 flex items-center justify-center">
-        <span className={`font-black text-red-300/50 ${small ? "text-[6px]" : "text-[8px]"}`}>
+        <span
+          className={`font-black text-red-300/50 ${small ? "text-[6px]" : "text-[8px]"}`}
+        >
           CO-OPOLY
         </span>
       </div>

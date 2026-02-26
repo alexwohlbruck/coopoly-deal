@@ -1,28 +1,61 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brown: #8B4513;
-  --color-light-blue: #87CEEB;
-  --color-pink: #FF69B4;
-  --color-orange: #FF8C00;
-  --color-red: #DC2626;
-  --color-yellow: #EAB308;
-  --color-green: #16A34A;
-  --color-dark-blue: #1E3A8A;
-  --color-railroad: #1F2937;
-  --color-utility: #6B7280;
+  --color-brown: #8b4513;
+  --color-light-blue: #87ceeb;
+  --color-pink: #ff69b4;
+  --color-orange: #ff8c00;
+  --color-red: #dc2626;
+  --color-yellow: #eab308;
+  --color-green: #16a34a;
+  --color-dark-blue: #1e3a8a;
+  --color-railroad: #1f2937;
+  --color-utility: #6b7280;
 
   --color-table-green: #1a5c2e;
   --color-table-dark: #14472a;
-  --color-card-bg: #FFFEF5;
+  --color-card-bg: #fffef5;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
 }
 
 #root {
   min-height: 100vh;
+}
+
+/* Hide scrollbar for player carousel */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  overflow-y: hidden !important;
+  touch-action: pan-x;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scroll behavior */
+.snap-x {
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+}
+
+.snap-center {
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+
+/* Prevent vertical scrolling on touch devices */
+.touch-pan-x {
+  touch-action: pan-x;
+  overscroll-behavior-y: none;
 }
