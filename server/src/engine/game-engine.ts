@@ -831,6 +831,7 @@ export class GameEngine {
       this.tryAutoEndTurn(state);
     }
     
+    this.checkWin(state, player);
     state.lastActivityAt = Date.now();
   }
 

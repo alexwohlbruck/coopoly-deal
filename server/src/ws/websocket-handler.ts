@@ -292,6 +292,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     const game = roomManager.getRoom(roomCode)!;
     roomManager.getEngine().rearrangeProperty(game, playerId, cardId, toColor, createNewSet);
     sendStateToAll(roomCode);
+    checkGameEnd(roomCode);
   }
 
   function handleAssignReceivedWildcard(ws: GameWebSocket, cardId: string, color: any): void {
