@@ -700,9 +700,10 @@ export function GameTable({
       )}
 
       {/* Wildcard Flip Dialog */}
-      {wildcardFlipData && (
+      {wildcardFlipData && me && (
         <WildcardFlipDialog
           card={wildcardFlipData.card}
+          player={me}
           currentColor={wildcardFlipData.currentColor}
           onFlip={handleWildcardFlip}
           onClose={() => setWildcardFlipData(null)}

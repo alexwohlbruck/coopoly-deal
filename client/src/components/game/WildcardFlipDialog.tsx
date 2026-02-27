@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
 import { X } from "lucide-react";
-import type { Card, PropertyColor } from "../../types/game";
-import { PROPERTY_COLOR_HEX, PROPERTY_COLOR_LABEL } from "../../types/game";
+import type { Card, PropertyColor, ClientPlayer } from "../../types/game";
+import { PROPERTY_COLOR_HEX, PROPERTY_COLOR_LABEL, PropertyColor as PC } from "../../types/game";
 
 interface WildcardFlipDialogProps {
   card: Card;
+  player: ClientPlayer;
   currentColor: PropertyColor;
   onFlip: (newColor: PropertyColor) => void;
   onClose: () => void;
@@ -12,11 +13,16 @@ interface WildcardFlipDialogProps {
 
 export function WildcardFlipDialog({
   card,
+  player,
   currentColor,
   onFlip,
   onClose,
 }: WildcardFlipDialogProps) {
-  const availableColors = card.colors || [];
+  const isMultiWildcard = card.colors && card.colors.length > 2;
+
+  const availableColors = isMultiWildcard
+    ? [...(card.colors ?? []).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0)), PC.Unassigned]
+    : card.colors || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
