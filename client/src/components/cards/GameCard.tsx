@@ -135,6 +135,7 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
 function WildcardPropertyContent({
   card,
   small,
+  orientation,
 }: {
   card: Card;
   small?: boolean;
@@ -171,7 +172,10 @@ function WildcardPropertyContent({
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
               <p
                 className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{ color: PROPERTY_COLOR_HEX[colors[0]] }}
+                style={{ 
+                  color: PROPERTY_COLOR_HEX[colors[0]],
+                  transform: orientation === "bottom" ? "rotate(180deg)" : undefined
+                }}
               >
                 {PROPERTY_COLOR_LABEL[colors[0]].toUpperCase()}
               </p>
@@ -196,7 +200,10 @@ function WildcardPropertyContent({
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
               <p
                 className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{ color: PROPERTY_COLOR_HEX[colors[1]] }}
+                style={{ 
+                  color: PROPERTY_COLOR_HEX[colors[1]],
+                  transform: orientation === "bottom" ? "rotate(180deg)" : undefined
+                }}
               >
                 {PROPERTY_COLOR_LABEL[colors[1]].toUpperCase()}
               </p>
@@ -428,22 +435,26 @@ export function GameCard({
       onClick={disabled ? undefined : onClick}
       style={{
         transform: `scale(${scale})`,
-        transformOrigin: "top center",
+        transformOrigin: "center center",
       }}
       className={`
-        ${w} ${h} rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative
-        ${onClick && !disabled ? "cursor-pointer" : ""}
-        ${selected ? "ring-3 ring-yellow-400 ring-offset-2 ring-offset-transparent" : ""}
-        ${disabled ? "opacity-50" : ""}
-        select-none shrink-0
+        ${w} ${h} ${onClick && !disabled ? "cursor-pointer" : ""}
       `}
-      style={{
-        backgroundColor: "#FFFEF5",
-        transform: `scale(${scale})`,
-        transformOrigin: "top center",
-      }}
     >
-      {renderCardContent(card, small, orientation)}
+      <div
+        style={{
+          transform: orientation === "bottom" ? "rotate(180deg)" : undefined,
+          transformOrigin: "center center",
+        }}
+        className={`
+          w-full h-full rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative bg-[#FFFEF5]
+          ${selected ? "ring-3 ring-yellow-400 ring-offset-2 ring-offset-transparent" : ""}
+          ${disabled ? "opacity-50" : ""}
+          select-none shrink-0
+        `}
+      >
+        {renderCardContent(card, small, orientation)}
+      </div>
     </motion.div>
   );
 }

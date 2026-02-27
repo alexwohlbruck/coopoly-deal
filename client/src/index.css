@@ -25,6 +25,11 @@ body {
     system-ui,
     -apple-system,
     sans-serif;
+  /* Safe area insets for iOS/Android */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 #root {
@@ -58,4 +63,87 @@ body {
 .touch-pan-x {
   touch-action: pan-x;
   overscroll-behavior-y: none;
+}
+
+/* Prevent image dragging */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Allow interaction with clickable images */
+button img,
+a img,
+[role="button"] img {
+  pointer-events: auto;
+}
+
+/* Felt texture pattern for game table */
+.felt-texture {
+  position: relative;
+}
+
+.felt-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 4px,
+      rgba(0, 0, 0, 0.04) 4px,
+      rgba(0, 0, 0, 0.04) 8px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 4px,
+      rgba(0, 0, 0, 0.04) 4px,
+      rgba(0, 0, 0, 0.04) 8px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 6px,
+      rgba(255, 255, 255, 0.03) 6px,
+      rgba(255, 255, 255, 0.03) 12px
+    );
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Shake animation for invalid card plays */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* Slide up animation for bottom sheet dialogs */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+dialog[open] {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }

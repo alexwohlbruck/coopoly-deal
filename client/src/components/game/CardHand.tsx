@@ -7,9 +7,12 @@ interface CardHandProps {
   cards: Card[];
   onCardClick: (card: Card) => void;
   selectedCardId: string | null;
+  shakingCardId?: string | null;
   disabled?: boolean;
   maxCards?: number;
   onDragToBank?: (card: Card) => void;
+  onDragStart?: (card: Card) => void;
+  onDragEnd?: () => void;
 }
 
 const CARD_WIDTH = 96;
@@ -20,9 +23,12 @@ export function CardHand({
   cards,
   onCardClick,
   selectedCardId,
+  shakingCardId,
   disabled,
   maxCards = 7,
   onDragToBank,
+  onDragStart,
+  onDragEnd,
 }: CardHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -33,6 +39,11 @@ export function CardHand({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("cardId", card.id);
     e.dataTransfer.setData("cardData", JSON.stringify(card));
+    onDragStart?.(card);
+  };
+
+  const handleDragEnd = () => {
+    onDragEnd?.();
   };
 
   // Detect mobile screen size
@@ -85,7 +96,6 @@ export function CardHand({
     }
   }
 
-  const numRows = rowDistribution.length;
   const maxCardsInRow = Math.max(...rowDistribution, 0);
 
   // Calculate scale to fit all cards
@@ -152,6 +162,7 @@ export function CardHand({
                       handleDragStart(e as unknown as React.DragEvent, card);
                     }
                   }}
+                  onDragEnd={handleDragEnd}
                   onTouchStart={(e) => {
                     if (disabled || !onDragToBank) return;
 
@@ -182,22 +193,54 @@ export function CardHand({
                       document.removeEventListener("touchmove", handleTouchMove);
                       document.removeEventListener("touchend", handleTouchEnd);
 
-                      if (!isDragging) return;
+                      if (!isDragging) {
+                        onDragEnd?.();
+                        return;
+                      }
 
                       const endTouch = endEvent.changedTouches[0];
-                      if (!endTouch) return;
+                      if (!endTouch) {
+                        onDragEnd?.();
+                        return;
+                      }
 
                       const targetElement = document.elementFromPoint(
                         endTouch.clientX,
                         endTouch.clientY,
                       );
+                      
+                      // Check for bank drop zone
                       const bankElement = targetElement?.closest(
                         "[data-bank-drop-zone]",
                       );
-
                       if (bankElement && onDragToBank) {
                         onDragToBank(card);
+                        onDragEnd?.();
+                        return;
                       }
+
+                      // Check for property drop zone
+                      const propertyElement = targetElement?.closest(
+                        "[data-property-drop-zone]",
+                      );
+                      if (propertyElement) {
+                        const color = propertyElement.getAttribute("data-property-drop-zone");
+                        if (color) {
+                          // Trigger the drop event on the property element
+                          const dropEvent = new DragEvent("drop", {
+                            bubbles: true,
+                            cancelable: true,
+                          });
+                          Object.defineProperty(dropEvent, "dataTransfer", {
+                            value: {
+                              getData: (key: string) => key === "cardId" ? card.id : "",
+                            },
+                          });
+                          propertyElement.dispatchEvent(dropEvent);
+                        }
+                      }
+                      
+                      onDragEnd?.();
                     };
 
                     document.addEventListener("touchmove", handleTouchMove, {
@@ -205,7 +248,7 @@ export function CardHand({
                     });
                     document.addEventListener("touchend", handleTouchEnd);
                   }}
-                  className="cursor-grab active:cursor-grabbing touch-none"
+                  className={`cursor-grab active:cursor-grabbing touch-none ${card.id === shakingCardId ? 'animate-shake' : ''}`}
                   style={{
                     width: `${scaledCardWidth}px`,
                     height: `${scaledCardHeight}px`,

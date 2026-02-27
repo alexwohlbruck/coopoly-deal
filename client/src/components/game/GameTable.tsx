@@ -1,17 +1,21 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Card, ClientGameState, PropertyColor } from "../../types/game";
 import { GamePhase, TurnPhase, CardType } from "../../types/game";
-import { useSoundSettings } from "../../hooks/useSoundManager";
+import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
 import { useI18n } from "../../i18n";
+import { validateActionCard } from "../../utils/card-validation";
 import { PlayerArea } from "./PlayerArea";
 import { CardHand } from "./CardHand";
 import { CardActionDialog } from "./CardActionDialog";
 import { ActionPrompt } from "./ActionPrompt";
 import { EndGameSummary } from "./EndGameSummary";
+import { WildcardFlipDialog } from "./WildcardFlipDialog";
+import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
+import { CardBack } from "../cards/GameCard";
 import { Settings } from "lucide-react";
 
 interface GameTableProps {
@@ -26,6 +30,8 @@ interface GameTableProps {
   onPlayToBank: (cardId: string) => void;
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
   onPlayAction: (payload: Record<string, unknown>) => void;
+  onRearrangeProperty?: (cardId: string, toColor: PropertyColor) => void;
+  onAssignReceivedWildcard?: (cardId: string, color: PropertyColor) => void;
   onEndTurn: () => void;
   onDiscardCards: (cardIds: string[]) => void;
   onPayWithCards: (cardIds: string[]) => void;
@@ -55,6 +61,8 @@ export function GameTable({
   onPlayToBank,
   onPlayToProperty,
   onPlayAction,
+  onRearrangeProperty,
+  onAssignReceivedWildcard,
   onEndTurn,
   onDiscardCards,
   onPayWithCards,
@@ -70,9 +78,14 @@ export function GameTable({
 }: GameTableProps) {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showDevTools, setShowDevTools] = useState(false);
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
-  const { sfxEnabled, toggleSfx } = useSoundSettings();
-  const { theme } = useGameStore();
+  const [shakingCardId, setShakingCardId] = useState<string | null>(null);
+  const [wildcardFlipData, setWildcardFlipData] = useState<{ card: Card; currentColor: PropertyColor } | null>(null);
+  const [draggingCard, setDraggingCard] = useState<Card | null>(null);
+  const { sfxEnabled, toggleSfx} = useSoundSettings();
+  const { play } = useSoundManager();
+  const { theme, setToast } = useGameStore();
   const colors = getTheme(theme);
   const { t } = useI18n();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -221,6 +234,7 @@ export function GameTable({
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
   const pendingAction = gameState.turn?.pendingAction;
+  const pendingWildcardAssignment = gameState.turn?.pendingWildcardAssignment;
   const currentTurnPlayer = gameState.players.find(
     (p) => p.id === gameState.turn?.playerId,
   );
@@ -265,6 +279,31 @@ export function GameTable({
         return;
       }
 
+      // Validate action cards before opening dialog
+      const validatableCardTypes = [
+        CardType.DealBreaker,
+        CardType.SlyDeal,
+        CardType.ForceDeal,
+        CardType.RentDual,
+        CardType.RentWild,
+        CardType.House,
+        CardType.Hotel,
+        CardType.DoubleTheRent,
+      ];
+      const isActionCard = validatableCardTypes.some(type => type === card.type);
+
+      if (isActionCard) {
+        const validation = validateActionCard(card, gameState, playerId);
+        if (!validation.valid) {
+          // Show error feedback
+          setToast(validation.reason || "Cannot play this card");
+          setShakingCardId(card.id);
+          play("error");
+          setTimeout(() => setShakingCardId(null), 300);
+          return;
+        }
+      }
+
       // For all other cards (action cards, wildcards), show dialog for selection
       console.log("[GameTable] Opening dialog for card", card.id);
       setSelectedCard(card);
@@ -276,6 +315,9 @@ export function GameTable({
       onDiscardCards,
       onPlayToBank,
       onPlayToProperty,
+      gameState,
+      playerId,
+      setToast,
     ],
   );
 
@@ -297,6 +339,24 @@ export function GameTable({
     [onPlayAction],
   );
 
+  const handleWildcardClick = useCallback(
+    (card: Card, currentColor: PropertyColor) => {
+      if (!isMyTurn) return;
+      setWildcardFlipData({ card, currentColor });
+    },
+    [isMyTurn],
+  );
+
+  const handleWildcardFlip = useCallback(
+    (newColor: PropertyColor) => {
+      if (!wildcardFlipData || !onRearrangeProperty) return;
+      // Send REARRANGE_PROPERTY message
+      onRearrangeProperty(wildcardFlipData.card.id, newColor);
+      setWildcardFlipData(null);
+    },
+    [wildcardFlipData, onRearrangeProperty],
+  );
+
   if (gameState.phase === GamePhase.Finished) {
     return (
       <EndGameSummary
@@ -312,7 +372,7 @@ export function GameTable({
 
   return (
     <div
-      className={`h-screen ${colors.tableBackground} flex flex-col overflow-hidden touch-pan-x`}
+      className={`h-screen ${colors.tableBackground} felt-texture flex flex-col overflow-hidden touch-pan-x`}
       style={{ overscrollBehavior: "none" }}
     >
       {/* Top bar */}
@@ -327,13 +387,14 @@ export function GameTable({
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="text-gray-400 hover:text-white bg-white/10 p-1.5 rounded transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+          {import.meta.env.MODE === 'development' && onDevInjectCard && (
+            <button
+              onClick={() => setShowDevTools(true)}
+              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded text-xs transition-colors"
+            >
+              Dev Tools
+            </button>
+          )}
           {gameState.phase === GamePhase.Playing &&
             !hasResigned &&
             onResign && (
@@ -352,6 +413,13 @@ export function GameTable({
               Leave
             </button>
           )}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="text-gray-400 hover:text-white bg-white/10 p-1.5 rounded transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -401,6 +469,7 @@ export function GameTable({
                       isYou={isMe}
                       isWaitingForAction={isWaiting}
                       availableHeight={playerAreaHeight}
+                      draggingCard={draggingCard}
                       onDropToBank={
                         isMe
                           ? (cardId) => {
@@ -413,6 +482,20 @@ export function GameTable({
                             }
                           : undefined
                       }
+                      onDropToProperty={
+                        isMe
+                          ? (cardId, color) => {
+                              const card = me?.hand?.find(
+                                (c) => c.id === cardId,
+                              );
+                              if (card) {
+                                onPlayToProperty(cardId, color);
+                              }
+                            }
+                          : undefined
+                      }
+                      onDropWildcard={isMe ? handleCardClick : undefined}
+                      onWildcardClick={isMe ? handleWildcardClick : undefined}
                     />
                   </div>
                 );
@@ -463,116 +546,111 @@ export function GameTable({
           </div>
         </div>
 
-        {/* Center area — current turn info, Deck/Discard, and End Turn */}
+        {/* Rent multiplier indicator */}
+        {gameState.turn && gameState.turn.rentMultiplier > 1 && (
+          <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
+            <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
+              🎯 Rent Doubled! ({gameState.turn.rentMultiplier}x)
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Turn bar and hand */}
+      {me && (
         <div 
-          ref={turnControlsRef}
-          className="flex items-center justify-between gap-2 px-2 py-1 bg-black/20 border-t border-white/10"
+          className="z-10 border-t border-white/10 bg-black/20 max-h-[50vh] flex flex-col shrink-0"
         >
-          {gameState.turn && gameState.turn.rentMultiplier > 1 && (
-            <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-                🎯 Rent Doubled! ({gameState.turn.rentMultiplier}x)
+          {/* Combined turn info bar with deck/discard */}
+          <div className="flex items-center justify-between px-4 py-2 shrink-0">
+            {/* Deck/Discard - left side */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <CardBack small={true} />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-white text-sm font-bold drop-shadow-lg">
+                    {gameState.deckCount}
+                  </span>
+                </div>
+              </div>
+              <div className="relative">
+                <CardBack small={true} />
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-gray-200 text-[8px] font-bold drop-shadow">
+                    Discard
+                  </span>
+                  <span className="text-white text-sm font-bold drop-shadow-lg">
+                    {gameState.discardPile.length}
+                  </span>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Deck and Discard side by side on left */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Deck */}
-            <div
-              className="w-9 h-12 bg-red-800 rounded border-2 border-red-900 flex flex-col items-center justify-center"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.1) 5px, rgba(0,0,0,0.1) 10px)",
-              }}
-            >
-              <span className="text-gray-200 text-[8px] font-bold">Deck</span>
-              <span className="text-white text-sm font-bold">
-                {gameState.deckCount}
-              </span>
+            {/* Turn info - center */}
+            <div className="text-center flex-1">
+              {isMyTurn ? (
+                <div>
+                  <p className="text-yellow-400 font-bold text-sm">Your Turn</p>
+                  <p className="text-gray-400 text-xs">
+                    {needsDiscard
+                      ? `Discard ${(me?.hand?.length ?? 0) - 7} card(s)`
+                      : `${cardsPlayed}/3 cards played`}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-gray-300 text-sm">
+                    {currentTurnPlayer?.name}'s turn
+                  </p>
+                  <p className="text-gray-500 text-xs">
+                    {turnPhase === TurnPhase.ActionPending
+                      ? "Waiting for responses..."
+                      : "Playing..."}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Discard Pile */}
-            <div
-              className="w-9 h-12 bg-red-800 rounded border-2 border-red-900 flex flex-col items-center justify-center"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.1) 5px, rgba(0,0,0,0.1) 10px)",
-              }}
-            >
-              <span className="text-gray-200 text-[8px] font-bold">
-                Discard
-              </span>
-              <span className="text-white text-sm font-bold">
-                {gameState.discardPile.length}
-              </span>
-            </div>
-          </div>
+            {/* End Turn Button - aligned to right */}
+            {isMyTurn &&
+              !needsDiscard &&
+              turnPhase !== TurnPhase.ActionPending && (
+                <button
+                  onClick={onEndTurn}
+                  className={`px-4 py-1.5 ${colors.primary} ${colors.primaryHover} text-white font-semibold rounded transition-colors text-sm shrink-0`}
+                >
+                  {t.game.endTurn}
+                </button>
+              )}
 
-          {/* Turn info - center */}
-          <div className="text-center flex-1">
-            {isMyTurn ? (
-              <div>
-                <p className="text-yellow-400 font-bold text-sm">Your Turn</p>
-                <p className="text-gray-400 text-xs">
-                  {needsDiscard
-                    ? `Discard ${(me?.hand?.length ?? 0) - 7} card(s)`
-                    : `${cardsPlayed}/3 cards played`}
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-gray-300 text-sm">
-                  {currentTurnPlayer?.name}'s turn
-                </p>
-                <p className="text-gray-500 text-xs">
-                  {turnPhase === TurnPhase.ActionPending
-                    ? "Waiting for responses..."
-                    : "Playing..."}
-                </p>
-              </div>
+            {/* Spacer when no button to maintain layout */}
+            {(!isMyTurn ||
+              needsDiscard ||
+              turnPhase === TurnPhase.ActionPending) && (
+              <div className="shrink-0" style={{ width: "90px" }}></div>
             )}
           </div>
 
-          {/* End Turn Button - aligned to right */}
-          {isMyTurn &&
-            !needsDiscard &&
-            turnPhase !== TurnPhase.ActionPending && (
-              <button
-                onClick={onEndTurn}
-                className={`px-4 py-1.5 ${colors.primary} ${colors.primaryHover} text-white font-semibold rounded transition-colors text-sm shrink-0`}
-              >
-                {t.game.endTurn}
-              </button>
-            )}
-
-          {/* Spacer when no button to maintain layout */}
-          {(!isMyTurn ||
-            needsDiscard ||
-            turnPhase === TurnPhase.ActionPending) && (
-            <div className="shrink-0" style={{ width: "90px" }}></div>
-          )}
-        </div>
-
-        {/* My hand and controls */}
-        {me && (
+          {/* My hand */}
           <div 
             ref={cardHandRef}
-            className="border-t border-white/10 bg-black/20"
+            className="border-t border-white/10 overflow-y-auto flex-1"
           >
-            {/* My hand */}
             <div className="px-2 py-3">
               <CardHand
                 cards={me.hand ?? []}
                 onCardClick={handleCardClick}
                 selectedCardId={selectedCard?.id ?? null}
+                shakingCardId={shakingCardId}
                 disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
                 onDragToBank={(card) => onPlayToBank(card.id)}
+                onDragStart={(card) => setDraggingCard(card)}
+                onDragEnd={() => setDraggingCard(null)}
               />
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Card action dialog - only show if card is still in hand */}
       {selectedCard && me && isCardStillInHand && (
@@ -602,6 +680,27 @@ export function GameTable({
         />
       )}
 
+      {/* Wildcard Flip Dialog */}
+      {wildcardFlipData && (
+        <WildcardFlipDialog
+          card={wildcardFlipData.card}
+          currentColor={wildcardFlipData.currentColor}
+          onFlip={handleWildcardFlip}
+          onClose={() => setWildcardFlipData(null)}
+        />
+      )}
+
+      {/* Wildcard Assignment Prompt (when receiving wildcard via steal/swap) */}
+      {pendingWildcardAssignment && pendingWildcardAssignment.playerId === playerId && me && onAssignReceivedWildcard && (
+        <WildcardAssignmentPrompt
+          assignment={pendingWildcardAssignment}
+          card={me.properties
+            .flatMap(s => s.cards)
+            .find(c => c.id === pendingWildcardAssignment.cardId)!}
+          onAssign={onAssignReceivedWildcard}
+        />
+      )}
+
       {/* Settings Panel */}
       <SettingsPanel
         isOpen={showSettings}
@@ -613,9 +712,11 @@ export function GameTable({
         musicControls={musicControls}
       />
 
-      {/* Developer Tools */}
-      {onDevInjectCard && onDevGiveCompleteSet && onDevSetMoney && (
+      {/* Developer Tools Modal (only in development mode) */}
+      {import.meta.env.MODE === 'development' && onDevInjectCard && onDevGiveCompleteSet && onDevSetMoney && (
         <DevTools
+          isOpen={showDevTools}
+          onClose={() => setShowDevTools(false)}
           players={gameState.players}
           currentPlayerId={playerId}
           onInjectCard={onDevInjectCard}

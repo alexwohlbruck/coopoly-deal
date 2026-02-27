@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { X } from "lucide-react";
 import { useI18n, type Locale } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
 import type { ThemeName } from "../../theme/colors";
@@ -32,156 +32,203 @@ export function SettingsPanel({
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useGameStore();
   const [handLimit, setHandLimit] = useState(currentHandLimit);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen) {
+      dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleClose = () => {
+      onClose();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      const rect = dialog.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        onClose();
+      }
+    };
+
+    dialog.addEventListener("close", handleClose);
+    dialog.addEventListener("click", handleClick);
+    return () => {
+      dialog.removeEventListener("close", handleClose);
+      dialog.removeEventListener("click", handleClick);
+    };
+  }, [onClose]);
 
   const handleSave = () => {
     onUpdateSettings?.({ maxHandSize: handLimit });
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-        onClick={onClose}
-      >
-        <motion.div
-          initial={{ scale: 0.9, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 20 }}
-          className="bg-gray-900 rounded-2xl p-5 shadow-2xl border border-white/20 max-w-sm w-full"
-          onClick={(e) => e.stopPropagation()}
+    <dialog
+      ref={dialogRef}
+      className="bg-gray-900 rounded-2xl p-5 shadow-2xl border border-white/20 max-w-sm w-full backdrop:bg-black/60"
+    >
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-white font-bold text-lg">{t.settings.title}</h3>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition-colors"
         >
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-white font-bold text-lg">{t.settings.title}</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white text-xl"
-            >
-              &times;
-            </button>
-          </div>
+          <X className="w-5 h-5" />
+        </button>
+      </div>
 
-          <div className="mb-4">
-            <label className="text-gray-300 text-sm mb-2 block">
-              Theme
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["classic", "ocean", "sunset", "forest"] as ThemeName[]).map((themeName) => (
-                <button
-                  key={themeName}
-                  onClick={() => setTheme(themeName)}
-                  className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors capitalize ${
-                    theme === themeName
-                      ? "bg-blue-600 text-white"
-                      : "bg-white/10 text-gray-300 hover:bg-white/20"
-                  }`}
-                >
-                  {themeName}
-                </button>
-              ))}
-            </div>
+      <div className="space-y-4">
+        {/* Theme Selection */}
+        <div>
+          <label className="text-gray-300 text-sm font-medium mb-2 block">
+            {t.settings.theme}
+          </label>
+          <div className="grid grid-cols-5 gap-2">
+            {(["classic", "ocean", "sunset", "forest", "midnight", "ruby", "arctic", "desert", "neon", "royal"] as ThemeName[]).map((themeName) => (
+              <button
+                key={themeName}
+                onClick={() => setTheme(themeName)}
+                className={`h-10 rounded-lg border-2 transition-all ${
+                  theme === themeName
+                    ? "border-white scale-105"
+                    : "border-transparent hover:border-white/30"
+                }`}
+                style={{
+                  background:
+                    themeName === "classic"
+                      ? "#059669"
+                      : themeName === "ocean"
+                        ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)"
+                        : themeName === "sunset"
+                          ? "linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
+                          : themeName === "forest"
+                            ? "linear-gradient(135deg, #15803d 0%, #16a34a 100%)"
+                            : themeName === "midnight"
+                              ? "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)"
+                              : themeName === "ruby"
+                                ? "linear-gradient(135deg, #be123c 0%, #e11d48 100%)"
+                                : themeName === "arctic"
+                                  ? "linear-gradient(135deg, #0e7490 0%, #06b6d4 100%)"
+                                  : themeName === "desert"
+                                    ? "linear-gradient(135deg, #a16207 0%, #ca8a04 100%)"
+                                    : themeName === "neon"
+                                      ? "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)"
+                                      : "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)",
+                }}
+                title={themeName.charAt(0).toUpperCase() + themeName.slice(1)}
+              />
+            ))}
           </div>
+        </div>
 
-          <div className="mb-4">
-            <label className="text-gray-300 text-sm mb-2 block">
-              {t.settings.language}
-            </label>
-            <div className="flex gap-2">
-              {(["en", "es"] as Locale[]).map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setLocale(lang)}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    locale === lang
-                      ? "bg-blue-600 text-white"
-                      : "bg-white/10 text-gray-300 hover:bg-white/20"
-                  }`}
-                >
-                  {lang === "en" ? "English" : "Español"}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Language Selection */}
+        <div>
+          <label className="text-gray-300 text-sm font-medium mb-2 block">
+            {t.settings.language}
+          </label>
+          <select
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+          >
+            <option value="en">English</option>
+            <option value="es">Español</option>
+          </select>
+        </div>
 
-          <div className="mb-4">
-            <label className="text-gray-300 text-sm mb-2 block">
-              Sound Effects
-            </label>
+        {/* Sound Effects */}
+        <div>
+          <label className="flex items-center justify-between text-gray-300 text-sm">
+            <span className="font-medium">{t.settings.soundEffects}</span>
             <button
               onClick={onToggleSfx}
-              className={`w-full px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                sfxEnabled
-                  ? "bg-blue-600 text-white"
-                  : "bg-white/10 text-gray-300 hover:bg-white/20"
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                sfxEnabled ? "bg-emerald-600" : "bg-gray-600"
               }`}
             >
-              {sfxEnabled ? "SFX ON" : "SFX OFF"}
+              <div
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  sfxEnabled ? "translate-x-6" : ""
+                }`}
+              />
             </button>
-          </div>
+          </label>
+        </div>
 
-          {musicControls && (
-            <div className="mb-4">
-              <label className="text-gray-300 text-sm mb-2 block">
-                Background Music
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={musicControls.onToggle}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                    musicControls.isPlaying
-                      ? "bg-blue-600 text-white"
-                      : "bg-white/10 text-gray-300 hover:bg-white/20"
-                  }`}
-                >
-                  {musicControls.isPlaying ? "🎵 Playing" : "🔇 Paused"}
-                </button>
+        {/* Music Controls */}
+        {musicControls && (
+          <div>
+            <label className="flex items-center justify-between text-gray-300 text-sm">
+              <span className="font-medium">{t.settings.backgroundMusic}</span>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={musicControls.onNext}
-                  className="px-4 py-2 bg-white/10 text-gray-300 hover:bg-white/20 rounded-lg text-sm font-semibold transition-colors"
-                  title="Next track"
+                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
                 >
-                  ⏭
+                  Next
+                </button>
+                <button
+                  onClick={musicControls.onToggle}
+                  className={`relative w-12 h-6 rounded-full transition-colors ${
+                    musicControls.isPlaying ? "bg-emerald-600" : "bg-gray-600"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                      musicControls.isPlaying ? "translate-x-6" : ""
+                    }`}
+                  />
                 </button>
               </div>
-            </div>
-          )}
+            </label>
+          </div>
+        )}
 
-          {canEdit && (
-            <div className="mb-4">
-              <label className="text-gray-300 text-sm mb-2 block">
-                {t.settings.handLimit}
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={handLimit}
-                  onChange={(e) => setHandLimit(Number(e.target.value))}
-                  className="flex-1"
-                />
-                <span className="text-white font-bold text-sm w-8 text-center">
-                  {handLimit > 19 ? "∞" : handLimit}
-                </span>
-              </div>
-            </div>
-          )}
+        {/* Hand Limit (if editable) */}
+        {canEdit && onUpdateSettings && (
+          <div>
+            <label className="text-gray-300 text-sm font-medium mb-2 block">
+              Hand Limit
+            </label>
+            <input
+              type="number"
+              value={handLimit}
+              onChange={(e) => setHandLimit(Number(e.target.value))}
+              min={5}
+              max={10}
+              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+            />
+          </div>
+        )}
+      </div>
 
-          {canEdit && (
-            <button
-              onClick={handleSave}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors text-sm"
-            >
-              {t.settings.title === "Settings" ? "Save" : "Guardar"}
-            </button>
-          )}
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+      {/* Save button (if editable) */}
+      {canEdit && onUpdateSettings && (
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <button
+            onClick={handleSave}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition-colors"
+          >
+            {t.settings.save}
+          </button>
+        </div>
+      )}
+    </dialog>
   );
 }

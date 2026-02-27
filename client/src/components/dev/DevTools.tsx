@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CardType, PropertyColor, PROPERTY_COLOR_LABEL, type ClientPlayer } from "../../types/game";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { X } from "lucide-react";
 
 interface DevToolsProps {
+  isOpen: boolean;
+  onClose: () => void;
   players: ClientPlayer[];
   currentPlayerId: string;
   onInjectCard: (cardType: CardType, targetPlayerId: string, colors?: PropertyColor[]) => void;
@@ -10,24 +12,51 @@ interface DevToolsProps {
   onSetMoney: (amount: number, targetPlayerId: string) => void;
 }
 
-export function DevTools({ players, currentPlayerId, onInjectCard, onGiveCompleteSet, onSetMoney }: DevToolsProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function DevTools({ isOpen, onClose, players, currentPlayerId, onInjectCard, onGiveCompleteSet, onSetMoney }: DevToolsProps) {
   const [selectedCardType, setSelectedCardType] = useState<CardType>(CardType.Money);
   const [selectedColors, setSelectedColors] = useState<PropertyColor[]>([]);
   const [moneyAmount, setMoneyAmount] = useState(10);
   const [targetPlayerId, setTargetPlayerId] = useState<string>(currentPlayerId);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg shadow-lg font-semibold text-sm flex items-center gap-2 z-50"
-      >
-        🛠️ Dev Tools
-        <ChevronUp className="w-4 h-4" />
-      </button>
-    );
-  }
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen) {
+      dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const handleClose = () => {
+      onClose();
+    };
+
+    const handleClick = (e: MouseEvent) => {
+      const rect = dialog.getBoundingClientRect();
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        onClose();
+      }
+    };
+
+    dialog.addEventListener("close", handleClose);
+    dialog.addEventListener("click", handleClick);
+    return () => {
+      dialog.removeEventListener("close", handleClose);
+      dialog.removeEventListener("click", handleClick);
+    };
+  }, [onClose]);
 
   const actionCards = [
     CardType.PassGo,
@@ -47,16 +76,17 @@ export function DevTools({ players, currentPlayerId, onInjectCard, onGiveComplet
   const propertyCards = [CardType.Property, CardType.PropertyWildcard];
 
   return (
-    <div className="fixed bottom-4 right-4 bg-gray-900 border-2 border-purple-500 rounded-xl shadow-2xl p-4 w-80 max-h-[80vh] overflow-y-auto z-50">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-bold flex items-center gap-2">
-          🛠️ Developer Tools
-        </h3>
+    <dialog
+      ref={dialogRef}
+      className="w-full max-w-md bg-gray-900 border-2 border-purple-500 rounded-xl shadow-2xl p-6 max-h-[85vh] overflow-y-auto backdrop:bg-black/60"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-white font-bold text-xl">Developer Tools</h3>
         <button
-          onClick={() => setIsOpen(false)}
-          className="text-gray-400 hover:text-white"
+          onClick={onClose}
+          className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
         >
-          <ChevronDown className="w-5 h-5" />
+          <X className="w-5 h-5" />
         </button>
       </div>
 
@@ -88,45 +118,46 @@ export function DevTools({ players, currentPlayerId, onInjectCard, onGiveComplet
           <optgroup label="Money">
             <option value={CardType.Money}>Money Card</option>
           </optgroup>
-          <optgroup label="Properties">
-            {propertyCards.map(type => (
+          <optgroup label="Action Cards">
+            {actionCards.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </optgroup>
-          <optgroup label="Rent">
+          <optgroup label="Rent Cards">
             {rentCards.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </optgroup>
-          <optgroup label="Actions">
-            {actionCards.map(type => (
+          <optgroup label="Property Cards">
+            {propertyCards.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </optgroup>
         </select>
 
-        {(selectedCardType === CardType.Property || 
-          selectedCardType === CardType.PropertyWildcard || 
-          selectedCardType === CardType.RentDual) && (
+        {/* Color selection for property wildcards */}
+        {selectedCardType === CardType.PropertyWildcard && (
           <div className="mb-2">
-            <p className="text-gray-400 text-xs mb-1">Select Colors:</p>
-            <div className="grid grid-cols-2 gap-1">
-              {Object.values(PropertyColor).map(color => (
-                <label key={color} className="flex items-center gap-1 text-xs text-gray-300">
-                  <input
-                    type="checkbox"
-                    checked={selectedColors.includes(color)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedColors([...selectedColors, color]);
-                      } else {
-                        setSelectedColors(selectedColors.filter(c => c !== color));
-                      }
-                    }}
-                    className="w-3 h-3"
-                  />
+            <label className="text-gray-400 text-xs block mb-1">Select Colors (for wildcards)</label>
+            <div className="flex flex-wrap gap-1">
+              {Object.values(PropertyColor).filter(c => c !== PropertyColor.Unassigned).map(color => (
+                <button
+                  key={color}
+                  onClick={() => {
+                    if (selectedColors.includes(color)) {
+                      setSelectedColors(selectedColors.filter(c => c !== color));
+                    } else {
+                      setSelectedColors([...selectedColors, color]);
+                    }
+                  }}
+                  className={`px-2 py-1 text-xs rounded ${
+                    selectedColors.includes(color)
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-700 text-gray-300'
+                  }`}
+                >
                   {PROPERTY_COLOR_LABEL[color]}
-                </label>
+                </button>
               ))}
             </div>
           </div>
@@ -137,22 +168,21 @@ export function DevTools({ players, currentPlayerId, onInjectCard, onGiveComplet
             onInjectCard(selectedCardType, targetPlayerId, selectedColors.length > 0 ? selectedColors : undefined);
             setSelectedColors([]);
           }}
-          className="w-full bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold py-2 rounded"
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold py-2 rounded transition-colors"
         >
-          Inject Card to {players.find(p => p.id === targetPlayerId)?.name}
+          Inject Card
         </button>
       </div>
 
       {/* Give Complete Set Section */}
       <div className="mb-4 pb-4 border-b border-gray-700">
         <h4 className="text-purple-400 text-sm font-semibold mb-2">Give Complete Set</h4>
-        <div className="grid grid-cols-2 gap-1">
-          {Object.values(PropertyColor).map(color => (
+        <div className="grid grid-cols-2 gap-2">
+          {Object.values(PropertyColor).filter(c => c !== PropertyColor.Unassigned).map(color => (
             <button
               key={color}
               onClick={() => onGiveCompleteSet(color, targetPlayerId)}
-              className="text-white text-xs py-1.5 rounded hover:opacity-80 font-semibold"
-              style={{ backgroundColor: `var(--color-${color}, #666)` }}
+              className="bg-gray-800 hover:bg-gray-700 text-white text-xs py-2 rounded transition-colors"
             >
               {PROPERTY_COLOR_LABEL[color]}
             </button>
@@ -167,36 +197,19 @@ export function DevTools({ players, currentPlayerId, onInjectCard, onGiveComplet
           <input
             type="number"
             value={moneyAmount}
-            onChange={(e) => setMoneyAmount(parseInt(e.target.value) || 0)}
+            onChange={(e) => setMoneyAmount(Number(e.target.value))}
             className="flex-1 bg-gray-800 text-white text-xs rounded px-2 py-1.5"
             min="0"
-            max="100"
+            step="1"
           />
           <button
             onClick={() => onSetMoney(moneyAmount, targetPlayerId)}
-            className="bg-green-600 hover:bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded"
+            className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-4 py-1.5 rounded transition-colors"
           >
-            Set $
+            Set
           </button>
         </div>
-        <div className="flex gap-1 mt-2">
-          {[5, 10, 20, 50].map(amount => (
-            <button
-              key={amount}
-              onClick={() => onSetMoney(amount, targetPlayerId)}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 text-white text-xs py-1 rounded"
-            >
-              ${amount}M
-            </button>
-          ))}
-        </div>
       </div>
-
-      <div className="mt-4 pt-4 border-t border-gray-700">
-        <p className="text-gray-500 text-[10px] text-center">
-          For development & testing only
-        </p>
-      </div>
-    </div>
+    </dialog>
   );
 }

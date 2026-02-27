@@ -9,6 +9,7 @@ export const PropertyColor = {
   DarkBlue: "darkBlue",
   Railroad: "railroad",
   Utility: "utility",
+  Unassigned: "unassigned",
 } as const;
 
 export type PropertyColor = (typeof PropertyColor)[keyof typeof PropertyColor];
@@ -101,11 +102,18 @@ export interface PendingAction {
   };
 }
 
+export interface PendingWildcardAssignment {
+  playerId: string;
+  cardId: string;
+  availableColors: PropertyColor[];
+}
+
 export interface TurnState {
   playerId: string;
   cardsPlayed: number;
   phase: TurnPhase;
   pendingAction: PendingAction | null;
+  pendingWildcardAssignment: PendingWildcardAssignment | null;
   rentMultiplier: number;
 }
 
@@ -134,6 +142,7 @@ export const SET_SIZE: Record<PropertyColor, number> = {
   [PropertyColor.DarkBlue]: 2,
   [PropertyColor.Railroad]: 4,
   [PropertyColor.Utility]: 2,
+  [PropertyColor.Unassigned]: 999,
 };
 
 export const PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
@@ -147,6 +156,7 @@ export const PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
   [PropertyColor.DarkBlue]: "Dark Blue",
   [PropertyColor.Railroad]: "Railroad",
   [PropertyColor.Utility]: "Utility",
+  [PropertyColor.Unassigned]: "Unassigned",
 };
 
 export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
@@ -160,6 +170,7 @@ export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
   [PropertyColor.DarkBlue]: "#1E3A8A",
   [PropertyColor.Railroad]: "#1F2937",
   [PropertyColor.Utility]: "#6B7280",
+  [PropertyColor.Unassigned]: "#6B7280",
 };
 
 export const CARD_TYPE_LABEL: Record<CardType, string> = {
@@ -191,6 +202,7 @@ export const RENT_VALUES: Record<PropertyColor, number[]> = {
   [PropertyColor.DarkBlue]: [3, 8],
   [PropertyColor.Railroad]: [1, 2, 3, 4],
   [PropertyColor.Utility]: [1, 2],
+  [PropertyColor.Unassigned]: [0],
 };
 
 export function isSetComplete(set: PropertySet): boolean {

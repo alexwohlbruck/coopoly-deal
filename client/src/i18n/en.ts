@@ -78,9 +78,13 @@ export const en: Translations = {
   },
   settings: {
     title: "Settings",
+    theme: "Theme",
     handLimit: "Max cards in hand",
     language: "Language",
+    soundEffects: "Sound Effects",
+    backgroundMusic: "Background Music",
     unlimited: "Unlimited",
+    save: "Save",
   },
   common: {
     you: "you",

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { BookOpen } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
+import { GameRulesModal } from "../common/GameRulesModal";
 
 interface LobbyScreenProps {
   onCreateRoom: () => void;
@@ -16,6 +18,7 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
   const [mode, setMode] = useState<"menu" | "join">("menu");
   const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState("");
+  const [showRules, setShowRules] = useState(false);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +39,17 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
           />
         </div>
       )}
+      
+      {/* Rules button in top left */}
+      <button
+        onClick={() => setShowRules(true)}
+        className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/20"
+      >
+        <BookOpen className="w-4 h-4" />
+        <span className="font-semibold">Rules</span>
+      </button>
+
+      <GameRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

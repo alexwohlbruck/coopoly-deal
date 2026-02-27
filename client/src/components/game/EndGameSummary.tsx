@@ -132,7 +132,6 @@ export function EndGameSummary({
                         player={player}
                         isCurrentTurn={false}
                         isYou={player.id === currentPlayerId}
-                        compact={false}
                       />
                     </div>
                   </div>

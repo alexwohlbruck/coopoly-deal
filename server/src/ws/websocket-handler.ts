@@ -100,8 +100,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleRearrangeProperty(ws, msg.payload.cardId, msg.payload.toColor);
           break;
 
-        case "MOVE_PROPERTY_TO_STACK":
-          handleMovePropertyToStack(ws, msg.payload.cardId, msg.payload.toColor);
+        case "ASSIGN_RECEIVED_WILDCARD":
+          handleAssignReceivedWildcard(ws, msg.payload.cardId, msg.payload.color);
           break;
 
         case "UPDATE_SETTINGS":
@@ -116,24 +116,20 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleAddBot(ws);
           break;
 
-        case "REMOVE_PLAYER":
-          handleRemovePlayer(ws, msg.payload.playerIdToRemove);
-          break;
-
         case "RESIGN":
           handleResign(ws);
           break;
 
         case "DEV_INJECT_CARD":
-          handleDevInjectCard(ws, msg.payload.cardType, msg.payload.targetPlayerId, msg.payload.colors);
+          handleDevInjectCard(ws, msg.payload.cardType, msg.payload.targetPlayerId ?? "", msg.payload.colors);
           break;
 
         case "DEV_GIVE_COMPLETE_SET":
-          handleDevGiveCompleteSet(ws, msg.payload.color, msg.payload.targetPlayerId);
+          handleDevGiveCompleteSet(ws, msg.payload.color, msg.payload.targetPlayerId ?? "");
           break;
 
         case "DEV_SET_MONEY":
-          handleDevSetMoney(ws, msg.payload.amount, msg.payload.targetPlayerId);
+          handleDevSetMoney(ws, msg.payload.amount, msg.payload.targetPlayerId ?? "");
           break;
 
         default:
@@ -298,19 +294,14 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
   }
 
-  function handleMovePropertyToStack(ws: GameWebSocket, cardId: string, toColor: any): void {
+  function handleAssignReceivedWildcard(ws: GameWebSocket, cardId: string, color: any): void {
     const { roomCode, playerId } = ws.data;
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
-    
-    // Only allow during player's turn
-    if (game.turn?.playerId !== playerId) {
-      throw new Error("Can only rearrange properties during your turn");
-    }
-    
-    roomManager.getEngine().rearrangeProperty(game, playerId, cardId, toColor);
+    roomManager.getEngine().assignReceivedWildcard(game, playerId, cardId, color);
     sendStateToAll(roomCode);
+    checkBotTurn(roomCode);
   }
 
   const botPlayer = new BotPlayer(roomManager.getEngine());
@@ -335,52 +326,29 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
   }
 
-  function handleRemovePlayer(ws: GameWebSocket, playerIdToRemove: string): void {
-    const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
-
-    const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
-    if (game.phase !== GamePhase.Waiting) throw new Error("Cannot remove players after game started");
-
-    // Only host (first player) can remove others
-    if (game.players[0]?.id !== playerId) throw new Error("Only host can remove players");
-    
-    // Cannot remove the host
-    if (playerIdToRemove === game.players[0]?.id) throw new Error("Cannot remove the host");
-
-    const playerToRemove = game.players.find(p => p.id === playerIdToRemove);
-    if (!playerToRemove) throw new Error("Player not found");
-
-    // Remove the player
-    game.players = game.players.filter(p => p.id !== playerIdToRemove);
-
-    // Broadcast to all players in the room
-    broadcastToRoom(roomCode, {
-      type: "PLAYER_LEFT",
-      payload: { playerName: playerToRemove.name, playerId: playerIdToRemove },
-    });
-    
-    // Update game state for all players
-    sendStateToAll(roomCode);
-
-    // If the removed player was connected via WebSocket (not a bot), close their connection
-    if (!playerToRemove.isBot) {
-      const removedPlayerWs = playerSockets.get(playerIdToRemove);
-      if (removedPlayerWs) {
-        playerSockets.delete(playerIdToRemove);
-        try {
-          removedPlayerWs.close();
-        } catch (err) {
-          console.error(`[RemovePlayer] Error closing WebSocket for ${playerIdToRemove}:`, err);
-        }
-      }
-    }
-  }
-
   async function checkBotTurn(roomCode: string): Promise<void> {
     const game = roomManager.getRoom(roomCode);
     if (!game || game.phase !== GamePhase.Playing) return;
+
+    if (game.turn?.pendingWildcardAssignment) {
+      const assignment = game.turn.pendingWildcardAssignment;
+      const bot = game.players.find(p => p.id === assignment.playerId);
+      if (bot?.isBot) {
+        // Delay before assigning
+        const baseDelay = Math.max(600, 1800 - (game.players.filter(p => p.connected).length - 2) * 300);
+        await new Promise((resolve) => setTimeout(resolve, baseDelay + Math.random() * 600));
+        
+        // Just pick the first available color for now
+        const color = assignment.availableColors[0];
+        if (color) {
+          roomManager.getEngine().assignReceivedWildcard(game, bot.id, assignment.cardId, color);
+          sendStateToAll(roomCode);
+          checkGameEnd(roomCode);
+          await checkBotTurn(roomCode);
+        }
+        return;
+      }
+    }
 
     if (game.turn?.pendingAction) {
       const action = game.turn.pendingAction;

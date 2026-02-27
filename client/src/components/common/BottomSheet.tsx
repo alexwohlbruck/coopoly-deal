@@ -22,13 +22,23 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 z-[100]"
+            onClick={onClose}
+          />
+          
+          {/* Bottom Sheet */}
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className={`w-full max-w-4xl ${height} bg-gray-900/95 backdrop-blur-lg rounded-t-3xl shadow-2xl border-t-2 border-white/20 flex flex-col pointer-events-auto`}
+            className={`fixed bottom-0 left-0 right-0 z-[110] w-full ${height} bg-gray-900 rounded-t-3xl shadow-2xl border-t-2 border-white/20 flex flex-col`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 shrink-0">
@@ -55,7 +65,7 @@ export function BottomSheet({
               </div>
             )}
           </motion.div>
-        </div>
+        </>
       )}
     </AnimatePresence>
   );

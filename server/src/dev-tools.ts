@@ -98,6 +98,7 @@ class DevToolsImpl implements DevTools {
       [PropertyColor.DarkBlue]: 2,
       [PropertyColor.Railroad]: 4,
       [PropertyColor.Utility]: 2,
+      [PropertyColor.Unassigned]: 999,
     };
 
     const needed = setSize[color];

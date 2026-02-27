@@ -9,6 +9,7 @@ export enum PropertyColor {
   DarkBlue = "darkBlue",
   Railroad = "railroad",
   Utility = "utility",
+  Unassigned = "unassigned", // For wildcards without assigned color
 }
 
 export enum CardType {
@@ -39,10 +40,18 @@ export interface Card {
 
 export interface GameSettings {
   maxHandSize: number;
+  turnTimer: number;
+  allowDuplicateSets: boolean;
+  houseHotelRules: boolean;
+  wildcardFlipCountsAsMove: boolean;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
   maxHandSize: 7,
+  turnTimer: 0,
+  allowDuplicateSets: true,
+  houseHotelRules: true,
+  wildcardFlipCountsAsMove: false,
 };
 
 export const SET_SIZE: Record<PropertyColor, number> = {
@@ -56,6 +65,7 @@ export const SET_SIZE: Record<PropertyColor, number> = {
   [PropertyColor.DarkBlue]: 2,
   [PropertyColor.Railroad]: 4,
   [PropertyColor.Utility]: 2,
+  [PropertyColor.Unassigned]: 999, // Unassigned wildcards can stack infinitely
 };
 
 export const RENT_VALUES: Record<PropertyColor, number[]> = {
@@ -69,6 +79,7 @@ export const RENT_VALUES: Record<PropertyColor, number[]> = {
   [PropertyColor.DarkBlue]: [3, 8],
   [PropertyColor.Railroad]: [1, 2, 3, 4],
   [PropertyColor.Utility]: [1, 2],
+  [PropertyColor.Unassigned]: [0],
 };
 
 export interface PropertySet {
@@ -134,11 +145,18 @@ export interface PendingAction {
   };
 }
 
+export interface PendingWildcardAssignment {
+  playerId: string; // Player who needs to assign the wildcard
+  cardId: string; // The wildcard card that needs assignment
+  availableColors: PropertyColor[]; // Colors this wildcard can be assigned to
+}
+
 export interface TurnState {
   playerId: string;
   cardsPlayed: number;
   phase: TurnPhase;
   pendingAction: PendingAction | null;
+  pendingWildcardAssignment: PendingWildcardAssignment | null;
   rentMultiplier: number; // Tracks active "Double the Rent" multiplier (1 = normal, 2 = doubled, 4 = double-doubled)
 }
 
@@ -196,7 +214,7 @@ export type ClientMessage =
   | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }
-  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor } }
+  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null } }
   | { type: "PLAY_ACTION_CARD"; payload: PlayActionPayload }
   | { type: "END_TURN" }
   | { type: "DISCARD_CARDS"; payload: { cardIds: string[] } }
@@ -205,13 +223,14 @@ export type ClientMessage =
   | { type: "ACCEPT_ACTION" }
   | { type: "SELECT_PAYMENT_CARDS"; payload: { cardIds: string[] } }
   | { type: "REARRANGE_PROPERTY"; payload: { cardId: string; toColor: PropertyColor } }
+  | { type: "ASSIGN_RECEIVED_WILDCARD"; payload: { cardId: string; color: PropertyColor } }
   | { type: "UPDATE_SETTINGS"; payload: { settings: Partial<GameSettings> } }
   | { type: "REMATCH" }
   | { type: "ADD_BOT" }
   | { type: "RESIGN" }
-  | { type: "DEV_INJECT_CARD"; payload: { cardType: CardType; colors?: PropertyColor[] } }
-  | { type: "DEV_GIVE_COMPLETE_SET"; payload: { color: PropertyColor } }
-  | { type: "DEV_SET_MONEY"; payload: { amount: number } };
+  | { type: "DEV_INJECT_CARD"; payload: { cardType: CardType; targetPlayerId?: string; colors?: PropertyColor[] } }
+  | { type: "DEV_GIVE_COMPLETE_SET"; payload: { color: PropertyColor; targetPlayerId?: string } }
+  | { type: "DEV_SET_MONEY"; payload: { amount: number; targetPlayerId?: string } };
 
 export type PlayActionPayload =
   | { action: "passGo"; cardId: string }

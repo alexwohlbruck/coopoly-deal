@@ -82,9 +82,13 @@ export interface Translations {
   };
   settings: {
     title: string;
+    theme: string;
     handLimit: string;
     language: string;
+    soundEffects: string;
+    backgroundMusic: string;
     unlimited: string;
+    save: string;
   };
   common: {
     you: string;

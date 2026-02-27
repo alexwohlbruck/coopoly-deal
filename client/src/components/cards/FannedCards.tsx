@@ -9,7 +9,8 @@ interface FannedCardsProps {
   showBacks?: boolean; // Show card backs instead of actual cards
   maxVisible?: number; // Max cards to show before stacking
   onCardClick?: (card: Card) => void;
-  orientation?: "top" | "bottom"; // For wildcards
+  orientation?: "top" | "bottom"; // For wildcards (applied to all cards)
+  getCardOrientation?: (card: Card) => "top" | "bottom" | undefined; // Per-card orientation function
 }
 
 export function FannedCards({
@@ -19,8 +20,22 @@ export function FannedCards({
   maxVisible = 10,
   onCardClick,
   orientation,
+  getCardOrientation,
 }: FannedCardsProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [collapseTimeout, setCollapseTimeout] = useState<number | null>(null);
+  
+  // Detect mobile on mount
+  useState(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  });
   
   const cardCount = cards.length;
   const visibleCount = Math.min(cardCount, maxVisible);
@@ -29,7 +44,41 @@ export function FannedCards({
   const cardWidth = small ? 64 : 96;
   const collapsedSpread = small ? 8 : 12;
   const expandedSpread = cardWidth + 4; // Full card width + small gap
-  const spread = isHovered ? expandedSpread : collapsedSpread;
+  const spread = (isHovered || isExpanded) ? expandedSpread : collapsedSpread;
+  
+  // Handle tap to expand on mobile
+  const handleTap = () => {
+    if (!isMobile) return;
+    
+    if (isExpanded) {
+      // Already expanded, allow card click
+      return;
+    }
+    
+    // First tap: expand
+    setIsExpanded(true);
+    
+    // Auto-collapse after 3 seconds
+    if (collapseTimeout) {
+      window.clearTimeout(collapseTimeout);
+    }
+    const timeout = window.setTimeout(() => {
+      setIsExpanded(false);
+    }, 3000);
+    setCollapseTimeout(timeout);
+  };
+  
+  const handleCardClick = (card: Card) => {
+    if (isMobile && !isExpanded) {
+      // First tap on mobile: expand instead of clicking
+      handleTap();
+      return;
+    }
+    // Second tap or desktop: trigger click
+    if (onCardClick) {
+      onCardClick(card);
+    }
+  };
   
   const getTransform = (index: number) => {
     // Calculate offset from center
@@ -59,10 +108,11 @@ export function FannedCards({
       style={{
         width: `${containerWidth}px`,
         height: `${cardHeight}px`,
-        zIndex: isHovered ? 100 : 'auto', // Elevate entire container on hover
+        zIndex: (isHovered || isExpanded) ? 100 : 'auto', // Elevate entire container on hover/expand
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseEnter={() => !isMobile && setIsHovered(true)}
+      onMouseLeave={() => !isMobile && setIsHovered(false)}
+      onClick={isMobile ? handleTap : undefined}
     >
       {cards.slice(0, maxVisible).map((card, index) => (
         <motion.div
@@ -85,8 +135,8 @@ export function FannedCards({
             <GameCard
               card={card}
               small={small}
-              onClick={onCardClick ? () => onCardClick(card) : undefined}
-              orientation={orientation}
+              onClick={onCardClick ? () => handleCardClick(card) : undefined}
+              orientation={getCardOrientation ? getCardOrientation(card) : orientation}
             />
           )}
         </motion.div>

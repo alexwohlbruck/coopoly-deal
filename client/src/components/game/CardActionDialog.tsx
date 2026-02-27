@@ -334,16 +334,20 @@ export function CardActionDialog({
     }
   }
 
+  const isMultiWildcard = card.type === CardType.PropertyWildcard && (card.colors?.length ?? 0) > 2;
+
   const availableColors =
     card.type === CardType.RentDual
-      ? (card.colors ?? []).filter(c => player.properties.some(s => s.color === c && s.cards.length > 0))
+      ? (card.colors ?? []).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0))
       : card.type === CardType.RentWild
-        ? Object.values(PC).filter(c => player.properties.some(s => s.color === c && s.cards.length > 0))
+        ? Object.values(PC).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0))
         : card.type === CardType.House
           ? player.properties.filter((s) => isSetComplete(s) && s.color !== PC.Railroad && s.color !== PC.Utility && !s.house).map((s) => s.color)
           : card.type === CardType.Hotel
             ? player.properties.filter((s) => isSetComplete(s) && s.color !== PC.Railroad && s.color !== PC.Utility && s.house && !s.hotel).map((s) => s.color)
-            : card.colors ?? [];
+            : isMultiWildcard
+              ? (card.colors ?? []).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0))
+              : (card.colors ?? []).filter(c => c !== PC.Unassigned);
 
   useEffect(() => {
     console.log('[CardActionDialog] useEffect triggered', {
@@ -465,6 +469,17 @@ export function CardActionDialog({
                     </button>
                   );
                 })}
+                {canPlayToProperty && card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 2 && (
+                  <button
+                    onClick={() => {
+                      onPlayToProperty(card.id, null as any);
+                    }}
+                    className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-dashed border-gray-500"
+                    style={{ backgroundColor: "#4B5563" }}
+                  >
+                    Unassigned (Place Later)
+                  </button>
+                )}
               </div>
             </div>
           )}

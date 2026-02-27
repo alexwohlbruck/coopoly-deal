@@ -261,6 +261,12 @@ export default function App() {
             send({ type: "PLAY_ACTION_CARD", payload });
             console.log('[App] PLAY_ACTION_CARD sent');
           }}
+          onRearrangeProperty={(cardId, toColor) => {
+            send({ type: "REARRANGE_PROPERTY", payload: { cardId, toColor } });
+          }}
+          onAssignReceivedWildcard={(cardId, color) => {
+            send({ type: "ASSIGN_RECEIVED_WILDCARD", payload: { cardId, color } });
+          }}
           onEndTurn={() => send({ type: "END_TURN" })}
           onDiscardCards={(cardIds) =>
             send({ type: "DISCARD_CARDS", payload: { cardIds } })
