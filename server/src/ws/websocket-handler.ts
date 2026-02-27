@@ -69,7 +69,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           break;
 
         case "PLAY_CARD_TO_PROPERTY":
-          handlePlayCardToProperty(ws, msg.payload.cardId, msg.payload.asColor);
+          handlePlayCardToProperty(ws, msg.payload.cardId, msg.payload.asColor, msg.payload.groupWithUnassigned);
           break;
 
         case "PLAY_ACTION_CARD":
@@ -194,13 +194,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     checkBotTurn(roomCode);
   }
 
-  function handlePlayCardToProperty(ws: GameWebSocket, cardId: string, asColor: any): void {
+  function handlePlayCardToProperty(ws: GameWebSocket, cardId: string, asColor: any, groupWithUnassigned?: boolean): void {
     const { roomCode, playerId } = ws.data;
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
-    roomManager.getEngine().playCardToProperty(game, playerId, cardId, asColor);
+    roomManager.getEngine().playCardToProperty(game, playerId, cardId, asColor, groupWithUnassigned);
     sendStateToAll(roomCode);
     checkGameEnd(roomCode);
     checkTurnChanged(roomCode, turnPlayerBefore);

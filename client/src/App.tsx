@@ -250,9 +250,9 @@ export default function App() {
             play("cardPlay");
             send({ type: "PLAY_CARD_TO_BANK", payload: { cardId } });
           }}
-          onPlayToProperty={(cardId, asColor) => {
+          onPlayToProperty={(cardId, asColor, groupWithUnassigned) => {
             play("cardPlay");
-            send({ type: "PLAY_CARD_TO_PROPERTY", payload: { cardId, asColor } });
+            send({ type: "PLAY_CARD_TO_PROPERTY", payload: { cardId, asColor, groupWithUnassigned } });
           }}
           onPlayAction={(payload) => {
             console.log('[App] onPlayAction called', payload);

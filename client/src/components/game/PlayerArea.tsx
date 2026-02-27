@@ -312,7 +312,7 @@ export function PlayerArea({
 
         // Validate wildcard supports this color
         if (card.type === CardType.PropertyWildcard) {
-          if (!card.colors?.includes(color)) {
+          if (color !== PropertyColor.Unassigned && !card.colors?.includes(color)) {
             e.dataTransfer.dropEffect = "none";
             return; // Wildcard doesn't support this color
           }
@@ -392,7 +392,12 @@ export function PlayerArea({
 
         // Validate wildcard can be this color
         if (card.type === CardType.PropertyWildcard) {
-          if (!card.colors?.includes(color)) {
+          if (color === PropertyColor.Unassigned) {
+            if (onDropWildcard) {
+              onDropWildcard(card);
+              return;
+            }
+          } else if (!card.colors?.includes(color)) {
             return; // Wildcard doesn't support this color
           }
         }

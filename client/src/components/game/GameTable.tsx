@@ -28,7 +28,7 @@ interface GameTableProps {
     gamesPlayed: number;
   };
   onPlayToBank: (cardId: string) => void;
-  onPlayToProperty: (cardId: string, color: PropertyColor) => void;
+  onPlayToProperty: (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean) => void;
   onPlayAction: (payload: Record<string, unknown>) => void;
   onRearrangeProperty?: (cardId: string, toColor: PropertyColor) => void;
   onAssignReceivedWildcard?: (cardId: string, color: PropertyColor) => void;
@@ -322,8 +322,8 @@ export function GameTable({
   );
 
   const handlePlayToProperty = useCallback(
-    (cardId: string, color: PropertyColor) => {
-      onPlayToProperty(cardId, color);
+    (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean) => {
+      onPlayToProperty(cardId, color, groupWithUnassigned);
       setSelectedCard(null);
     },
     [onPlayToProperty],

@@ -19,7 +19,7 @@ interface CardActionDialogProps {
   opponents: ClientPlayer[];
   rentMultiplier?: number;
   onClose: () => void;
-  onPlayToProperty: (cardId: string, color: PropertyColor) => void;
+  onPlayToProperty: (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean) => void;
   onPlayAction: (payload: Record<string, unknown>) => void;
 }
 
@@ -37,8 +37,9 @@ export function CardActionDialog({
     cardId: card.id
   });
   
-  const [step, setStep] = useState<"choose" | "selectColor" | "selectTarget" | "selectTargetCard" | "selectMyCard" | "selectTargetSet">("choose");
+  const [step, setStep] = useState<"choose" | "selectColor" | "selectTarget" | "selectTargetCard" | "selectMyCard" | "selectTargetSet" | "groupWildcard">("choose");
   const [selectedColor, setSelectedColor] = useState<PropertyColor | null>(null);
+  const [pendingPlayColor, setPendingPlayColor] = useState<PropertyColor | null>(null);
   const [selectedTarget, setSelectedTarget] = useState<ClientPlayer | null>(null);
   const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
   const [autoTriggered, setAutoTriggered] = useState(false);
@@ -326,9 +327,23 @@ export function CardActionDialog({
     }
   }
 
+  function handlePlayPropertyWithColor(color: PropertyColor) {
+    const unassignedSet = player.properties.find(s => s.color === PC.Unassigned);
+    const hasUnassignedWildcards = unassignedSet && unassignedSet.cards.length > 0;
+    
+    if (hasUnassignedWildcards) {
+      setPendingPlayColor(color);
+      setStep("groupWildcard");
+    } else {
+      markDispatchedAndClose();
+      onPlayToProperty(card.id, color);
+      onClose();
+    }
+  }
+
   function handlePlayToProperty() {
     if (card.colors && card.colors.length === 1) {
-      onPlayToProperty(card.id, card.colors[0]);
+      handlePlayPropertyWithColor(card.colors[0]);
     } else if (card.colors && card.colors.length >= 2) {
       setStep("selectColor");
     }
@@ -449,7 +464,7 @@ export function CardActionDialog({
                       key={color}
                       onClick={() => {
                         if (canPlayToProperty) {
-                          onPlayToProperty(card.id, color);
+                          handlePlayPropertyWithColor(color);
                         } else {
                           handleSelectColor(color);
                         }
@@ -472,7 +487,9 @@ export function CardActionDialog({
                 {canPlayToProperty && card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 2 && (
                   <button
                     onClick={() => {
+                      markDispatchedAndClose();
                       onPlayToProperty(card.id, null as any);
+                      onClose();
                     }}
                     className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-dashed border-gray-500"
                     style={{ backgroundColor: "#4B5563" }}
@@ -551,6 +568,36 @@ export function CardActionDialog({
                       {PROPERTY_COLOR_LABEL[set.color]}
                     </button>
                   ))}
+              </div>
+            </div>
+          )}
+
+          {step === "groupWildcard" && pendingPlayColor && (
+            <div>
+              <p className="text-gray-300 text-sm mb-4 text-center">
+                You have unassigned wildcards on the table. Would you like to group them into your new {PROPERTY_COLOR_LABEL[pendingPlayColor]} set?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    markDispatchedAndClose();
+                    onPlayToProperty(card.id, pendingPlayColor, true);
+                    onClose();
+                  }}
+                  className="py-2.5 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 bg-green-600"
+                >
+                  Yes, Group Them
+                </button>
+                <button
+                  onClick={() => {
+                    markDispatchedAndClose();
+                    onPlayToProperty(card.id, pendingPlayColor);
+                    onClose();
+                  }}
+                  className="py-2.5 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 bg-gray-600"
+                >
+                  No, Keep Unassigned
+                </button>
               </div>
             </div>
           )}

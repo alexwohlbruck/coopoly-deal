@@ -214,7 +214,7 @@ export type ClientMessage =
   | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }
-  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null } }
+  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null; groupWithUnassigned?: boolean } }
   | { type: "PLAY_ACTION_CARD"; payload: PlayActionPayload }
   | { type: "END_TURN" }
   | { type: "DISCARD_CARDS"; payload: { cardIds: string[] } }

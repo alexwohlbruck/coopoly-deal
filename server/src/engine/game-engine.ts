@@ -219,7 +219,8 @@ export class GameEngine {
     state: GameState,
     playerId: string,
     cardId: string,
-    asColor: PropertyColor | null
+    asColor: PropertyColor | null,
+    groupWithUnassigned?: boolean
   ): void {
     this.assertCurrentPlayer(state, playerId);
     this.assertCanPlay(state);
@@ -246,7 +247,7 @@ export class GameEngine {
       }
     }
 
-    this.addPropertyToPlayer(player, card, asColor);
+    this.addPropertyToPlayer(player, card, asColor, groupWithUnassigned);
     this.incrementPlays(state);
     this.checkWin(state, player);
     this.tryAutoEndTurn(state);
@@ -931,7 +932,7 @@ export class GameEngine {
     state.turn!.phase = TurnPhase.ActionPending;
   }
 
-  private addPropertyToPlayer(player: Player, card: Card, color: PropertyColor | null): void {
+  private addPropertyToPlayer(player: Player, card: Card, color: PropertyColor | null, groupWithUnassigned?: boolean): void {
     // Convert null to Unassigned for wildcards
     const targetColor = color ?? PropertyColor.Unassigned;
     
@@ -947,7 +948,8 @@ export class GameEngine {
     set.cards.push(card);
     
     // Auto-assign unassigned wildcards when a colored property is added to their stack
-    if (targetColor !== PropertyColor.Unassigned && card.type === CardType.Property) {
+    // Or if explicitly requested via groupWithUnassigned
+    if (targetColor !== PropertyColor.Unassigned && (card.type === CardType.Property || groupWithUnassigned)) {
       this.autoAssignWildcardsInSet(player, set);
     }
   }
