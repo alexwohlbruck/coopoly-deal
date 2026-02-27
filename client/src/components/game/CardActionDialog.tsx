@@ -348,7 +348,7 @@ export function CardActionDialog({
           : card.type === CardType.Hotel
             ? player.properties.filter((s) => isSetComplete(s) && s.color !== PC.Railroad && s.color !== PC.Utility && s.house && !s.hotel).map((s) => s.color)
             : isMultiWildcard
-              ? [...(card.colors ?? []), PC.Unassigned]
+              ? (card.colors ?? []).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0))
               : (card.colors ?? []).filter(c => c !== PC.Unassigned);
 
   useEffect(() => {
