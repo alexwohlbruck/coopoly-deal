@@ -9,7 +9,7 @@ export enum PropertyColor {
   DarkBlue = "darkBlue",
   Railroad = "railroad",
   Utility = "utility",
-  Unassigned = "unassigned", // For wildcards without assigned color
+  Unassigned = "unassigned", // Used for Rainbow wildcard sets
 }
 
 export enum CardType {

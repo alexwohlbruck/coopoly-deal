@@ -361,7 +361,7 @@ export function CardActionDialog({
           : card.type === CardType.Hotel
             ? player.properties.filter((s) => isSetComplete(s) && s.color !== PC.Railroad && s.color !== PC.Utility && s.house && !s.hotel).map((s) => s.color)
             : isMultiWildcard
-              ? (card.colors ?? []).filter(c => c !== PC.Unassigned && player.properties.some(s => s.color === c && s.cards.length > 0))
+              ? [...(card.colors ?? []), PC.Unassigned]
               : (card.colors ?? []).filter(c => c !== PC.Unassigned);
 
   useEffect(() => {
@@ -488,13 +488,13 @@ export function CardActionDialog({
                   <button
                     onClick={() => {
                       markDispatchedAndClose();
-                      onPlayToProperty(card.id, null as any);
+                      onPlayToProperty(card.id, PC.Unassigned);
                       onClose();
                     }}
                     className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-dashed border-gray-500"
-                    style={{ backgroundColor: "#4B5563" }}
+                    style={{ backgroundColor: "#8B5CF6" }}
                   >
-                    Unassigned (Place Later)
+                    Play as Rainbow Set
                   </button>
                 )}
               </div>
@@ -575,7 +575,7 @@ export function CardActionDialog({
           {step === "groupWildcard" && pendingPlayColor && (
             <div>
               <p className="text-gray-300 text-sm mb-4 text-center">
-                You have unassigned wildcards on the table. Would you like to group them into your new {PROPERTY_COLOR_LABEL[pendingPlayColor]} set?
+                You have Rainbow wildcards on the table. Would you like to group them into your new {PROPERTY_COLOR_LABEL[pendingPlayColor]} set?
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -596,7 +596,7 @@ export function CardActionDialog({
                   }}
                   className="py-2.5 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 bg-gray-600"
                 >
-                  No, Keep Unassigned
+                  No, Keep as Rainbow
                 </button>
               </div>
             </div>

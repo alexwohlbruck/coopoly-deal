@@ -156,7 +156,7 @@ export const PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
   [PropertyColor.DarkBlue]: "Dark Blue",
   [PropertyColor.Railroad]: "Railroad",
   [PropertyColor.Utility]: "Utility",
-  [PropertyColor.Unassigned]: "Unassigned",
+  [PropertyColor.Unassigned]: "Rainbow",
 };
 
 export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
@@ -170,7 +170,7 @@ export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
   [PropertyColor.DarkBlue]: "#1E3A8A",
   [PropertyColor.Railroad]: "#1F2937",
   [PropertyColor.Utility]: "#6B7280",
-  [PropertyColor.Unassigned]: "#6B7280",
+  [PropertyColor.Unassigned]: "#8B5CF6", // Purple to represent Rainbow
 };
 
 export const CARD_TYPE_LABEL: Record<CardType, string> = {

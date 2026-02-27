@@ -233,20 +233,12 @@ export class GameEngine {
     }
 
     // Allow null color for multi-color wildcards only (unassigned)
-    if (asColor !== null) {
+    if (asColor !== null && asColor !== PropertyColor.Unassigned) {
       if (card.colors && !card.colors.includes(asColor)) {
         throw new Error(`Card cannot be played as ${asColor}`);
       }
-      
-      // Multi-color wildcards can only be played to a color if the player already has a property of that color
-      if (card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 2) {
-        const hasColor = player.properties.some(s => s.color === asColor && s.cards.length > 0);
-        if (!hasColor) {
-          throw new Error(`Multi-color wildcards can only be assigned to existing property sets`);
-        }
-      }
     } else {
-      // Null color only allowed for multi-color wildcards (more than 2 colors)
+      // Null/Unassigned color only allowed for multi-color wildcards (more than 2 colors)
       if (card.type !== CardType.PropertyWildcard) {
         throw new Error("Only wildcards can be played without a color");
       }
@@ -816,14 +808,6 @@ export class GameEngine {
     if (!card.colors?.includes(toColor)) {
       throw new Error("Card cannot be used for that color");
     }
-    
-    // Multi-color wildcards can only be rearranged to a color if the player already has a property of that color
-    if (card.colors && card.colors.length > 2 && toColor !== PropertyColor.Unassigned) {
-      const hasColor = player.properties.some(s => s.color === toColor && s.cards.length > 0);
-      if (!hasColor) {
-        throw new Error(`Multi-color wildcards can only be assigned to existing property sets`);
-      }
-    }
 
     this.addPropertyToPlayer(player, card, toColor);
     
@@ -887,13 +871,8 @@ export class GameEngine {
       return card.colors;
     }
     
-    // For multi-color wildcards, they can only be placed in a color if the player already has a property of that color
-    const validColors = card.colors.filter(color => {
-      return player.properties.some(s => s.color === color && s.cards.length > 0);
-    });
-    
-    // Multi-color wildcards can also be unassigned
-    validColors.push(PropertyColor.Unassigned);
+    // Multi-color wildcards can be placed anywhere, plus unassigned
+    const validColors = [...card.colors, PropertyColor.Unassigned];
     
     return validColors;
   }
@@ -1001,7 +980,7 @@ export class GameEngine {
     const cardsToMove: Card[] = [];
     for (const card of unassignedSet.cards) {
       if (card.type === CardType.PropertyWildcard && card.colors?.includes(targetColor)) {
-        if (targetSet.cards.length < SET_SIZE[targetColor]) {
+        if (targetSet.cards.length + cardsToMove.length < SET_SIZE[targetColor]) {
           cardsToMove.push(card);
         }
       }
@@ -1044,18 +1023,6 @@ export class GameEngine {
         }
         if (set.cards.length === 0) {
           player.properties = player.properties.filter((s) => s !== set);
-        } else if (set.color !== PropertyColor.Unassigned) {
-          // Check if the set now only contains multi-color wildcards
-          const onlyMultiColorWildcards = set.cards.every(c => c.type === CardType.PropertyWildcard && c.colors && c.colors.length > 2);
-          if (onlyMultiColorWildcards) {
-            const cardsToMove = [...set.cards];
-            set.cards = [];
-            player.properties = player.properties.filter((s) => s !== set);
-            
-            for (const c of cardsToMove) {
-              this.addPropertyToPlayer(player, c, PropertyColor.Unassigned);
-            }
-          }
         }
         return card!;
       }
