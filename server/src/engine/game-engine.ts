@@ -220,7 +220,8 @@ export class GameEngine {
     playerId: string,
     cardId: string,
     asColor: PropertyColor | null,
-    groupWithUnassigned?: boolean
+    groupWithUnassigned?: boolean,
+    createNewSet?: boolean
   ): void {
     this.assertCurrentPlayer(state, playerId);
     this.assertCanPlay(state);
@@ -247,7 +248,7 @@ export class GameEngine {
       }
     }
 
-    this.addPropertyToPlayer(player, card, asColor, groupWithUnassigned);
+    this.addPropertyToPlayer(player, card, asColor, groupWithUnassigned, createNewSet);
     this.incrementPlays(state);
     this.checkWin(state, player);
     this.tryAutoEndTurn(state);
@@ -796,10 +797,21 @@ export class GameEngine {
     state: GameState,
     playerId: string,
     cardId: string,
-    toColor: PropertyColor
+    toColor: PropertyColor,
+    createNewSet?: boolean
   ): void {
     this.assertCurrentPlayer(state, playerId);
     const player = this.getPlayer(state, playerId);
+    
+    // Find the card's current color before removing it
+    let currentColor = PropertyColor.Unassigned;
+    for (const set of player.properties) {
+      if (set.cards.some(c => c.id === cardId)) {
+        currentColor = set.color;
+        break;
+      }
+    }
+    
     const card = this.removePropertyFromPlayer(player, cardId);
 
     if (card.type !== CardType.PropertyWildcard) {
@@ -809,11 +821,12 @@ export class GameEngine {
       throw new Error("Card cannot be used for that color");
     }
 
-    this.addPropertyToPlayer(player, card, toColor);
+    this.addPropertyToPlayer(player, card, toColor, false, createNewSet);
     
     // If setting is enabled, count this as a move (only during Play phase, not during steal/swap)
+    // EXCEPTION: Moving a wildcard from the Rainbow set does not cost a move
     const turn = this.getTurn(state);
-    if (state.settings.wildcardFlipCountsAsMove && turn.phase === TurnPhase.Play) {
+    if (state.settings.wildcardFlipCountsAsMove && turn.phase === TurnPhase.Play && currentColor !== PropertyColor.Unassigned) {
       this.incrementPlays(state);
       this.tryAutoEndTurn(state);
     }
@@ -946,13 +959,17 @@ export class GameEngine {
     state.turn!.phase = TurnPhase.ActionPending;
   }
 
-  private addPropertyToPlayer(player: Player, card: Card, color: PropertyColor | null, groupWithUnassigned?: boolean): void {
+  private addPropertyToPlayer(player: Player, card: Card, color: PropertyColor | null, groupWithUnassigned?: boolean, createNewSet?: boolean): void {
     // Convert null to Unassigned for wildcards
     const targetColor = color ?? PropertyColor.Unassigned;
     
-    let set = player.properties.find(
-      (s) => s.color === targetColor && s.cards.length < SET_SIZE[targetColor]
-    );
+    let set = undefined;
+    
+    if (!createNewSet) {
+      set = player.properties.find(
+        (s) => s.color === targetColor && s.cards.length < SET_SIZE[targetColor]
+      );
+    }
 
     if (!set) {
       set = { color: targetColor, cards: [], house: null, hotel: null };
@@ -961,9 +978,8 @@ export class GameEngine {
 
     set.cards.push(card);
     
-    // Auto-assign unassigned wildcards when a colored property is added to their stack
-    // Or if explicitly requested via groupWithUnassigned
-    if (targetColor !== PropertyColor.Unassigned && (card.type === CardType.Property || groupWithUnassigned)) {
+    // Auto-assign unassigned wildcards when explicitly requested via groupWithUnassigned
+    if (targetColor !== PropertyColor.Unassigned && groupWithUnassigned) {
       this.autoAssignWildcardsInSet(player, set);
     }
   }

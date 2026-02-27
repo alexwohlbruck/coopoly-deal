@@ -261,8 +261,8 @@ export default function App() {
             send({ type: "PLAY_ACTION_CARD", payload });
             console.log('[App] PLAY_ACTION_CARD sent');
           }}
-          onRearrangeProperty={(cardId, toColor) => {
-            send({ type: "REARRANGE_PROPERTY", payload: { cardId, toColor } });
+          onRearrangeProperty={(cardId, toColor, createNewSet) => {
+            send({ type: "REARRANGE_PROPERTY", payload: { cardId, toColor, createNewSet } });
           }}
           onAssignReceivedWildcard={(cardId, color) => {
             send({ type: "ASSIGN_RECEIVED_WILDCARD", payload: { cardId, color } });

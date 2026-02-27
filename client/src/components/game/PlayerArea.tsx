@@ -20,6 +20,7 @@ interface PlayerAreaProps {
   onDropToBank?: (cardId: string) => void;
   onDropToProperty?: (cardId: string, color: PropertyColor) => void;
   onDropWildcard?: (card: Card) => void;
+  onDropToRainbow?: (card: Card) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
   draggingCard?: Card | null;
   availableHeight?: number;
@@ -238,6 +239,7 @@ export function PlayerArea({
   onDropToBank,
   onDropToProperty,
   onDropWildcard,
+  onDropToRainbow,
   onWildcardClick,
   draggingCard,
   availableHeight,
@@ -361,6 +363,11 @@ export function PlayerArea({
           // Check if we're dropping onto a wildcard set (unassigned or different color)
           const targetSet = player.properties.find((s) => s.color === color);
           if (targetSet && cardColor && cardColor !== color) {
+            if (color === PropertyColor.Unassigned && onDropToRainbow) {
+              onDropToRainbow(card);
+              return;
+            }
+            
             // Dropping a property onto a wildcard set - update the set color
             // Find all wildcards in this set and update them
             const wildcards = targetSet.cards.filter(
@@ -393,8 +400,11 @@ export function PlayerArea({
         // Validate wildcard can be this color
         if (card.type === CardType.PropertyWildcard) {
           if (color === PropertyColor.Unassigned) {
-            if (onDropWildcard) {
-              onDropWildcard(card);
+            if (card.colors && card.colors.length > 2) {
+              onDropToProperty(cardId, PropertyColor.Unassigned);
+              return;
+            } else if (onDropToRainbow) {
+              onDropToRainbow(card);
               return;
             }
           } else if (!card.colors?.includes(color)) {

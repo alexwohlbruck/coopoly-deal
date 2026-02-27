@@ -12,6 +12,7 @@ import { CardActionDialog } from "./CardActionDialog";
 import { ActionPrompt } from "./ActionPrompt";
 import { EndGameSummary } from "./EndGameSummary";
 import { WildcardFlipDialog } from "./WildcardFlipDialog";
+import { RainbowGroupDialog } from "./RainbowGroupDialog";
 import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
@@ -28,9 +29,9 @@ interface GameTableProps {
     gamesPlayed: number;
   };
   onPlayToBank: (cardId: string) => void;
-  onPlayToProperty: (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean) => void;
+  onPlayToProperty: (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean, createNewSet?: boolean) => void;
   onPlayAction: (payload: Record<string, unknown>) => void;
-  onRearrangeProperty?: (cardId: string, toColor: PropertyColor) => void;
+  onRearrangeProperty?: (cardId: string, toColor: PropertyColor, createNewSet?: boolean) => void;
   onAssignReceivedWildcard?: (cardId: string, color: PropertyColor) => void;
   onEndTurn: () => void;
   onDiscardCards: (cardIds: string[]) => void;
@@ -82,6 +83,7 @@ export function GameTable({
   const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [shakingCardId, setShakingCardId] = useState<string | null>(null);
   const [wildcardFlipData, setWildcardFlipData] = useState<{ card: Card; currentColor: PropertyColor } | null>(null);
+  const [rainbowDropData, setRainbowDropData] = useState<{ card: Card } | null>(null);
   const [draggingCard, setDraggingCard] = useState<Card | null>(null);
   const { sfxEnabled, toggleSfx} = useSoundSettings();
   const { play } = useSoundManager();
@@ -322,8 +324,8 @@ export function GameTable({
   );
 
   const handlePlayToProperty = useCallback(
-    (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean) => {
-      onPlayToProperty(cardId, color, groupWithUnassigned);
+    (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean, createNewSet?: boolean) => {
+      onPlayToProperty(cardId, color, groupWithUnassigned, createNewSet);
       setSelectedCard(null);
     },
     [onPlayToProperty],
@@ -356,6 +358,23 @@ export function GameTable({
     },
     [wildcardFlipData, onRearrangeProperty],
   );
+
+  const handleRainbowDropConfirm = useCallback((color: PropertyColor, createNewSet: boolean, wildcardIds: string[]) => {
+    if (!rainbowDropData) return;
+    const cardId = rainbowDropData.card.id;
+    
+    // Play the card
+    onPlayToProperty(cardId, color, false, createNewSet);
+    
+    // Move the wildcards
+    if (onRearrangeProperty) {
+      wildcardIds.forEach((id) => {
+        onRearrangeProperty(id, color, false);
+      });
+    }
+    
+    setRainbowDropData(null);
+  }, [rainbowDropData, onPlayToProperty, onRearrangeProperty]);
 
   if (gameState.phase === GamePhase.Finished) {
     return (
@@ -494,7 +513,7 @@ export function GameTable({
                             }
                           : undefined
                       }
-                      onDropWildcard={isMe ? handleCardClick : undefined}
+                      onDropToRainbow={isMe ? (card) => setRainbowDropData({ card }) : undefined}
                       onWildcardClick={isMe ? handleWildcardClick : undefined}
                     />
                   </div>
@@ -711,6 +730,16 @@ export function GameTable({
         onToggleSfx={toggleSfx}
         musicControls={musicControls}
       />
+
+      {/* Rainbow Drop Dialog */}
+      {rainbowDropData && me && (
+        <RainbowGroupDialog
+          card={rainbowDropData.card}
+          player={me}
+          onClose={() => setRainbowDropData(null)}
+          onConfirm={handleRainbowDropConfirm}
+        />
+      )}
 
       {/* Developer Tools Modal (only in development mode) */}
       {import.meta.env.MODE === 'development' && onDevInjectCard && onDevGiveCompleteSet && onDevSetMoney && (

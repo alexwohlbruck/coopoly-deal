@@ -214,7 +214,7 @@ export type ClientMessage =
   | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }
-  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null; groupWithUnassigned?: boolean } }
+  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null; groupWithUnassigned?: boolean; createNewSet?: boolean } }
   | { type: "PLAY_ACTION_CARD"; payload: PlayActionPayload }
   | { type: "END_TURN" }
   | { type: "DISCARD_CARDS"; payload: { cardIds: string[] } }
@@ -222,7 +222,7 @@ export type ClientMessage =
   | { type: "JUST_SAY_NO" }
   | { type: "ACCEPT_ACTION" }
   | { type: "SELECT_PAYMENT_CARDS"; payload: { cardIds: string[] } }
-  | { type: "REARRANGE_PROPERTY"; payload: { cardId: string; toColor: PropertyColor } }
+  | { type: "REARRANGE_PROPERTY"; payload: { cardId: string; toColor: PropertyColor; createNewSet?: boolean } }
   | { type: "ASSIGN_RECEIVED_WILDCARD"; payload: { cardId: string; color: PropertyColor } }
   | { type: "UPDATE_SETTINGS"; payload: { settings: Partial<GameSettings> } }
   | { type: "REMATCH" }
