@@ -9,6 +9,7 @@ interface BottomSheetProps {
   children: ReactNode;
   footer?: ReactNode;
   height?: string; // e.g., "h-64", "h-80"
+  maxWidth?: string; // e.g., "max-w-md", "max-w-lg"
 }
 
 export function BottomSheet({
@@ -18,6 +19,7 @@ export function BottomSheet({
   children,
   footer,
   height = "h-80",
+  maxWidth = "max-w-lg",
 }: BottomSheetProps) {
   return (
     <AnimatePresence>
@@ -38,7 +40,7 @@ export function BottomSheet({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className={`fixed bottom-0 left-0 right-0 z-[110] w-full ${height} bg-gray-900 rounded-t-3xl shadow-2xl border-t-2 border-white/20 flex flex-col`}
+            className={`fixed bottom-0 left-0 right-0 mx-auto z-[110] w-full ${maxWidth} ${height} bg-gray-900 rounded-t-3xl shadow-2xl border-t-2 border-white/20 flex flex-col`}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-2 border-b border-white/10 shrink-0">
