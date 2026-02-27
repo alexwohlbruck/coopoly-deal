@@ -237,6 +237,14 @@ export class GameEngine {
       if (card.colors && !card.colors.includes(asColor)) {
         throw new Error(`Card cannot be played as ${asColor}`);
       }
+      
+      // Multi-color wildcards can only be played to a color if the player already has a property of that color
+      if (card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 2) {
+        const hasColor = player.properties.some(s => s.color === asColor && s.cards.length > 0);
+        if (!hasColor) {
+          throw new Error(`Multi-color wildcards can only be assigned to existing property sets`);
+        }
+      }
     } else {
       // Null color only allowed for multi-color wildcards (more than 2 colors)
       if (card.type !== CardType.PropertyWildcard) {
@@ -688,7 +696,7 @@ export class GameEngine {
           turn.pendingWildcardAssignment = {
             playerId: source.id,
             cardId: card.id,
-            availableColors: card.colors,
+            availableColors: this.getAvailableColorsForWildcard(source, card),
           };
           turn.phase = TurnPhase.ActionPending;
         } else {
@@ -719,7 +727,7 @@ export class GameEngine {
           turn.pendingWildcardAssignment = {
             playerId: source.id,
             cardId: targetCard.id,
-            availableColors: targetCard.colors,
+            availableColors: this.getAvailableColorsForWildcard(source, targetCard),
           };
           turn.phase = TurnPhase.ActionPending;
           // Target gets source card normally
@@ -808,6 +816,14 @@ export class GameEngine {
     if (!card.colors?.includes(toColor)) {
       throw new Error("Card cannot be used for that color");
     }
+    
+    // Multi-color wildcards can only be rearranged to a color if the player already has a property of that color
+    if (card.colors && card.colors.length > 2 && toColor !== PropertyColor.Unassigned) {
+      const hasColor = player.properties.some(s => s.color === toColor && s.cards.length > 0);
+      if (!hasColor) {
+        throw new Error(`Multi-color wildcards can only be assigned to existing property sets`);
+      }
+    }
 
     this.addPropertyToPlayer(player, card, toColor);
     
@@ -862,6 +878,25 @@ export class GameEngine {
   }
 
   // -- Helpers --
+
+  private getAvailableColorsForWildcard(player: Player, card: Card): PropertyColor[] {
+    if (!card.colors) return [];
+    
+    // For dual-color wildcards, they can always be placed as either color
+    if (card.colors.length <= 2) {
+      return card.colors;
+    }
+    
+    // For multi-color wildcards, they can only be placed in a color if the player already has a property of that color
+    const validColors = card.colors.filter(color => {
+      return player.properties.some(s => s.color === color && s.cards.length > 0);
+    });
+    
+    // Multi-color wildcards can also be unassigned
+    validColors.push(PropertyColor.Unassigned);
+    
+    return validColors;
+  }
 
   private getPlayer(state: GameState, playerId: string): Player {
     const player = state.players.find((p) => p.id === playerId);
@@ -1009,6 +1044,18 @@ export class GameEngine {
         }
         if (set.cards.length === 0) {
           player.properties = player.properties.filter((s) => s !== set);
+        } else if (set.color !== PropertyColor.Unassigned) {
+          // Check if the set now only contains multi-color wildcards
+          const onlyMultiColorWildcards = set.cards.every(c => c.type === CardType.PropertyWildcard && c.colors && c.colors.length > 2);
+          if (onlyMultiColorWildcards) {
+            const cardsToMove = [...set.cards];
+            set.cards = [];
+            player.properties = player.properties.filter((s) => s !== set);
+            
+            for (const c of cardsToMove) {
+              this.addPropertyToPlayer(player, c, PropertyColor.Unassigned);
+            }
+          }
         }
         return card!;
       }

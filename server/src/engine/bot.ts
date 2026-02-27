@@ -460,12 +460,23 @@ export class BotPlayer {
       const existing = player.properties
         .filter((s) => s.color === color)
         .reduce((sum, s) => sum + s.cards.length, 0);
+        
+      // For multi-color wildcards (>2 colors), we can only assign to a color if we already have properties of that color
+      if (colors.length > 2 && existing === 0) {
+        continue;
+      }
+
       const needed = SET_SIZE[color];
       const progress = existing / needed;
       if (progress > bestProgress && existing < needed) {
         bestProgress = progress;
         bestColor = color;
       }
+    }
+
+    // If it's a multi-color wildcard and we couldn't find a valid color, it must be unassigned
+    if (!bestColor && colors.length > 2) {
+      return PropertyColor.Unassigned;
     }
 
     return bestColor ?? colors[0] ?? null;
