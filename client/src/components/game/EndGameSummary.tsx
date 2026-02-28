@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import type { ClientPlayer } from "../../types/game";
+import type { ClientPlayer, GameSettings } from "../../types/game";
 import { isSetComplete } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { PlayerArea } from "./PlayerArea";
@@ -8,6 +8,7 @@ interface EndGameSummaryProps {
   players: ClientPlayer[];
   winnerId: string | null;
   currentPlayerId: string;
+  settings: GameSettings;
   sessionStats?: {
     wins: number;
     losses: number;
@@ -22,6 +23,7 @@ export function EndGameSummary({
   players,
   winnerId,
   currentPlayerId,
+  settings,
   sessionStats,
   onRematch,
   onGoHome,
@@ -36,10 +38,12 @@ export function EndGameSummary({
     const bSets = b.properties.filter(isSetComplete).length;
     if (aSets !== bSets) return bSets - aSets;
     // Then by total value
-    const aValue = a.bank.reduce((sum, c) => sum + c.value, 0) +
-      a.properties.flatMap(s => s.cards).reduce((sum, c) => sum + c.value, 0);
-    const bValue = b.bank.reduce((sum, c) => sum + c.value, 0) +
-      b.properties.flatMap(s => s.cards).reduce((sum, c) => sum + c.value, 0);
+    const aValue =
+      a.bank.reduce((sum, c) => sum + c.value, 0) +
+      a.properties.flatMap((s) => s.cards).reduce((sum, c) => sum + c.value, 0);
+    const bValue =
+      b.bank.reduce((sum, c) => sum + c.value, 0) +
+      b.properties.flatMap((s) => s.cards).reduce((sum, c) => sum + c.value, 0);
     return bValue - aValue;
   });
 
@@ -53,7 +57,9 @@ export function EndGameSummary({
           className="text-center mb-8"
         >
           <h1 className="text-5xl font-black text-yellow-400 mb-4">
-            {winner?.id === currentPlayerId ? "You Win!" : `${winner?.name} Wins!`}
+            {winner?.id === currentPlayerId
+              ? "You Win!"
+              : `${winner?.name} Wins!`}
           </h1>
           <p className="text-emerald-300 text-lg mb-4">
             {winner?.name} collected 3 complete property sets!
@@ -62,15 +68,21 @@ export function EndGameSummary({
           {sessionStats && (
             <div className="flex gap-6 justify-center mb-6">
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{sessionStats.wins}</p>
+                <p className="text-2xl font-bold text-white">
+                  {sessionStats.wins}
+                </p>
                 <p className="text-emerald-400 text-sm">Wins</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{sessionStats.losses}</p>
+                <p className="text-2xl font-bold text-white">
+                  {sessionStats.losses}
+                </p>
                 <p className="text-red-400 text-sm">Losses</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-white">{sessionStats.streak}</p>
+                <p className="text-2xl font-bold text-white">
+                  {sessionStats.streak}
+                </p>
                 <p className="text-yellow-400 text-sm">Streak</p>
               </div>
             </div>
@@ -79,11 +91,15 @@ export function EndGameSummary({
 
         {/* Final standings */}
         <div className="max-w-5xl mx-auto space-y-6 mb-8">
-          <h2 className="text-2xl font-bold text-white text-center mb-4">Final Standings</h2>
-          
+          <h2 className="text-2xl font-bold text-white text-center mb-4">
+            Final Standings
+          </h2>
+
           {sortedPlayers.map((player, index) => {
             const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
-            const propertyTotal = player.properties.flatMap(s => s.cards).reduce((sum, c) => sum + c.value, 0);
+            const propertyTotal = player.properties
+              .flatMap((s) => s.cards)
+              .reduce((sum, c) => sum + c.value, 0);
             const totalValue = bankTotal + propertyTotal;
             const completeSets = player.properties.filter(isSetComplete).length;
             const isWinner = player.id === winnerId;
@@ -101,19 +117,30 @@ export function EndGameSummary({
                 {/* Player header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
-                      isWinner ? "bg-yellow-500" : "bg-emerald-600"
-                    }`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${
+                        isWinner ? "bg-yellow-500" : "bg-emerald-600"
+                      }`}
+                    >
                       {player.name[0]?.toUpperCase()}
                     </div>
                     <div>
                       <h3 className="text-white font-bold text-lg">
                         {player.name}
-                        {player.id === currentPlayerId && <span className="text-emerald-400 text-sm ml-2">(you)</span>}
-                        {isWinner && <span className="text-yellow-400 text-sm ml-2">👑 Winner</span>}
+                        {player.id === currentPlayerId && (
+                          <span className="text-emerald-400 text-sm ml-2">
+                            (you)
+                          </span>
+                        )}
+                        {isWinner && (
+                          <span className="text-yellow-400 text-sm ml-2">
+                            👑 Winner
+                          </span>
+                        )}
                       </h3>
                       <p className="text-gray-400 text-sm">
-                        {completeSets}/3 complete sets • ${totalValue}M total value
+                        {completeSets}/3 complete sets • ${totalValue}M total
+                        value
                       </p>
                     </div>
                   </div>
@@ -126,12 +153,15 @@ export function EndGameSummary({
                 {/* Properties */}
                 {player.properties.length > 0 && (
                   <div className="mb-4">
-                    <h4 className="text-emerald-300 text-sm font-semibold mb-2">Properties</h4>
+                    <h4 className="text-emerald-300 text-sm font-semibold mb-2">
+                      Properties
+                    </h4>
                     <div className="bg-black/30 rounded-lg p-3">
                       <PlayerArea
                         player={player}
                         isCurrentTurn={false}
                         isYou={player.id === currentPlayerId}
+                        settings={settings}
                       />
                     </div>
                   </div>

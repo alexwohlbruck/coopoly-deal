@@ -44,10 +44,16 @@ export interface Card {
 
 export interface GameSettings {
   maxHandSize: number;
+  turnTimer: number;
+  allowDuplicateSets: boolean;
+  wildcardFlipCountsAsMove: boolean;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
   maxHandSize: 7,
+  turnTimer: 0,
+  allowDuplicateSets: true,
+  wildcardFlipCountsAsMove: false,
 };
 
 export interface PropertySet {
@@ -86,7 +92,13 @@ export const TurnPhase = {
 export type TurnPhase = (typeof TurnPhase)[keyof typeof TurnPhase];
 
 export interface PendingAction {
-  type: "rent" | "debtCollector" | "birthday" | "slyDeal" | "forceDeal" | "dealBreaker";
+  type:
+    | "rent"
+    | "debtCollector"
+    | "birthday"
+    | "slyDeal"
+    | "forceDeal"
+    | "dealBreaker";
   sourcePlayerId: string;
   targetPlayerIds: string[];
   amount?: number;
@@ -115,6 +127,8 @@ export interface TurnState {
   pendingAction: PendingAction | null;
   pendingWildcardAssignment: PendingWildcardAssignment | null;
   rentMultiplier: number;
+  expiresAt: number | null;
+  pausedTimeLeft: number | null;
 }
 
 export interface ClientGameState {
@@ -210,7 +224,10 @@ export function isSetComplete(set: PropertySet): boolean {
 }
 
 export type ServerMessage =
-  | { type: "ROOM_JOINED"; payload: { playerId: string; roomCode: string; state: ClientGameState } }
+  | {
+      type: "ROOM_JOINED";
+      payload: { playerId: string; roomCode: string; state: ClientGameState };
+    }
   | { type: "GAME_STATE_UPDATE"; payload: { state: ClientGameState } }
   | { type: "ERROR"; payload: { message: string } }
   | { type: "PLAYER_JOINED"; payload: { playerName: string; playerId: string } }

@@ -92,18 +92,20 @@ export class GameEngine {
   rematchGame(state: GameState): void {
     // Remember the winner to make them go first
     const previousWinner = state.winner;
-    
+
     state.deck = shuffleDeck(createDeck());
     state.discardPile = [];
-    
+
     // Set the starting player to the previous winner
     if (previousWinner) {
-      const winnerIndex = state.players.findIndex(p => p.id === previousWinner);
+      const winnerIndex = state.players.findIndex(
+        (p) => p.id === previousWinner,
+      );
       state.currentPlayerIndex = winnerIndex >= 0 ? winnerIndex : 0;
     } else {
       state.currentPlayerIndex = 0;
     }
-    
+
     state.phase = GamePhase.Playing;
     state.turn = null;
     state.winner = null;
@@ -144,6 +146,11 @@ export class GameEngine {
       pendingAction: null,
       pendingWildcardAssignment: null,
       rentMultiplier: 1,
+      expiresAt:
+        state.settings.turnTimer > 0
+          ? Date.now() + state.settings.turnTimer * 1000
+          : null,
+      pausedTimeLeft: null,
     };
     state.lastActivityAt = Date.now();
   }
@@ -158,6 +165,100 @@ export class GameEngine {
       const card = state.deck.pop();
       if (card) player.hand.push(card);
     }
+  }
+
+  handleTurnTimeout(state: GameState): boolean {
+    if (state.phase !== GamePhase.Playing || !state.turn) return false;
+
+    const turn = state.turn;
+    const now = Date.now();
+
+    if (!turn.expiresAt || now < turn.expiresAt) return false;
+
+    let changed = false;
+
+    if (turn.phase === TurnPhase.Play) {
+      const player = this.getPlayer(state, turn.playerId);
+      const maxHand = state.settings.maxHandSize;
+
+      // Auto-discard if over limit
+      if (maxHand !== 999 && player.hand.length > maxHand) {
+        const excess = player.hand.length - maxHand;
+        const toDiscard = player.hand.slice(0, excess);
+        this.discardCards(
+          state,
+          player.id,
+          toDiscard.map((c) => c.id),
+        );
+      }
+
+      this.advanceTurn(state);
+      changed = true;
+    } else if (turn.phase === TurnPhase.ActionPending) {
+      if (turn.pendingWildcardAssignment) {
+        // Auto-assign to first available color
+        this.assignReceivedWildcard(
+          state,
+          turn.pendingWildcardAssignment.playerId,
+          turn.pendingWildcardAssignment.cardId,
+          turn.pendingWildcardAssignment.availableColors[0]!,
+        );
+        changed = true;
+      } else if (turn.pendingAction) {
+        const action = turn.pendingAction;
+
+        // Auto-respond for anyone who hasn't
+        for (const targetId of action.targetPlayerIds) {
+          if (!action.respondedPlayerIds.includes(targetId)) {
+            const target = this.getPlayer(state, targetId);
+
+            if (
+              action.type === "rentDual" ||
+              action.type === "rentWild" ||
+              action.type === "debtCollector" ||
+              action.type === "birthday"
+            ) {
+              // Auto-pay: just pay with bank cards first, then properties if needed
+              const cardsToPay: string[] = [];
+              let paid = 0;
+
+              // Try bank first
+              for (const card of target.bank) {
+                if (paid >= action.amount!) break;
+                cardsToPay.push(card.id);
+                paid += card.value;
+              }
+
+              // If still need more, use properties
+              if (paid < action.amount!) {
+                for (const set of target.properties) {
+                  for (const card of set.cards) {
+                    if (paid >= action.amount!) break;
+                    cardsToPay.push(card.id);
+                    paid += card.value;
+                  }
+                }
+              }
+
+              try {
+                this.respondPayWithCards(state, targetId, cardsToPay);
+                changed = true;
+              } catch (e) {
+                // If payment fails for some reason, just accept action to unblock
+                this.respondAcceptAction(state, targetId);
+                changed = true;
+              }
+            } else {
+              // For steal, deal breaker, force deal, just accept
+              this.respondAcceptAction(state, targetId);
+              changed = true;
+            }
+          }
+        }
+      }
+    }
+
+    return changed;
   }
 
   endTurn(state: GameState, playerId: string): void {
@@ -221,7 +322,7 @@ export class GameEngine {
     cardId: string,
     asColor: PropertyColor | null,
     groupWithUnassigned?: boolean,
-    createNewSet?: boolean
+    createNewSet?: boolean,
   ): void {
     this.assertCurrentPlayer(state, playerId);
     this.assertCanPlay(state);
@@ -229,7 +330,10 @@ export class GameEngine {
     const player = this.getPlayer(state, playerId);
     const card = this.removeFromHand(player, cardId);
 
-    if (card.type !== CardType.Property && card.type !== CardType.PropertyWildcard) {
+    if (
+      card.type !== CardType.Property &&
+      card.type !== CardType.PropertyWildcard
+    ) {
       throw new Error("Only property cards can be played to the property area");
     }
 
@@ -244,18 +348,35 @@ export class GameEngine {
         throw new Error("Only wildcards can be played without a color");
       }
       if (!card.colors || card.colors.length <= 2) {
-        throw new Error("Only multi-color wildcards can be placed in unassigned stack");
+        throw new Error(
+          "Only multi-color wildcards can be placed in unassigned stack",
+        );
+      }
+      if (state.settings.wildcardFlipCountsAsMove) {
+        throw new Error(
+          "Rainbow sets are disabled when wildcard flips count as moves",
+        );
       }
     }
 
-    this.addPropertyToPlayer(player, card, asColor, groupWithUnassigned, createNewSet);
+    this.addPropertyToPlayer(
+      player,
+      card,
+      asColor,
+      groupWithUnassigned,
+      createNewSet,
+    );
     this.incrementPlays(state);
     this.checkWin(state, player);
     this.tryAutoEndTurn(state);
     state.lastActivityAt = Date.now();
   }
 
-  playActionCard(state: GameState, playerId: string, payload: PlayActionPayload): void {
+  playActionCard(
+    state: GameState,
+    playerId: string,
+    payload: PlayActionPayload,
+  ): void {
     this.assertCurrentPlayer(state, playerId);
 
     if (payload.action !== "doubleTheRent") {
@@ -280,17 +401,36 @@ export class GameEngine {
 
       case "slyDeal":
         this.assertCardType(card, CardType.SlyDeal);
-        this.executeSlyDeal(state, player, card, payload.targetPlayerId, payload.targetCardId);
+        this.executeSlyDeal(
+          state,
+          player,
+          card,
+          payload.targetPlayerId,
+          payload.targetCardId,
+        );
         break;
 
       case "forceDeal":
         this.assertCardType(card, CardType.ForceDeal);
-        this.executeForceDeal(state, player, card, payload.myCardId, payload.targetPlayerId, payload.targetCardId);
+        this.executeForceDeal(
+          state,
+          player,
+          card,
+          payload.myCardId,
+          payload.targetPlayerId,
+          payload.targetCardId,
+        );
         break;
 
       case "dealBreaker":
         this.assertCardType(card, CardType.DealBreaker);
-        this.executeDealBreaker(state, player, card, payload.targetPlayerId, payload.targetSetColor);
+        this.executeDealBreaker(
+          state,
+          player,
+          card,
+          payload.targetPlayerId,
+          payload.targetSetColor,
+        );
         break;
 
       case "debtCollector":
@@ -310,7 +450,13 @@ export class GameEngine {
 
       case "rentWild":
         this.assertCardType(card, CardType.RentWild);
-        this.executeRentWild(state, player, card, payload.color, payload.targetPlayerId);
+        this.executeRentWild(
+          state,
+          player,
+          card,
+          payload.color,
+          payload.targetPlayerId,
+        );
         break;
 
       case "doubleTheRent":
@@ -343,7 +489,7 @@ export class GameEngine {
     player: Player,
     card: Card,
     targetPlayerId: string,
-    targetCardId: string
+    targetCardId: string,
   ): void {
     const target = this.getPlayer(state, targetPlayerId);
     this.setPendingAction(state, card, {
@@ -361,7 +507,7 @@ export class GameEngine {
     card: Card,
     myCardId: string,
     targetPlayerId: string,
-    targetCardId: string
+    targetCardId: string,
   ): void {
     const target = this.getPlayer(state, targetPlayerId);
 
@@ -391,13 +537,14 @@ export class GameEngine {
     player: Player,
     card: Card,
     targetPlayerId: string,
-    targetSetColor: PropertyColor
+    targetSetColor: PropertyColor,
   ): void {
     const target = this.getPlayer(state, targetPlayerId);
     const set = target.properties.find(
-      (s) => s.color === targetSetColor && isSetComplete(s)
+      (s) => s.color === targetSetColor && isSetComplete(s),
     );
-    if (!set) throw new Error("Target does not have a complete set of that color");
+    if (!set)
+      throw new Error("Target does not have a complete set of that color");
 
     this.setPendingAction(state, card, {
       type: "dealBreaker",
@@ -412,7 +559,7 @@ export class GameEngine {
     state: GameState,
     player: Player,
     card: Card,
-    targetPlayerId: string
+    targetPlayerId: string,
   ): void {
     this.setPendingAction(state, card, {
       type: "debtCollector",
@@ -441,14 +588,15 @@ export class GameEngine {
     state: GameState,
     player: Player,
     card: Card,
-    color: PropertyColor
+    color: PropertyColor,
   ): void {
     if (!card.colors?.includes(color)) {
       throw new Error("Rent card does not match that color");
     }
 
     const rentAmount = this.calculateRent(player, color);
-    if (rentAmount === 0) throw new Error("You have no properties of that color");
+    if (rentAmount === 0)
+      throw new Error("You have no properties of that color");
 
     const targetIds = state.players
       .filter((p) => p.id !== player.id && p.connected)
@@ -468,7 +616,11 @@ export class GameEngine {
       amount: finalRent,
     };
     state.turn!.phase = TurnPhase.ActionPending;
-    
+    if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
+      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.expiresAt = null;
+    }
+
     // Reset multiplier after using it
     turn.rentMultiplier = 1;
   }
@@ -478,10 +630,11 @@ export class GameEngine {
     player: Player,
     card: Card,
     color: PropertyColor,
-    targetPlayerId: string
+    targetPlayerId: string,
   ): void {
     const rentAmount = this.calculateRent(player, color);
-    if (rentAmount === 0) throw new Error("You have no properties of that color");
+    if (rentAmount === 0)
+      throw new Error("You have no properties of that color");
 
     state.discardPile.push(card);
     this.incrementPlays(state);
@@ -497,17 +650,25 @@ export class GameEngine {
       amount: finalRent,
     };
     state.turn!.phase = TurnPhase.ActionPending;
-    
+    if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
+      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.expiresAt = null;
+    }
+
     // Reset multiplier after using it
     turn.rentMultiplier = 1;
   }
 
-  private executeDoubleTheRent(state: GameState, player: Player, card: Card): void {
+  private executeDoubleTheRent(
+    state: GameState,
+    player: Player,
+    card: Card,
+  ): void {
     const turn = this.getTurn(state);
-    
+
     // Double the rent multiplier (can stack: 1 -> 2 -> 4)
     turn.rentMultiplier *= 2;
-    
+
     state.discardPile.push(card);
     this.incrementPlays(state);
   }
@@ -516,14 +677,17 @@ export class GameEngine {
     state: GameState,
     player: Player,
     card: Card,
-    setColor: PropertyColor
+    setColor: PropertyColor,
   ): void {
-    if (setColor === PropertyColor.Railroad || setColor === PropertyColor.Utility) {
+    if (
+      setColor === PropertyColor.Railroad ||
+      setColor === PropertyColor.Utility
+    ) {
       throw new Error("Cannot place houses on Railroad or Utility");
     }
 
     const set = player.properties.find(
-      (s) => s.color === setColor && isSetComplete(s)
+      (s) => s.color === setColor && isSetComplete(s),
     );
     if (!set) throw new Error("Set is not complete");
     if (set.house) throw new Error("Set already has a house");
@@ -536,14 +700,17 @@ export class GameEngine {
     state: GameState,
     player: Player,
     card: Card,
-    setColor: PropertyColor
+    setColor: PropertyColor,
   ): void {
-    if (setColor === PropertyColor.Railroad || setColor === PropertyColor.Utility) {
+    if (
+      setColor === PropertyColor.Railroad ||
+      setColor === PropertyColor.Utility
+    ) {
       throw new Error("Cannot place hotels on Railroad or Utility");
     }
 
     const set = player.properties.find(
-      (s) => s.color === setColor && isSetComplete(s)
+      (s) => s.color === setColor && isSetComplete(s),
     );
     if (!set) throw new Error("Set is not complete");
     if (!set.house) throw new Error("Must have a house before placing a hotel");
@@ -561,7 +728,9 @@ export class GameEngine {
     if (!action) throw new Error("No pending action");
 
     const player = this.getPlayer(state, playerId);
-    const jsnIndex = player.hand.findIndex((c) => c.type === CardType.JustSayNo);
+    const jsnIndex = player.hand.findIndex(
+      (c) => c.type === CardType.JustSayNo,
+    );
     if (jsnIndex === -1) throw new Error("No Just Say No card in hand");
 
     const [jsnCard] = player.hand.splice(jsnIndex, 1);
@@ -584,7 +753,9 @@ export class GameEngine {
 
     if (action.justSayNoChain) {
       if (playerId === action.justSayNoChain.targetPlayerId) {
-        throw new Error("Waiting for the other player to respond to your Just Say No");
+        throw new Error(
+          "Waiting for the other player to respond to your Just Say No",
+        );
       }
 
       const depth = action.justSayNoChain.depth;
@@ -601,7 +772,7 @@ export class GameEngine {
         // Even depth: source counter-blocked, target is accepting that their block failed
         // Action goes through against this target — fall through to normal resolution
         const targetId = action.targetPlayerIds.find(
-          (id) => !action.respondedPlayerIds.includes(id)
+          (id) => !action.respondedPlayerIds.includes(id),
         );
         action.justSayNoChain = undefined;
         if (targetId) {
@@ -616,7 +787,11 @@ export class GameEngine {
     state.lastActivityAt = Date.now();
   }
 
-  respondPayWithCards(state: GameState, payerId: string, cardIds: string[]): void {
+  respondPayWithCards(
+    state: GameState,
+    payerId: string,
+    cardIds: string[],
+  ): void {
     const turn = this.getTurn(state);
     const action = turn.pendingAction;
     if (!action || !action.amount) throw new Error("No pending payment");
@@ -633,7 +808,9 @@ export class GameEngine {
     const totalTableBefore = this.totalTableValue(payer);
 
     if (cardIds.length === 0 && totalTableBefore > 0) {
-      throw new Error("You must pay with at least some cards if you have assets on the table");
+      throw new Error(
+        "You must pay with at least some cards if you have assets on the table",
+      );
     }
 
     let totalPaid = 0;
@@ -641,9 +818,17 @@ export class GameEngine {
       const card = this.removeCardFromTable(payer, cardId);
       totalPaid += card.value;
 
-      if (card.type === CardType.Property || card.type === CardType.PropertyWildcard) {
-        // Multi-color wildcards should go to Unassigned, not auto-assign to brown
-        if (card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 1) {
+      if (
+        card.type === CardType.Property ||
+        card.type === CardType.PropertyWildcard
+      ) {
+        // Multi-color wildcards should go to Unassigned, not auto-assign to brown, UNLESS Rainbow is disabled
+        if (
+          card.type === CardType.PropertyWildcard &&
+          card.colors &&
+          card.colors.length > 1 &&
+          !state.settings.wildcardFlipCountsAsMove
+        ) {
           this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
         } else {
           const color = card.colors?.[0] ?? PropertyColor.Brown;
@@ -680,24 +865,36 @@ export class GameEngine {
         }
 
         const card = this.removePropertyFromPlayer(target, targetCardId);
-        
+
         // Check if it's a wildcard - if so, create pending assignment
-        if (card.type === CardType.PropertyWildcard && card.colors && card.colors.length > 1) {
+        if (
+          card.type === CardType.PropertyWildcard &&
+          card.colors &&
+          card.colors.length > 1
+        ) {
           // Place in unassigned temporarily
           this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
           // Create pending assignment
           turn.pendingWildcardAssignment = {
             playerId: source.id,
             cardId: card.id,
-            availableColors: this.getAvailableColorsForWildcard(source, card),
+            availableColors: this.getAvailableColorsForWildcard(
+              state,
+              source,
+              card,
+            ),
           };
           turn.phase = TurnPhase.ActionPending;
+          if (state.settings.turnTimer > 0 && turn.expiresAt) {
+            turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
+            turn.expiresAt = null;
+          }
         } else {
           // Regular property or single-color wildcard
           const color = card.colors?.[0] ?? PropertyColor.Brown;
           this.addPropertyToPlayer(source, card, color);
         }
-        
+
         this.checkWin(state, source);
         break;
       }
@@ -707,28 +904,52 @@ export class GameEngine {
         const target = this.getPlayer(state, playerId);
         const sourceCardId = action.selectedCards?.sourceCardId;
         const targetCardId = action.selectedCards?.targetCardId;
-        if (!sourceCardId || !targetCardId) throw new Error("Missing card selections");
+        if (!sourceCardId || !targetCardId)
+          throw new Error("Missing card selections");
 
         // Remove cards from both players
         const sourceCard = this.removePropertyFromPlayer(source, sourceCardId);
         const targetCard = this.removePropertyFromPlayer(target, targetCardId);
 
         // Handle target receiving source's card (might be wildcard)
-        if (targetCard.type === CardType.PropertyWildcard && targetCard.colors && targetCard.colors.length > 1) {
+        if (
+          targetCard.type === CardType.PropertyWildcard &&
+          targetCard.colors &&
+          targetCard.colors.length > 1
+        ) {
           // Source player gets a wildcard - needs to assign color
-          this.addPropertyToPlayer(source, targetCard, PropertyColor.Unassigned);
+          this.addPropertyToPlayer(
+            source,
+            targetCard,
+            PropertyColor.Unassigned,
+          );
           turn.pendingWildcardAssignment = {
             playerId: source.id,
             cardId: targetCard.id,
-            availableColors: this.getAvailableColorsForWildcard(source, targetCard),
+            availableColors: this.getAvailableColorsForWildcard(
+              state,
+              source,
+              targetCard,
+            ),
           };
           turn.phase = TurnPhase.ActionPending;
+          if (state.settings.turnTimer > 0 && turn.expiresAt) {
+            turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
+            turn.expiresAt = null;
+          }
           // Target gets source card normally
           const sourceColor = sourceCard.colors?.[0] ?? PropertyColor.Brown;
           this.addPropertyToPlayer(target, sourceCard, sourceColor);
-        } else if (sourceCard.type === CardType.PropertyWildcard && sourceCard.colors && sourceCard.colors.length > 1) {
+        } else if (
+          sourceCard.type === CardType.PropertyWildcard &&
+          sourceCard.colors &&
+          sourceCard.colors.length > 1
+        ) {
           // Target player gets a wildcard - needs to assign color
-          this.addPropertyToPlayer(target, sourceCard, PropertyColor.Unassigned);
+          const targetCardColor = state.settings.wildcardFlipCountsAsMove
+            ? (sourceCard.colors?.[0] ?? PropertyColor.Brown)
+            : PropertyColor.Unassigned;
+          this.addPropertyToPlayer(target, sourceCard, targetCardColor);
           // For now, we'll handle this immediately for the target
           // In a more complete implementation, we'd queue multiple assignments
           const targetColor = targetCard.colors?.[0] ?? PropertyColor.Brown;
@@ -741,7 +962,7 @@ export class GameEngine {
           this.addPropertyToPlayer(target, sourceCard, sourceColor);
           this.addPropertyToPlayer(source, targetCard, targetColor);
         }
-        
+
         // Check for wins
         this.checkWin(state, source);
         this.checkWin(state, target);
@@ -755,7 +976,7 @@ export class GameEngine {
         if (!setColor) throw new Error("No target set color");
 
         const setIdx = target.properties.findIndex(
-          (s) => s.color === setColor && isSetComplete(s)
+          (s) => s.color === setColor && isSetComplete(s),
         );
         if (setIdx === -1) throw new Error("Target set not found");
 
@@ -778,7 +999,7 @@ export class GameEngine {
     const action = turn.pendingAction!;
 
     const allResponded = action.targetPlayerIds.every((id) =>
-      action.respondedPlayerIds.includes(id)
+      action.respondedPlayerIds.includes(id),
     );
 
     if (allResponded) {
@@ -786,6 +1007,10 @@ export class GameEngine {
       // Only change phase if there's no pending wildcard assignment
       if (!turn.pendingWildcardAssignment) {
         turn.phase = TurnPhase.Play;
+        if (state.settings.turnTimer > 0 && turn.pausedTimeLeft !== null) {
+          turn.expiresAt = Date.now() + turn.pausedTimeLeft;
+          turn.pausedTimeLeft = null;
+        }
         this.tryAutoEndTurn(state);
       }
     }
@@ -798,39 +1023,55 @@ export class GameEngine {
     playerId: string,
     cardId: string,
     toColor: PropertyColor,
-    createNewSet?: boolean
+    createNewSet?: boolean,
   ): void {
     this.assertCurrentPlayer(state, playerId);
     const player = this.getPlayer(state, playerId);
-    
+
     // Find the card's current color before removing it
     let currentColor = PropertyColor.Unassigned;
     for (const set of player.properties) {
-      if (set.cards.some(c => c.id === cardId)) {
+      if (set.cards.some((c) => c.id === cardId)) {
         currentColor = set.color;
         break;
       }
     }
-    
+
     const card = this.removePropertyFromPlayer(player, cardId);
 
     if (card.type !== CardType.PropertyWildcard) {
       throw new Error("Only wildcards can be rearranged");
     }
-    if (!card.colors?.includes(toColor)) {
+    if (
+      !card.colors?.includes(toColor) &&
+      toColor !== PropertyColor.Unassigned
+    ) {
       throw new Error("Card cannot be used for that color");
     }
 
+    if (
+      toColor === PropertyColor.Unassigned &&
+      state.settings.wildcardFlipCountsAsMove
+    ) {
+      throw new Error(
+        "Rainbow sets are disabled when wildcard flips count as moves",
+      );
+    }
+
     this.addPropertyToPlayer(player, card, toColor, false, createNewSet);
-    
+
     // If setting is enabled, count this as a move (only during Play phase, not during steal/swap)
     // EXCEPTION: Moving a wildcard from the Rainbow set does not cost a move
     const turn = this.getTurn(state);
-    if (state.settings.wildcardFlipCountsAsMove && turn.phase === TurnPhase.Play && currentColor !== PropertyColor.Unassigned) {
+    if (
+      state.settings.wildcardFlipCountsAsMove &&
+      turn.phase === TurnPhase.Play &&
+      currentColor !== PropertyColor.Unassigned
+    ) {
       this.incrementPlays(state);
       this.tryAutoEndTurn(state);
     }
-    
+
     this.checkWin(state, player);
     state.lastActivityAt = Date.now();
   }
@@ -839,10 +1080,10 @@ export class GameEngine {
     state: GameState,
     playerId: string,
     cardId: string,
-    color: PropertyColor
+    color: PropertyColor,
   ): void {
     const turn = this.getTurn(state);
-    
+
     // Verify there's a pending assignment for this player and card
     if (!turn.pendingWildcardAssignment) {
       throw new Error("No pending wildcard assignment");
@@ -856,38 +1097,62 @@ export class GameEngine {
     if (!turn.pendingWildcardAssignment.availableColors.includes(color)) {
       throw new Error("Invalid color for this wildcard");
     }
-    
+
     const player = this.getPlayer(state, playerId);
     const card = this.removePropertyFromPlayer(player, cardId);
-    
+
     // Assign the wildcard to the selected color
     this.addPropertyToPlayer(player, card, color);
-    
+
     // Clear pending assignment
     turn.pendingWildcardAssignment = null;
-    
+
     // Resume normal turn flow
     if (!turn.pendingAction) {
       turn.phase = TurnPhase.Play;
+      if (state.settings.turnTimer > 0 && turn.pausedTimeLeft !== null) {
+        turn.expiresAt = Date.now() + turn.pausedTimeLeft;
+        turn.pausedTimeLeft = null;
+      }
     }
-    
+
     this.checkWin(state, player);
     state.lastActivityAt = Date.now();
   }
 
   // -- Helpers --
 
-  private getAvailableColorsForWildcard(player: Player, card: Card): PropertyColor[] {
+  private getAvailableColorsForWildcard(
+    state: GameState,
+    player: Player,
+    card: Card,
+  ): PropertyColor[] {
     if (!card.colors) return [];
-    
+
     // For dual-color wildcards, they can always be placed as either color
     if (card.colors.length <= 2) {
       return card.colors;
     }
-    
-    // Multi-color wildcards can be placed anywhere, plus unassigned
-    const validColors = [...card.colors, PropertyColor.Unassigned];
-    
+
+    // Multi-color wildcards can only be placed on existing incomplete sets, plus unassigned (unless rule is active)
+    const validColors = card.colors.filter(
+      (c) =>
+        c !== PropertyColor.Unassigned &&
+        player.properties.some(
+          (s) => s.color === c && s.cards.length > 0 && s.cards.length < SET_SIZE[c]
+        )
+    );
+
+    if (!state.settings.wildcardFlipCountsAsMove) {
+      validColors.push(PropertyColor.Unassigned);
+    }
+
+    // Fallback: if no valid colors are available (e.g. no existing sets and rainbow not allowed),
+    // allow them to pick any color to start a new set.
+    if (validColors.length === 0) {
+      return card.colors.filter((c) => c !== PropertyColor.Unassigned);
+    }
+
     return validColors;
   }
 
@@ -952,23 +1217,34 @@ export class GameEngine {
   private setPendingAction(
     state: GameState,
     card: Card,
-    action: PendingAction
+    action: PendingAction,
   ): void {
     state.discardPile.push(card);
     this.incrementPlays(state);
     state.turn!.pendingAction = action;
     state.turn!.phase = TurnPhase.ActionPending;
+    if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
+      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.expiresAt = null;
+    }
   }
 
-  private addPropertyToPlayer(player: Player, card: Card, color: PropertyColor | null, groupWithUnassigned?: boolean, createNewSet?: boolean): void {
+  private addPropertyToPlayer(
+    player: Player,
+    card: Card,
+    color: PropertyColor | null,
+    groupWithUnassigned?: boolean,
+    createNewSet?: boolean,
+  ): void {
     // Convert null to Unassigned for wildcards
     const targetColor = color ?? PropertyColor.Unassigned;
-    
+
     let set = undefined;
-    
+
     if (!createNewSet) {
       set = player.properties.find(
-        (s) => s.color === targetColor && s.cards.length < SET_SIZE[targetColor]
+        (s) =>
+          s.color === targetColor && s.cards.length < SET_SIZE[targetColor],
       );
     }
 
@@ -978,43 +1254,56 @@ export class GameEngine {
     }
 
     set.cards.push(card);
-    
+
     // Auto-assign unassigned wildcards when explicitly requested via groupWithUnassigned
     if (targetColor !== PropertyColor.Unassigned && groupWithUnassigned) {
       this.autoAssignWildcardsInSet(player, set);
     }
   }
-  
-  private autoAssignWildcardsInSet(player: Player, targetSet: PropertySet): void {
+
+  private autoAssignWildcardsInSet(
+    player: Player,
+    targetSet: PropertySet,
+  ): void {
     // Find unassigned wildcards that can be assigned to this color
-    const unassignedSet = player.properties.find(s => s.color === PropertyColor.Unassigned);
+    const unassignedSet = player.properties.find(
+      (s) => s.color === PropertyColor.Unassigned,
+    );
     if (!unassignedSet || unassignedSet.cards.length === 0) return;
-    
+
     const targetColor = targetSet.color;
     if (targetColor === PropertyColor.Unassigned) return;
-    
+
     // Move compatible wildcards from unassigned to the target set
     const cardsToMove: Card[] = [];
     for (const card of unassignedSet.cards) {
-      if (card.type === CardType.PropertyWildcard && card.colors?.includes(targetColor)) {
-        if (targetSet.cards.length + cardsToMove.length < SET_SIZE[targetColor]) {
+      if (
+        card.type === CardType.PropertyWildcard &&
+        card.colors?.includes(targetColor)
+      ) {
+        if (
+          targetSet.cards.length + cardsToMove.length <
+          SET_SIZE[targetColor]
+        ) {
           cardsToMove.push(card);
         }
       }
     }
-    
+
     // Move the cards
     for (const card of cardsToMove) {
-      const idx = unassignedSet.cards.findIndex(c => c.id === card.id);
+      const idx = unassignedSet.cards.findIndex((c) => c.id === card.id);
       if (idx !== -1) {
         unassignedSet.cards.splice(idx, 1);
         targetSet.cards.push(card);
       }
     }
-    
+
     // Clean up empty unassigned set
     if (unassignedSet.cards.length === 0) {
-      const setIdx = player.properties.findIndex(s => s.color === PropertyColor.Unassigned);
+      const setIdx = player.properties.findIndex(
+        (s) => s.color === PropertyColor.Unassigned,
+      );
       if (setIdx !== -1) {
         player.properties.splice(setIdx, 1);
       }
@@ -1144,9 +1433,18 @@ export class GameEngine {
     return total;
   }
 
-  private checkWin(state: GameState, player: Player): void {
+  checkWin(state: GameState, player: Player): void {
     const completeSets = player.properties.filter((s) => isSetComplete(s));
-    if (completeSets.length >= 3) {
+
+    let winCount = 0;
+    if (state.settings.allowDuplicateSets) {
+      winCount = completeSets.length;
+    } else {
+      const uniqueColors = new Set(completeSets.map((s) => s.color));
+      winCount = uniqueColors.size;
+    }
+
+    if (winCount >= 3) {
       state.phase = GamePhase.Finished;
       state.winner = player.id;
     }

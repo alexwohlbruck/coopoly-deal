@@ -45,7 +45,11 @@ function givePlayerCard(player: Player, card: Partial<Card>): Card {
   return fullCard;
 }
 
-function makeProperty(color: PropertyColor, value?: number, name?: string): Partial<Card> {
+function makeProperty(
+  color: PropertyColor,
+  value?: number,
+  name?: string,
+): Partial<Card> {
   return {
     type: CardType.Property,
     value: value ?? 1,
@@ -70,16 +74,27 @@ function makeAction(type: CardType, value = 0): Partial<Card> {
   return { type, value };
 }
 
-function makeRentDual(color1: PropertyColor, color2: PropertyColor): Partial<Card> {
+function makeRentDual(
+  color1: PropertyColor,
+  color2: PropertyColor,
+): Partial<Card> {
   return { type: CardType.RentDual, value: 1, colors: [color1, color2] };
 }
 
 function makeRentWild(): Partial<Card> {
-  return { type: CardType.RentWild, value: 3, colors: Object.values(PropertyColor) };
+  return {
+    type: CardType.RentWild,
+    value: 3,
+    colors: Object.values(PropertyColor),
+  };
 }
 
 /** Fill a property set on a player so it's complete. */
-function giveCompleteSet(player: Player, color: PropertyColor, value = 1): Card[] {
+function giveCompleteSet(
+  player: Player,
+  color: PropertyColor,
+  value = 1,
+): Card[] {
   const size = SET_SIZE[color];
   const cards: Card[] = [];
   for (let i = 0; i < size; i++) {
@@ -138,14 +153,18 @@ describe("GameEngine", () => {
 
     it("throws when adding players to a started game", () => {
       const { state, engine } = startTestGame(2);
-      expect(() => engine.addPlayer(state, "Late")).toThrow("Game already started");
+      expect(() => engine.addPlayer(state, "Late")).toThrow(
+        "Game already started",
+      );
     });
 
     it("removes a player from the waiting room", () => {
       const { state, engine, players } = createTestGame(3);
       engine.removePlayer(state, players[1]!.id);
       expect(state.players).toHaveLength(2);
-      expect(state.players.find((p) => p.id === players[1]!.id)).toBeUndefined();
+      expect(
+        state.players.find((p) => p.id === players[1]!.id),
+      ).toBeUndefined();
     });
 
     it("marks a player as disconnected when removed during active game", () => {
@@ -183,9 +202,11 @@ describe("GameEngine", () => {
       const deck = createDeck();
       const money = deck.filter((c) => c.type === CardType.Money);
       const property = deck.filter((c) => c.type === CardType.Property);
-      const wildcards = deck.filter((c) => c.type === CardType.PropertyWildcard);
+      const wildcards = deck.filter(
+        (c) => c.type === CardType.PropertyWildcard,
+      );
       const rent = deck.filter(
-        (c) => c.type === CardType.RentDual || c.type === CardType.RentWild
+        (c) => c.type === CardType.RentDual || c.type === CardType.RentWild,
       );
       const actions = deck.filter(
         (c) =>
@@ -195,7 +216,7 @@ describe("GameEngine", () => {
             CardType.PropertyWildcard,
             CardType.RentDual,
             CardType.RentWild,
-          ].includes(c.type)
+          ].includes(c.type),
       );
       expect(money).toHaveLength(20);
       expect(property).toHaveLength(28);
@@ -248,7 +269,7 @@ describe("GameEngine", () => {
       const player = currentPlayer(state);
       const card = givePlayerCard(
         player,
-        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue], 1)
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue], 1),
       );
       engine.playCardToBank(state, player.id, card.id);
       expect(player.bank).toContainEqual(card);
@@ -258,7 +279,7 @@ describe("GameEngine", () => {
       const player = currentPlayer(state);
       const card = givePlayerCard(player, makeProperty(PropertyColor.Brown));
       expect(() => engine.playCardToBank(state, player.id, card.id)).toThrow(
-        "Property cards cannot be placed in the bank"
+        "Property cards cannot be placed in the bank",
       );
     });
 
@@ -275,10 +296,17 @@ describe("GameEngine", () => {
       const player = currentPlayer(state);
       const card = givePlayerCard(
         player,
-        makeWildcard([PropertyColor.Pink, PropertyColor.Orange])
+        makeWildcard([PropertyColor.Pink, PropertyColor.Orange]),
       );
-      engine.playCardToProperty(state, player.id, card.id, PropertyColor.Orange);
-      const set = player.properties.find((s) => s.color === PropertyColor.Orange);
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Orange,
+      );
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Orange,
+      );
       expect(set).toBeDefined();
       expect(set!.cards.some((c) => c.id === card.id)).toBe(true);
     });
@@ -287,10 +315,15 @@ describe("GameEngine", () => {
       const player = currentPlayer(state);
       const card = givePlayerCard(
         player,
-        makeWildcard([PropertyColor.Pink, PropertyColor.Orange])
+        makeWildcard([PropertyColor.Pink, PropertyColor.Orange]),
       );
       expect(() =>
-        engine.playCardToProperty(state, player.id, card.id, PropertyColor.Green)
+        engine.playCardToProperty(
+          state,
+          player.id,
+          card.id,
+          PropertyColor.Green,
+        ),
       ).toThrow("Card cannot be played as green");
     });
 
@@ -298,7 +331,12 @@ describe("GameEngine", () => {
       const player = currentPlayer(state);
       const card = givePlayerCard(player, makeMoney(5));
       expect(() =>
-        engine.playCardToProperty(state, player.id, card.id, PropertyColor.Brown)
+        engine.playCardToProperty(
+          state,
+          player.id,
+          card.id,
+          PropertyColor.Brown,
+        ),
       ).toThrow("Only property cards can be played to the property area");
     });
 
@@ -337,7 +375,7 @@ describe("GameEngine", () => {
       engine.playCardToBank(state, p.id, c2.id);
       engine.playCardToBank(state, p.id, c3.id);
       expect(() => engine.playCardToBank(state, p.id, c4.id)).toThrow(
-        "Already played maximum cards this turn"
+        "Already played maximum cards this turn",
       );
     });
 
@@ -355,7 +393,7 @@ describe("GameEngine", () => {
 
       const money = givePlayerCard(player, makeMoney(1));
       expect(() => engine.playCardToBank(state, player.id, money.id)).toThrow(
-        "Must resolve pending action first"
+        "Must resolve pending action first",
       );
     });
   });
@@ -388,7 +426,7 @@ describe("GameEngine", () => {
         targetPlayerId: target.id,
       });
       expect(() => engine.endTurn(state, player.id)).toThrow(
-        "Cannot end turn while an action is pending"
+        "Cannot end turn while an action is pending",
       );
     });
 
@@ -397,7 +435,9 @@ describe("GameEngine", () => {
       while (player.hand.length <= state.settings.maxHandSize) {
         givePlayerCard(player, makeMoney(1));
       }
-      expect(() => engine.endTurn(state, player.id)).toThrow("Must discard down to");
+      expect(() => engine.endTurn(state, player.id)).toThrow(
+        "Must discard down to",
+      );
     });
 
     it("discard cards removes from hand and adds to discard pile", () => {
@@ -538,7 +578,11 @@ describe("GameEngine", () => {
         .filter((c) => c.colors?.includes(PropertyColor.Red))
         .map((c) => c.name)
         .sort();
-      expect(reds).toEqual(["Illinois Avenue", "Indiana Avenue", "Kentucky Avenue"]);
+      expect(reds).toEqual([
+        "Illinois Avenue",
+        "Indiana Avenue",
+        "Kentucky Avenue",
+      ]);
     });
 
     it("Railroad properties are the 4 railroads", () => {
@@ -573,7 +617,10 @@ describe("GameEngine", () => {
         const player = currentPlayer(state);
         const card = givePlayerCard(player, makeAction(CardType.PassGo, 1));
         const handBefore = player.hand.length;
-        engine.playActionCard(state, player.id, { action: "passGo", cardId: card.id });
+        engine.playActionCard(state, player.id, {
+          action: "passGo",
+          cardId: card.id,
+        });
         // -1 played + 2 drawn = net +1
         expect(player.hand).toHaveLength(handBefore + 1);
       });
@@ -582,7 +629,10 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         const card = givePlayerCard(player, makeAction(CardType.PassGo, 1));
-        engine.playActionCard(state, player.id, { action: "passGo", cardId: card.id });
+        engine.playActionCard(state, player.id, {
+          action: "passGo",
+          cardId: card.id,
+        });
         expect(state.discardPile.some((c) => c.id === card.id)).toBe(true);
       });
 
@@ -590,7 +640,10 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         const card = givePlayerCard(player, makeAction(CardType.PassGo, 1));
-        engine.playActionCard(state, player.id, { action: "passGo", cardId: card.id });
+        engine.playActionCard(state, player.id, {
+          action: "passGo",
+          cardId: card.id,
+        });
         expect(state.turn!.cardsPlayed).toBe(1);
       });
     });
@@ -600,7 +653,10 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         const target = state.players.find((p) => p.id !== player.id)!;
-        const propCard = givePlayerCard(target, makeProperty(PropertyColor.Green, 4));
+        const propCard = givePlayerCard(
+          target,
+          makeProperty(PropertyColor.Green, 4),
+        );
         // Manually add to target's properties
         target.properties.push({
           color: PropertyColor.Green,
@@ -636,9 +692,9 @@ describe("GameEngine", () => {
           targetCardId: setCards[0]!.id,
         });
 
-        expect(() =>
-          engine.respondAcceptAction(state, target.id)
-        ).toThrow("Cannot steal from a complete set");
+        expect(() => engine.respondAcceptAction(state, target.id)).toThrow(
+          "Cannot steal from a complete set",
+        );
       });
 
       it("resolution moves property to source player", () => {
@@ -670,10 +726,14 @@ describe("GameEngine", () => {
 
         engine.respondAcceptAction(state, target.id);
         expect(
-          player.properties.some((s) => s.cards.some((c) => c.id === "steal_me"))
+          player.properties.some((s) =>
+            s.cards.some((c) => c.id === "steal_me"),
+          ),
         ).toBe(true);
         expect(
-          target.properties.some((s) => s.cards.some((c) => c.id === "steal_me"))
+          target.properties.some((s) =>
+            s.cards.some((c) => c.id === "steal_me"),
+          ),
         ).toBe(false);
       });
     });
@@ -751,7 +811,7 @@ describe("GameEngine", () => {
             myCardId: myCards[0]!.id,
             targetPlayerId: target.id,
             targetCardId: "their_prop",
-          })
+          }),
         ).toThrow("Cannot trade from a complete set");
       });
 
@@ -783,7 +843,7 @@ describe("GameEngine", () => {
             myCardId: "my_prop",
             targetPlayerId: target.id,
             targetCardId: theirCards[0]!.id,
-          })
+          }),
         ).toThrow("Cannot take from a complete set");
       });
 
@@ -830,10 +890,14 @@ describe("GameEngine", () => {
         engine.respondAcceptAction(state, target.id);
 
         expect(
-          player.properties.some((s) => s.cards.some((c) => c.id === "swap_theirs"))
+          player.properties.some((s) =>
+            s.cards.some((c) => c.id === "swap_theirs"),
+          ),
         ).toBe(true);
         expect(
-          target.properties.some((s) => s.cards.some((c) => c.id === "swap_mine"))
+          target.properties.some((s) =>
+            s.cards.some((c) => c.id === "swap_mine"),
+          ),
         ).toBe(true);
       });
     });
@@ -866,7 +930,7 @@ describe("GameEngine", () => {
             cardId: db.id,
             targetPlayerId: target.id,
             targetSetColor: PropertyColor.Brown,
-          })
+          }),
         ).toThrow("Target does not have a complete set");
       });
 
@@ -882,7 +946,7 @@ describe("GameEngine", () => {
             cardId: db.id,
             targetPlayerId: target.id,
             targetSetColor: PropertyColor.Green,
-          })
+          }),
         ).toThrow("Target does not have a complete set");
       });
 
@@ -892,7 +956,9 @@ describe("GameEngine", () => {
         const target = state.players.find((p) => p.id !== player.id)!;
 
         giveCompleteSet(target, PropertyColor.Brown);
-        const set = target.properties.find((s) => s.color === PropertyColor.Brown)!;
+        const set = target.properties.find(
+          (s) => s.color === PropertyColor.Brown,
+        )!;
         set.house = { id: "house_1", type: CardType.House, value: 3 };
         set.hotel = { id: "hotel_1", type: CardType.Hotel, value: 4 };
 
@@ -906,12 +972,14 @@ describe("GameEngine", () => {
 
         engine.respondAcceptAction(state, target.id);
 
-        const stolen = player.properties.find((s) => s.color === PropertyColor.Brown);
+        const stolen = player.properties.find(
+          (s) => s.color === PropertyColor.Brown,
+        );
         expect(stolen).toBeDefined();
         expect(stolen!.house?.id).toBe("house_1");
         expect(stolen!.hotel?.id).toBe("hotel_1");
         expect(
-          target.properties.find((s) => s.color === PropertyColor.Brown)
+          target.properties.find((s) => s.color === PropertyColor.Brown),
         ).toBeUndefined();
       });
     });
@@ -922,7 +990,10 @@ describe("GameEngine", () => {
         const player = currentPlayer(state);
         const target = state.players.find((p) => p.id !== player.id)!;
 
-        const dc = givePlayerCard(player, makeAction(CardType.DebtCollector, 3));
+        const dc = givePlayerCard(
+          player,
+          makeAction(CardType.DebtCollector, 3),
+        );
         engine.playActionCard(state, player.id, {
           action: "debtCollector",
           cardId: dc.id,
@@ -941,7 +1012,10 @@ describe("GameEngine", () => {
         const player = currentPlayer(state);
 
         const bd = givePlayerCard(player, makeAction(CardType.Birthday, 2));
-        engine.playActionCard(state, player.id, { action: "birthday", cardId: bd.id });
+        engine.playActionCard(state, player.id, {
+          action: "birthday",
+          cardId: bd.id,
+        });
 
         const action = state.turn!.pendingAction!;
         expect(action.type).toBe("birthday");
@@ -960,7 +1034,12 @@ describe("GameEngine", () => {
         player.properties.push({
           color: PropertyColor.Red,
           cards: [
-            { id: "r1", type: CardType.Property, value: 3, colors: [PropertyColor.Red] },
+            {
+              id: "r1",
+              type: CardType.Property,
+              value: 3,
+              colors: [PropertyColor.Red],
+            },
           ],
           house: null,
           hotel: null,
@@ -972,7 +1051,7 @@ describe("GameEngine", () => {
             action: "house",
             cardId: house.id,
             setColor: PropertyColor.Red,
-          })
+          }),
         ).toThrow("Set is not complete");
       });
 
@@ -986,7 +1065,7 @@ describe("GameEngine", () => {
             action: "house",
             cardId: house.id,
             setColor: PropertyColor.Railroad,
-          })
+          }),
         ).toThrow("Cannot place houses on Railroad or Utility");
       });
 
@@ -1000,7 +1079,7 @@ describe("GameEngine", () => {
             action: "house",
             cardId: house.id,
             setColor: PropertyColor.Utility,
-          })
+          }),
         ).toThrow("Cannot place houses on Railroad or Utility");
       });
 
@@ -1008,7 +1087,9 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         giveCompleteSet(player, PropertyColor.Red);
-        const set = player.properties.find((s) => s.color === PropertyColor.Red)!;
+        const set = player.properties.find(
+          (s) => s.color === PropertyColor.Red,
+        )!;
         set.house = { id: "existing_house", type: CardType.House, value: 3 };
 
         const house = givePlayerCard(player, makeAction(CardType.House, 3));
@@ -1017,7 +1098,7 @@ describe("GameEngine", () => {
             action: "house",
             cardId: house.id,
             setColor: PropertyColor.Red,
-          })
+          }),
         ).toThrow("Set already has a house");
       });
 
@@ -1031,7 +1112,9 @@ describe("GameEngine", () => {
           cardId: house.id,
           setColor: PropertyColor.Green,
         });
-        const set = player.properties.find((s) => s.color === PropertyColor.Green)!;
+        const set = player.properties.find(
+          (s) => s.color === PropertyColor.Green,
+        )!;
         expect(set.house).not.toBeNull();
         expect(set.house!.id).toBe(house.id);
       });
@@ -1049,7 +1132,7 @@ describe("GameEngine", () => {
             action: "hotel",
             cardId: hotel.id,
             setColor: PropertyColor.Yellow,
-          })
+          }),
         ).toThrow("Must have a house before placing a hotel");
       });
 
@@ -1063,7 +1146,7 @@ describe("GameEngine", () => {
             action: "hotel",
             cardId: hotel.id,
             setColor: PropertyColor.Railroad,
-          })
+          }),
         ).toThrow("Cannot place hotels on Railroad or Utility");
       });
 
@@ -1077,7 +1160,7 @@ describe("GameEngine", () => {
             action: "hotel",
             cardId: hotel.id,
             setColor: PropertyColor.Utility,
-          })
+          }),
         ).toThrow("Cannot place hotels on Railroad or Utility");
       });
 
@@ -1085,7 +1168,9 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         giveCompleteSet(player, PropertyColor.Pink);
-        const set = player.properties.find((s) => s.color === PropertyColor.Pink)!;
+        const set = player.properties.find(
+          (s) => s.color === PropertyColor.Pink,
+        )!;
         set.house = { id: "h1", type: CardType.House, value: 3 };
         set.hotel = { id: "existing_hotel", type: CardType.Hotel, value: 4 };
 
@@ -1095,7 +1180,7 @@ describe("GameEngine", () => {
             action: "hotel",
             cardId: hotel.id,
             setColor: PropertyColor.Pink,
-          })
+          }),
         ).toThrow("Set already has a hotel");
       });
 
@@ -1103,7 +1188,9 @@ describe("GameEngine", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         giveCompleteSet(player, PropertyColor.Orange);
-        const set = player.properties.find((s) => s.color === PropertyColor.Orange)!;
+        const set = player.properties.find(
+          (s) => s.color === PropertyColor.Orange,
+        )!;
         set.house = { id: "house_for_hotel", type: CardType.House, value: 3 };
 
         const hotel = givePlayerCard(player, makeAction(CardType.Hotel, 4));
@@ -1118,19 +1205,7 @@ describe("GameEngine", () => {
     });
 
     describe("Double The Rent", () => {
-      it("can only be played with an active rent pending action", () => {
-        const { state, engine } = startTestGame(2);
-        const player = currentPlayer(state);
-        const dtr = givePlayerCard(player, makeAction(CardType.DoubleTheRent, 1));
-        expect(() =>
-          engine.playActionCard(state, player.id, {
-            action: "doubleTheRent",
-            cardId: dtr.id,
-          })
-        ).toThrow("Double the Rent must be played with a rent card");
-      });
-
-      it("doubles the rent amount", () => {
+      it("doubles the rent amount when played before rent", () => {
         const { state, engine } = startTestGame(2);
         const player = currentPlayer(state);
         const target = state.players.find((p) => p.id !== player.id)!;
@@ -1138,9 +1213,18 @@ describe("GameEngine", () => {
         // Give player a brown property for rent
         giveCompleteSet(player, PropertyColor.Brown);
 
+        const dtr = givePlayerCard(
+          player,
+          makeAction(CardType.DoubleTheRent, 1),
+        );
+        engine.playActionCard(state, player.id, {
+          action: "doubleTheRent",
+          cardId: dtr.id,
+        });
+
         const rent = givePlayerCard(
           player,
-          makeRentDual(PropertyColor.Brown, PropertyColor.LightBlue)
+          makeRentDual(PropertyColor.Brown, PropertyColor.LightBlue),
         );
         engine.playActionCard(state, player.id, {
           action: "rentDual",
@@ -1148,71 +1232,8 @@ describe("GameEngine", () => {
           color: PropertyColor.Brown,
         });
 
-        const originalAmount = state.turn!.pendingAction!.amount!;
-        const dtr = givePlayerCard(player, makeAction(CardType.DoubleTheRent, 1));
-        engine.playActionCard(state, player.id, {
-          action: "doubleTheRent",
-          cardId: dtr.id,
-        });
-
-        expect(state.turn!.pendingAction!.amount).toBe(originalAmount * 2);
-      });
-
-      it("cannot be played after players have started responding", () => {
-        const { state, engine } = startTestGame(2);
-        const player = currentPlayer(state);
-        const target = state.players.find((p) => p.id !== player.id)!;
-
-        giveCompleteSet(player, PropertyColor.Brown);
-
-        const rent = givePlayerCard(
-          player,
-          makeRentDual(PropertyColor.Brown, PropertyColor.LightBlue)
-        );
-        engine.playActionCard(state, player.id, {
-          action: "rentDual",
-          cardId: rent.id,
-          color: PropertyColor.Brown,
-        });
-
-        // Target pays (responds)
-        target.bank.push({ id: "pay_money", type: CardType.Money, value: 5 });
-        engine.respondPayWithCards(state, target.id, ["pay_money"]);
-
-        const dtr = givePlayerCard(player, makeAction(CardType.DoubleTheRent, 1));
-        expect(() =>
-          engine.playActionCard(state, player.id, {
-            action: "doubleTheRent",
-            cardId: dtr.id,
-          })
-        ).toThrow(); // Action is resolved at this point
-      });
-
-      it("can be played during ActionPending (special exception)", () => {
-        const { state, engine } = startTestGame(2);
-        const player = currentPlayer(state);
-
-        giveCompleteSet(player, PropertyColor.DarkBlue);
-
-        const rent = givePlayerCard(
-          player,
-          makeRentDual(PropertyColor.DarkBlue, PropertyColor.Green)
-        );
-        engine.playActionCard(state, player.id, {
-          action: "rentDual",
-          cardId: rent.id,
-          color: PropertyColor.DarkBlue,
-        });
-
-        expect(state.turn!.phase).toBe(TurnPhase.ActionPending);
-
-        const dtr = givePlayerCard(player, makeAction(CardType.DoubleTheRent, 1));
-        // Should not throw even though ActionPending
-        engine.playActionCard(state, player.id, {
-          action: "doubleTheRent",
-          cardId: dtr.id,
-        });
-        expect(state.turn!.pendingAction!.amount).toBeGreaterThan(0);
+        // Base rent for Brown complete set is 2. Doubled is 4.
+        expect(state.turn!.pendingAction!.amount).toBe(4);
       });
     });
   });
@@ -1229,7 +1250,12 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Red,
         cards: [
-          { id: "r1", type: CardType.Property, value: 3, colors: [PropertyColor.Red] },
+          {
+            id: "r1",
+            type: CardType.Property,
+            value: 3,
+            colors: [PropertyColor.Red],
+          },
         ],
         house: null,
         hotel: null,
@@ -1237,7 +1263,7 @@ describe("GameEngine", () => {
 
       const rent = givePlayerCard(
         player,
-        makeRentDual(PropertyColor.Red, PropertyColor.Yellow)
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
       );
       engine.playActionCard(state, player.id, {
         action: "rentDual",
@@ -1260,8 +1286,18 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Yellow,
         cards: [
-          { id: "y1", type: CardType.Property, value: 3, colors: [PropertyColor.Yellow] },
-          { id: "y2", type: CardType.Property, value: 3, colors: [PropertyColor.Yellow] },
+          {
+            id: "y1",
+            type: CardType.Property,
+            value: 3,
+            colors: [PropertyColor.Yellow],
+          },
+          {
+            id: "y2",
+            type: CardType.Property,
+            value: 3,
+            colors: [PropertyColor.Yellow],
+          },
         ],
         house: null,
         hotel: null,
@@ -1287,8 +1323,18 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Green,
         cards: [
-          { id: "g1", type: CardType.Property, value: 4, colors: [PropertyColor.Green] },
-          { id: "g2", type: CardType.Property, value: 4, colors: [PropertyColor.Green] },
+          {
+            id: "g1",
+            type: CardType.Property,
+            value: 4,
+            colors: [PropertyColor.Green],
+          },
+          {
+            id: "g2",
+            type: CardType.Property,
+            value: 4,
+            colors: [PropertyColor.Green],
+          },
         ],
         house: null,
         hotel: null,
@@ -1296,7 +1342,7 @@ describe("GameEngine", () => {
 
       const rent = givePlayerCard(
         player,
-        makeRentDual(PropertyColor.DarkBlue, PropertyColor.Green)
+        makeRentDual(PropertyColor.DarkBlue, PropertyColor.Green),
       );
       engine.playActionCard(state, player.id, {
         action: "rentDual",
@@ -1304,7 +1350,9 @@ describe("GameEngine", () => {
         color: PropertyColor.Green,
       });
 
-      expect(state.turn!.pendingAction!.amount).toBe(RENT_VALUES[PropertyColor.Green][1]);
+      expect(state.turn!.pendingAction!.amount).toBe(
+        RENT_VALUES[PropertyColor.Green][1],
+      );
     });
 
     it("errors if player has no properties of that color", () => {
@@ -1313,14 +1361,14 @@ describe("GameEngine", () => {
 
       const rent = givePlayerCard(
         player,
-        makeRentDual(PropertyColor.Red, PropertyColor.Yellow)
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
       );
       expect(() =>
         engine.playActionCard(state, player.id, {
           action: "rentDual",
           cardId: rent.id,
           color: PropertyColor.Red,
-        })
+        }),
       ).toThrow("You have no properties of that color");
     });
 
@@ -1336,7 +1384,7 @@ describe("GameEngine", () => {
           cardId: rent.id,
           color: PropertyColor.Pink,
           targetPlayerId: target.id,
-        })
+        }),
       ).toThrow("You have no properties of that color");
     });
   });
@@ -1364,7 +1412,7 @@ describe("GameEngine", () => {
       const { state, engine, target } = setupDebt();
       target.bank.push({ id: "m1", type: CardType.Money, value: 3 });
       expect(() => engine.respondPayWithCards(state, target.id, [])).toThrow(
-        "You must pay with at least some cards"
+        "You must pay with at least some cards",
       );
     });
 
@@ -1373,9 +1421,9 @@ describe("GameEngine", () => {
       target.bank.push({ id: "m1", type: CardType.Money, value: 2 });
       target.bank.push({ id: "m2", type: CardType.Money, value: 5 });
       // Paying only 2 when target still has 5 on the table
-      expect(() => engine.respondPayWithCards(state, target.id, ["m1"])).toThrow(
-        "You must pay more"
-      );
+      expect(() =>
+        engine.respondPayWithCards(state, target.id, ["m1"]),
+      ).toThrow("You must pay more");
     });
 
     it("if you can't pay full amount, must give all cards", () => {
@@ -1404,7 +1452,7 @@ describe("GameEngine", () => {
 
       engine.respondPayWithCards(state, target.id, ["pay_prop"]);
       expect(
-        player.properties.some((s) => s.cards.some((c) => c.id === "pay_prop"))
+        player.properties.some((s) => s.cards.some((c) => c.id === "pay_prop")),
       ).toBe(true);
     });
 
@@ -1427,7 +1475,10 @@ describe("GameEngine", () => {
         type: CardType.Money,
         value: 4,
       });
-      engine.respondPayWithCards(state, target.id, ["action_in_bank", "money_in_bank"]);
+      engine.respondPayWithCards(state, target.id, [
+        "action_in_bank",
+        "money_in_bank",
+      ]);
       expect(player.bank.some((c) => c.id === "action_in_bank")).toBe(true);
       expect(player.bank.some((c) => c.id === "money_in_bank")).toBe(true);
     });
@@ -1441,6 +1492,10 @@ describe("GameEngine", () => {
       const { state, engine } = startTestGame(2);
       const player = currentPlayer(state);
       const target = state.players.find((p) => p.id !== player.id)!;
+
+      // Clear hands to avoid random JSN cards
+      player.hand = [];
+      target.hand = [];
 
       // Give target a property to steal
       const prop: Card = {
@@ -1513,10 +1568,14 @@ describe("GameEngine", () => {
 
       // Target still has their property
       expect(
-        target.properties.some((s) => s.cards.some((c) => c.id === "steal_target"))
+        target.properties.some((s) =>
+          s.cards.some((c) => c.id === "steal_target"),
+        ),
       ).toBe(true);
       expect(
-        player.properties.some((s) => s.cards.some((c) => c.id === "steal_target"))
+        player.properties.some((s) =>
+          s.cards.some((c) => c.id === "steal_target"),
+        ),
       ).toBe(false);
     });
 
@@ -1536,7 +1595,9 @@ describe("GameEngine", () => {
 
       // Source should now have the property
       expect(
-        player.properties.some((s) => s.cards.some((c) => c.id === "steal_target"))
+        player.properties.some((s) =>
+          s.cards.some((c) => c.id === "steal_target"),
+        ),
       ).toBe(true);
     });
 
@@ -1545,7 +1606,7 @@ describe("GameEngine", () => {
       // Ensure no JSN in hand
       target.hand = target.hand.filter((c) => c.type !== CardType.JustSayNo);
       expect(() => engine.respondJustSayNo(state, target.id)).toThrow(
-        "No Just Say No card in hand"
+        "No Just Say No card in hand",
       );
     });
   });
@@ -1566,14 +1627,27 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Utility,
         cards: [
-          { id: "u1", type: CardType.Property, value: 2, colors: [PropertyColor.Utility] },
+          {
+            id: "u1",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
         ],
         house: null,
         hotel: null,
       });
 
-      const lastCard = givePlayerCard(player, makeProperty(PropertyColor.Utility, 2));
-      engine.playCardToProperty(state, player.id, lastCard.id, PropertyColor.Utility);
+      const lastCard = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        lastCard.id,
+        PropertyColor.Utility,
+      );
 
       expect(state.phase).toBe(GamePhase.Finished);
     });
@@ -1587,13 +1661,26 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Utility,
         cards: [
-          { id: "u1", type: CardType.Property, value: 2, colors: [PropertyColor.Utility] },
+          {
+            id: "u1",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
         ],
         house: null,
         hotel: null,
       });
-      const card = givePlayerCard(player, makeProperty(PropertyColor.Utility, 2));
-      engine.playCardToProperty(state, player.id, card.id, PropertyColor.Utility);
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Utility,
+      );
 
       expect(state.phase).toBe(GamePhase.Finished);
     });
@@ -1607,15 +1694,126 @@ describe("GameEngine", () => {
       player.properties.push({
         color: PropertyColor.Utility,
         cards: [
-          { id: "u1", type: CardType.Property, value: 2, colors: [PropertyColor.Utility] },
+          {
+            id: "u1",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
         ],
         house: null,
         hotel: null,
       });
-      const card = givePlayerCard(player, makeProperty(PropertyColor.Utility, 2));
-      engine.playCardToProperty(state, player.id, card.id, PropertyColor.Utility);
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Utility,
+      );
 
       expect(state.winner).toBe(player.id);
+    });
+
+    it("allows duplicate sets to win if allowDuplicateSets is true", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.allowDuplicateSets = true;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+      giveCompleteSet(player, PropertyColor.Brown); // Duplicate set
+
+      player.properties.push({
+        color: PropertyColor.Utility,
+        cards: [
+          {
+            id: "u1",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Utility,
+      );
+
+      expect(state.phase).toBe(GamePhase.Finished);
+    });
+
+    it("does not allow duplicate sets to win if allowDuplicateSets is false", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.allowDuplicateSets = false;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+      giveCompleteSet(player, PropertyColor.Brown); // Duplicate set
+
+      player.properties.push({
+        color: PropertyColor.Utility,
+        cards: [
+          {
+            id: "u1",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Utility,
+      );
+
+      // Should not be finished because Brown only counts as 1 set
+      expect(state.phase).toBe(GamePhase.Playing);
+
+      // Now add a third unique set
+      player.properties.push({
+        color: PropertyColor.DarkBlue,
+        cards: [
+          {
+            id: "db1",
+            type: CardType.Property,
+            value: 4,
+            colors: [PropertyColor.DarkBlue],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const dbCard = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.DarkBlue, 4),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        dbCard.id,
+        PropertyColor.DarkBlue,
+      );
+
+      expect(state.phase).toBe(GamePhase.Finished);
     });
   });
 
@@ -1637,7 +1835,9 @@ describe("GameEngine", () => {
       player.hand = [];
       for (let i = 0; i < 6; i++) givePlayerCard(player, makeMoney(1));
 
-      expect(() => engine.endTurn(state, player.id)).toThrow("Must discard down to 5");
+      expect(() => engine.endTurn(state, player.id)).toThrow(
+        "Must discard down to 5",
+      );
     });
 
     it("end turn succeeds when hand is at or below maxHandSize", () => {
@@ -1649,6 +1849,64 @@ describe("GameEngine", () => {
       // Should not throw
       engine.endTurn(state, player.id);
       expect(state.turn!.playerId).not.toBe(player.id);
+    });
+
+    it("wildcard flip counts as move when setting is true", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.wildcardFlipCountsAsMove = true;
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue], 1),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      const playsBefore = state.turn!.cardsPlayed;
+      expect(playsBefore).toBe(1);
+
+      engine.rearrangeProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.LightBlue,
+      );
+
+      expect(state.turn!.cardsPlayed).toBe(2);
+    });
+
+    it("wildcard flip does NOT count as move when setting is false", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.wildcardFlipCountsAsMove = false;
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue], 1),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      const playsBefore = state.turn!.cardsPlayed;
+      expect(playsBefore).toBe(1);
+
+      engine.rearrangeProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.LightBlue,
+      );
+
+      expect(state.turn!.cardsPlayed).toBe(1);
     });
   });
 
@@ -1698,14 +1956,14 @@ describe("GameEngine", () => {
     it("previous winner goes first in rematch", () => {
       const { state, engine, players } = startTestGame(3);
       const winner = players[2]!; // Third player wins
-      
+
       // Simulate a win
       state.winner = winner.id;
       state.phase = GamePhase.Finished;
-      
+
       // Rematch
       engine.rematchGame(state);
-      
+
       // Winner should go first
       expect(state.currentPlayerIndex).toBe(2);
       expect(state.turn!.playerId).toBe(winner.id);
@@ -1714,9 +1972,9 @@ describe("GameEngine", () => {
     it("starts with first player if no previous winner", () => {
       const { state, engine } = startTestGame(2);
       state.winner = null;
-      
+
       engine.rematchGame(state);
-      
+
       expect(state.currentPlayerIndex).toBe(0);
     });
   });
@@ -1764,7 +2022,7 @@ describe("GameEngine", () => {
 
     it("does not end game if multiple players remain", () => {
       const { state, engine, players } = startTestGame(3);
-      
+
       engine.resignPlayer(state, players[0]!.id);
 
       expect(state.phase).toBe(GamePhase.Playing);
@@ -1798,7 +2056,10 @@ describe("GameEngine", () => {
 
       // Play Pass Go which tries to draw 2 cards
       const pg = givePlayerCard(player, makeAction(CardType.PassGo, 1));
-      engine.playActionCard(state, player.id, { action: "passGo", cardId: pg.id });
+      engine.playActionCard(state, player.id, {
+        action: "passGo",
+        cardId: pg.id,
+      });
 
       // Deck should have been reshuffled from discard (minus the drawn cards and the pass go itself)
       // The pass go card was added to discard, then reshuffle happened, then 2 drawn
@@ -1828,18 +2089,23 @@ describe("GameEngine", () => {
       // Fill a Brown set (2 cards to complete)
       giveCompleteSet(player, PropertyColor.Brown);
       expect(
-        player.properties.filter((s) => s.color === PropertyColor.Brown)
+        player.properties.filter((s) => s.color === PropertyColor.Brown),
       ).toHaveLength(1);
 
       // Playing another Brown property creates a new set
       const extraBrown = givePlayerCard(
         player,
-        makeProperty(PropertyColor.Brown, 1, "Extra Brown")
+        makeProperty(PropertyColor.Brown, 1, "Extra Brown"),
       );
-      engine.playCardToProperty(state, player.id, extraBrown.id, PropertyColor.Brown);
+      engine.playCardToProperty(
+        state,
+        player.id,
+        extraBrown.id,
+        PropertyColor.Brown,
+      );
 
       const brownSets = player.properties.filter(
-        (s) => s.color === PropertyColor.Brown
+        (s) => s.color === PropertyColor.Brown,
       );
       expect(brownSets).toHaveLength(2);
     });
@@ -1857,7 +2123,10 @@ describe("GameEngine", () => {
       const handBefore = player.hand.length;
 
       // Should not crash even with no cards to draw from
-      engine.playActionCard(state, player.id, { action: "passGo", cardId: pg.id });
+      engine.playActionCard(state, player.id, {
+        action: "passGo",
+        cardId: pg.id,
+      });
 
       // PassGo goes to discard → reshuffle → draw 1 (the passGo itself). Second draw finds nothing.
       // Net: lost passGo from hand (-1), drew it back (+1) = same size

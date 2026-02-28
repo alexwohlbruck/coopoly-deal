@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Card, ClientGameState, PropertyColor } from "../../types/game";
 import { GamePhase, TurnPhase, CardType } from "../../types/game";
-import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
+import { useSoundSettings, useSoundManager, type SoundEffect } from "../../hooks/useSoundManager";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
 import { useI18n } from "../../i18n";
@@ -19,6 +19,41 @@ import { SettingsPanel } from "./SettingsPanel";
 import { CardBack } from "../cards/GameCard";
 import { Settings } from "lucide-react";
 
+function useTurnTimer(expiresAt: number | null, pausedTimeLeft: number | null, play: (effect: SoundEffect) => void) {
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (pausedTimeLeft !== null && pausedTimeLeft !== undefined) {
+      setTimeLeft(Math.ceil(pausedTimeLeft / 1000));
+      return;
+    }
+
+    if (!expiresAt) {
+      setTimeLeft(null);
+      return;
+    }
+
+    let lastBeepedTime = -1;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+      setTimeLeft(remaining);
+
+      if (remaining <= 5 && remaining > 0 && remaining !== lastBeepedTime) {
+        play("tick");
+        lastBeepedTime = remaining;
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt, pausedTimeLeft, play]);
+
+  return timeLeft;
+}
+
 interface GameTableProps {
   gameState: ClientGameState;
   playerId: string;
@@ -29,9 +64,18 @@ interface GameTableProps {
     gamesPlayed: number;
   };
   onPlayToBank: (cardId: string) => void;
-  onPlayToProperty: (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean, createNewSet?: boolean) => void;
+  onPlayToProperty: (
+    cardId: string,
+    color: PropertyColor,
+    groupWithUnassigned?: boolean,
+    createNewSet?: boolean,
+  ) => void;
   onPlayAction: (payload: Record<string, unknown>) => void;
-  onRearrangeProperty?: (cardId: string, toColor: PropertyColor, createNewSet?: boolean) => void;
+  onRearrangeProperty?: (
+    cardId: string,
+    toColor: PropertyColor,
+    createNewSet?: boolean,
+  ) => void;
   onAssignReceivedWildcard?: (cardId: string, color: PropertyColor) => void;
   onEndTurn: () => void;
   onDiscardCards: (cardIds: string[]) => void;
@@ -80,21 +124,26 @@ export function GameTable({
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [showDevTools, setShowDevTools] = useState(false);
-  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
   const [shakingCardId, setShakingCardId] = useState<string | null>(null);
-  const [wildcardFlipData, setWildcardFlipData] = useState<{ card: Card; currentColor: PropertyColor } | null>(null);
-  const [rainbowDropData, setRainbowDropData] = useState<{ card: Card } | null>(null);
+  const [wildcardFlipData, setWildcardFlipData] = useState<{
+    card: Card;
+    currentColor: PropertyColor;
+  } | null>(null);
+  const [rainbowDropData, setRainbowDropData] = useState<{ card: Card } | null>(
+    null,
+  );
   const [draggingCard, setDraggingCard] = useState<Card | null>(null);
-  const { sfxEnabled, toggleSfx} = useSoundSettings();
+  const { sfxEnabled, toggleSfx } = useSoundSettings();
   const { play } = useSoundManager();
   const { theme, setToast } = useGameStore();
   const colors = getTheme(theme);
   const { t } = useI18n();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [playerAreaHeight, setPlayerAreaHeight] = useState<number | undefined>(undefined);
+  const [playerAreaHeight, setPlayerAreaHeight] = useState<number | undefined>(
+    undefined,
+  );
   const headerRef = useRef<HTMLDivElement>(null);
-  const playerIndicatorRef = useRef<HTMLDivElement>(null);
   const turnControlsRef = useRef<HTMLDivElement>(null);
   const cardHandRef = useRef<HTMLDivElement>(null);
 
@@ -126,25 +175,29 @@ export function GameTable({
     const calculateHeight = () => {
       const windowHeight = window.innerHeight;
       const headerHeight = headerRef.current?.offsetHeight || 0;
-      const indicatorHeight = playerIndicatorRef.current?.offsetHeight || 0;
       const controlsHeight = turnControlsRef.current?.offsetHeight || 0;
       const handHeight = cardHandRef.current?.offsetHeight || 0;
-      
-      const availableHeight = windowHeight - headerHeight - indicatorHeight - controlsHeight - handHeight - 32;
+
+      const availableHeight =
+        windowHeight -
+        headerHeight -
+        controlsHeight -
+        handHeight -
+        32;
       setPlayerAreaHeight(Math.max(200, availableHeight));
     };
 
     calculateHeight();
-    window.addEventListener('resize', calculateHeight);
-    
+    window.addEventListener("resize", calculateHeight);
+
     const resizeObserver = new ResizeObserver(calculateHeight);
     if (headerRef.current) resizeObserver.observe(headerRef.current);
-    if (playerIndicatorRef.current) resizeObserver.observe(playerIndicatorRef.current);
-    if (turnControlsRef.current) resizeObserver.observe(turnControlsRef.current);
+    if (turnControlsRef.current)
+      resizeObserver.observe(turnControlsRef.current);
     if (cardHandRef.current) resizeObserver.observe(cardHandRef.current);
-    
+
     return () => {
-      window.removeEventListener('resize', calculateHeight);
+      window.removeEventListener("resize", calculateHeight);
       resizeObserver.disconnect();
     };
   }, []);
@@ -157,10 +210,9 @@ export function GameTable({
     const updateTransforms = () => {
       const containerRect = container.getBoundingClientRect();
       const centerX = containerRect.left + containerRect.width / 2;
-      let closestIndex = 0;
       let closestDistance = Infinity;
 
-      playerRefs.current.forEach((playerEl, idx) => {
+      playerRefs.current.forEach((playerEl) => {
         if (!playerEl) return;
 
         const rect = playerEl.getBoundingClientRect();
@@ -170,7 +222,6 @@ export function GameTable({
         const distanceToCenter = Math.abs(elementCenterX - centerX);
         if (distanceToCenter < closestDistance) {
           closestDistance = distanceToCenter;
-          closestIndex = idx;
         }
 
         // Distance from viewport center in pixels
@@ -204,8 +255,6 @@ export function GameTable({
         playerEl.style.transform = `translateY(${verticalOffset}px) rotateZ(${rotation}deg) scale(${scale})`;
         playerEl.style.opacity = `${Math.max(opacity, minOpacity)}`;
       });
-
-      setCurrentPlayerIndex(closestIndex);
     };
 
     container.addEventListener("scroll", updateTransforms, { passive: true });
@@ -235,6 +284,8 @@ export function GameTable({
   const isMyTurn = gameState.turn?.playerId === playerId;
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
+  const timeLeft = useTurnTimer(gameState.turn?.expiresAt ?? null, gameState.turn?.pausedTimeLeft ?? null, play);
+  const totalTime = gameState.settings.turnTimer;
   const pendingAction = gameState.turn?.pendingAction;
   const pendingWildcardAssignment = gameState.turn?.pendingWildcardAssignment;
   const currentTurnPlayer = gameState.players.find(
@@ -242,7 +293,30 @@ export function GameTable({
   );
   const hasResigned = me?.connected === false;
 
-  const needsDiscard = isMyTurn && me && me.hand && me.hand.length > 7;
+  const [isDiscarding, setIsDiscarding] = useState(false);
+
+  useEffect(() => {
+    if (!isMyTurn) {
+      setIsDiscarding(false);
+    }
+  }, [isMyTurn]);
+
+  const hasTooManyCards =
+    isMyTurn &&
+    me &&
+    me.hand &&
+    gameState.settings.maxHandSize !== 999 &&
+    me.hand.length > gameState.settings.maxHandSize;
+
+  const needsDiscard = hasTooManyCards && (cardsPlayed >= 3 || isDiscarding);
+
+  const handleEndTurn = useCallback(() => {
+    if (hasTooManyCards) {
+      setIsDiscarding(true);
+    } else {
+      onEndTurn();
+    }
+  }, [hasTooManyCards, onEndTurn]);
 
   const handleCardClick = useCallback(
     (card: Card) => {
@@ -259,6 +333,11 @@ export function GameTable({
 
       if (needsDiscard) {
         onDiscardCards([card.id]);
+        if (me && me.hand && me.hand.length - 1 <= gameState.settings.maxHandSize) {
+          if (cardsPlayed >= 3 || isDiscarding) {
+            onEndTurn();
+          }
+        }
         return;
       }
 
@@ -292,7 +371,9 @@ export function GameTable({
         CardType.Hotel,
         CardType.DoubleTheRent,
       ];
-      const isActionCard = validatableCardTypes.some(type => type === card.type);
+      const isActionCard = validatableCardTypes.some(
+        (type) => type === card.type,
+      );
 
       if (isActionCard) {
         const validation = validateActionCard(card, gameState, playerId);
@@ -317,14 +398,23 @@ export function GameTable({
       onDiscardCards,
       onPlayToBank,
       onPlayToProperty,
+      onEndTurn,
       gameState,
       playerId,
       setToast,
+      isDiscarding,
+      me,
+      cardsPlayed,
     ],
   );
 
   const handlePlayToProperty = useCallback(
-    (cardId: string, color: PropertyColor, groupWithUnassigned?: boolean, createNewSet?: boolean) => {
+    (
+      cardId: string,
+      color: PropertyColor,
+      groupWithUnassigned?: boolean,
+      createNewSet?: boolean,
+    ) => {
       onPlayToProperty(cardId, color, groupWithUnassigned, createNewSet);
       setSelectedCard(null);
     },
@@ -359,22 +449,25 @@ export function GameTable({
     [wildcardFlipData, onRearrangeProperty],
   );
 
-  const handleRainbowDropConfirm = useCallback((color: PropertyColor, createNewSet: boolean, wildcardIds: string[]) => {
-    if (!rainbowDropData) return;
-    const cardId = rainbowDropData.card.id;
-    
-    // Play the card
-    onPlayToProperty(cardId, color, false, createNewSet);
-    
-    // Move the wildcards
-    if (onRearrangeProperty) {
-      wildcardIds.forEach((id) => {
-        onRearrangeProperty(id, color, false);
-      });
-    }
-    
-    setRainbowDropData(null);
-  }, [rainbowDropData, onPlayToProperty, onRearrangeProperty]);
+  const handleRainbowDropConfirm = useCallback(
+    (color: PropertyColor, createNewSet: boolean, wildcardIds: string[]) => {
+      if (!rainbowDropData) return;
+      const cardId = rainbowDropData.card.id;
+
+      // Play the card
+      onPlayToProperty(cardId, color, false, createNewSet);
+
+      // Move the wildcards
+      if (onRearrangeProperty) {
+        wildcardIds.forEach((id) => {
+          onRearrangeProperty(id, color, false);
+        });
+      }
+
+      setRainbowDropData(null);
+    },
+    [rainbowDropData, onPlayToProperty, onRearrangeProperty],
+  );
 
   if (gameState.phase === GamePhase.Finished) {
     return (
@@ -382,6 +475,7 @@ export function GameTable({
         players={gameState.players}
         winnerId={gameState.winner}
         currentPlayerId={playerId}
+        settings={gameState.settings}
         sessionStats={sessionStats}
         onRematch={onRematch}
         onGoHome={onGoHome}
@@ -395,7 +489,7 @@ export function GameTable({
       style={{ overscrollBehavior: "none" }}
     >
       {/* Top bar */}
-      <div 
+      <div
         ref={headerRef}
         className="flex items-center justify-between px-4 py-2 bg-black/20 border-b border-white/10"
       >
@@ -406,7 +500,7 @@ export function GameTable({
           </span>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          {import.meta.env.MODE === 'development' && onDevInjectCard && (
+          {import.meta.env.MODE === "development" && onDevInjectCard && (
             <button
               onClick={() => setShowDevTools(true)}
               className="px-3 py-1 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded text-xs transition-colors"
@@ -486,6 +580,7 @@ export function GameTable({
                       player={player}
                       isCurrentTurn={gameState.turn?.playerId === player.id}
                       isYou={isMe}
+                      settings={gameState.settings}
                       isWaitingForAction={isWaiting}
                       availableHeight={playerAreaHeight}
                       draggingCard={draggingCard}
@@ -513,7 +608,11 @@ export function GameTable({
                             }
                           : undefined
                       }
-                      onDropToRainbow={isMe ? (card) => setRainbowDropData({ card }) : undefined}
+                      onDropToRainbow={
+                        isMe
+                          ? (card) => setRainbowDropData({ card })
+                          : undefined
+                      }
                       onWildcardClick={isMe ? handleWildcardClick : undefined}
                     />
                   </div>
@@ -522,47 +621,6 @@ export function GameTable({
             </div>
           </div>
 
-          {/* Player indicator pills - fixed position */}
-          <div 
-            ref={playerIndicatorRef}
-            className="flex flex-wrap gap-1.5 justify-center px-2 py-2 bg-black/20 border-t border-white/10"
-          >
-            {allPlayers.map((player, idx) => {
-              const isActive = idx === currentPlayerIndex;
-              const isMe = player.id === playerId;
-
-              return (
-                <button
-                  key={player.id}
-                  onClick={() => {
-                    const container = scrollContainerRef.current;
-                    if (!container || !playerRefs.current[idx]) return;
-
-                    const targetEl = playerRefs.current[idx];
-                    if (targetEl) {
-                      targetEl.scrollIntoView({
-                        behavior: "smooth",
-                        block: "nearest",
-                        inline: "center",
-                      });
-                    }
-                  }}
-                  className={`
-                    px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold transition-all whitespace-nowrap
-                    ${
-                      isActive
-                        ? "bg-yellow-400 text-gray-900 scale-110"
-                        : "bg-white/20 text-white/70 hover:bg-white/30"
-                    }
-                    ${isMe ? "ring-1 ring-blue-400" : ""}
-                  `}
-                >
-                  {player.name.split(" ")[0]}
-                  {isMe && " (you)"}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Rent multiplier indicator */}
@@ -577,11 +635,46 @@ export function GameTable({
 
       {/* Turn bar and hand */}
       {me && (
-        <div 
-          className="z-10 border-t border-white/10 bg-black/20 max-h-[50vh] flex flex-col shrink-0"
-        >
+        <div className="z-10 border-t border-white/10 bg-black/20 max-h-[50vh] flex flex-col shrink-0 relative">
+          {/* Player indicators */}
+          <div className="absolute left-1/2 -translate-x-1/2 -top-4 z-20">
+            <div className="flex gap-2 px-4 py-1.5 bg-gray-900/90 backdrop-blur-md rounded-full border border-white/10 shadow-lg">
+              {allPlayers.map((player, idx) => {
+                const isCurrentTurn = gameState.turn?.playerId === player.id;
+                const isMe = player.id === playerId;
+                return (
+                  <button
+                    key={player.id}
+                    onClick={() => {
+                      const targetEl = playerRefs.current[idx];
+                      if (targetEl) {
+                        targetEl.scrollIntoView({
+                          behavior: "smooth",
+                          block: "nearest",
+                          inline: "center",
+                        });
+                      }
+                    }}
+                    className={`
+                      px-3 py-1 rounded-full text-xs font-bold transition-all duration-300
+                      ${
+                        isCurrentTurn
+                          ? "bg-yellow-400 text-black scale-110 shadow-md"
+                          : "bg-white/10 text-gray-400 hover:bg-white/20 hover:text-white"
+                      }
+                      ${isMe ? "ring-1 ring-blue-400" : ""}
+                    `}
+                  >
+                    {player.name.split(" ")[0]}
+                    {isMe && " (you)"}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Combined turn info bar with deck/discard */}
-          <div className="flex items-center justify-between px-4 py-2 shrink-0">
+          <div className="flex items-center justify-between px-4 py-3 shrink-0 mt-2">
             {/* Deck/Discard - left side */}
             <div className="flex items-center gap-2">
               <div className="relative">
@@ -607,20 +700,46 @@ export function GameTable({
 
             {/* Turn info - center */}
             <div className="text-center flex-1">
-              {isMyTurn ? (
+              {needsDiscard && gameState.settings.maxHandSize !== 999 ? (
+                <div className="inline-flex bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-1.5 shadow-lg backdrop-blur-sm animate-pulse">
+                  <p className="text-red-200 text-sm font-semibold text-center flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    Must discard {(me?.hand?.length ?? 0) - gameState.settings.maxHandSize} card
+                    {(me?.hand?.length ?? 0) - gameState.settings.maxHandSize > 1 ? "s" : ""} to end turn
+                  </p>
+                </div>
+              ) : isMyTurn ? (
                 <div>
-                  <p className="text-yellow-400 font-bold text-sm">Your Turn</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-yellow-400 font-bold text-sm">
+                      Your Turn
+                    </p>
+                    {timeLeft !== null && (
+                      <span
+                        className={`text-xs font-mono px-1.5 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
+                      >
+                        {timeLeft}s
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-400 text-xs">
-                    {needsDiscard
-                      ? `Discard ${(me?.hand?.length ?? 0) - 7} card(s)`
-                      : `${cardsPlayed}/3 cards played`}
+                    {cardsPlayed}/3 cards played
                   </p>
                 </div>
               ) : (
                 <div>
-                  <p className="text-gray-300 text-sm">
-                    {currentTurnPlayer?.name}'s turn
-                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <p className="text-gray-300 text-sm">
+                      {currentTurnPlayer?.name}'s turn
+                    </p>
+                    {timeLeft !== null && (
+                      <span
+                        className={`text-xs font-mono px-1.5 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
+                      >
+                        {timeLeft}s
+                      </span>
+                    )}
+                  </div>
                   <p className="text-gray-500 text-xs">
                     {turnPhase === TurnPhase.ActionPending
                       ? "Waiting for responses..."
@@ -631,27 +750,33 @@ export function GameTable({
             </div>
 
             {/* End Turn Button - aligned to right */}
-            {isMyTurn &&
-              !needsDiscard &&
-              turnPhase !== TurnPhase.ActionPending && (
-                <button
-                  onClick={onEndTurn}
-                  className={`px-4 py-1.5 ${colors.primary} ${colors.primaryHover} text-white font-semibold rounded transition-colors text-sm shrink-0`}
-                >
-                  {t.game.endTurn}
-                </button>
-              )}
+            {isMyTurn && turnPhase !== TurnPhase.ActionPending && (
+              <button
+                onClick={needsDiscard ? undefined : handleEndTurn}
+                disabled={needsDiscard}
+                className={`relative overflow-hidden px-4 py-1.5 ${needsDiscard ? "bg-gray-600 cursor-not-allowed" : `${colors.primary} ${colors.primaryHover}`} text-white font-semibold rounded transition-colors text-sm shrink-0`}
+              >
+                {timeLeft !== null && totalTime > 0 && !needsDiscard && (
+                  <div
+                    className="absolute inset-0 bg-black/20"
+                    style={{
+                      width: `${(timeLeft / totalTime) * 100}%`,
+                      transition: "width 1s linear",
+                    }}
+                  />
+                )}
+                <span className="relative z-10">{t.game.endTurn}</span>
+              </button>
+            )}
 
             {/* Spacer when no button to maintain layout */}
-            {(!isMyTurn ||
-              needsDiscard ||
-              turnPhase === TurnPhase.ActionPending) && (
+            {(!isMyTurn || turnPhase === TurnPhase.ActionPending) && (
               <div className="shrink-0" style={{ width: "90px" }}></div>
             )}
           </div>
 
           {/* My hand */}
-          <div 
+          <div
             ref={cardHandRef}
             className="border-t border-white/10 overflow-y-auto flex-1"
           >
@@ -662,6 +787,7 @@ export function GameTable({
                 selectedCardId={selectedCard?.id ?? null}
                 shakingCardId={shakingCardId}
                 disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
+                needsDiscard={needsDiscard}
                 onDragToBank={(card) => onPlayToBank(card.id)}
                 onDragStart={(card) => setDraggingCard(card)}
                 onDragEnd={() => setDraggingCard(null)}
@@ -677,6 +803,7 @@ export function GameTable({
           card={selectedCard}
           player={me}
           opponents={opponents}
+          settings={gameState.settings}
           rentMultiplier={gameState.turn?.rentMultiplier ?? 1}
           onClose={() => {
             console.log("[GameTable] Dialog onClose called (user canceled)");
@@ -704,6 +831,7 @@ export function GameTable({
         <WildcardFlipDialog
           card={wildcardFlipData.card}
           player={me}
+          settings={gameState.settings}
           currentColor={wildcardFlipData.currentColor}
           onFlip={handleWildcardFlip}
           onClose={() => setWildcardFlipData(null)}
@@ -711,15 +839,20 @@ export function GameTable({
       )}
 
       {/* Wildcard Assignment Prompt (when receiving wildcard via steal/swap) */}
-      {pendingWildcardAssignment && pendingWildcardAssignment.playerId === playerId && me && onAssignReceivedWildcard && (
-        <WildcardAssignmentPrompt
-          assignment={pendingWildcardAssignment}
-          card={me.properties
-            .flatMap(s => s.cards)
-            .find(c => c.id === pendingWildcardAssignment.cardId)!}
-          onAssign={onAssignReceivedWildcard}
-        />
-      )}
+      {pendingWildcardAssignment &&
+        pendingWildcardAssignment.playerId === playerId &&
+        me &&
+        onAssignReceivedWildcard && (
+          <WildcardAssignmentPrompt
+            assignment={pendingWildcardAssignment}
+            card={
+              me.properties
+                .flatMap((s) => s.cards)
+                .find((c) => c.id === pendingWildcardAssignment.cardId)!
+            }
+            onAssign={onAssignReceivedWildcard}
+          />
+        )}
 
       {/* Settings Panel */}
       <SettingsPanel
@@ -743,17 +876,20 @@ export function GameTable({
       )}
 
       {/* Developer Tools Modal (only in development mode) */}
-      {import.meta.env.MODE === 'development' && onDevInjectCard && onDevGiveCompleteSet && onDevSetMoney && (
-        <DevTools
-          isOpen={showDevTools}
-          onClose={() => setShowDevTools(false)}
-          players={gameState.players}
-          currentPlayerId={playerId}
-          onInjectCard={onDevInjectCard}
-          onGiveCompleteSet={onDevGiveCompleteSet}
-          onSetMoney={onDevSetMoney}
-        />
-      )}
+      {import.meta.env.MODE === "development" &&
+        onDevInjectCard &&
+        onDevGiveCompleteSet &&
+        onDevSetMoney && (
+          <DevTools
+            isOpen={showDevTools}
+            onClose={() => setShowDevTools(false)}
+            players={gameState.players}
+            currentPlayerId={playerId}
+            onInjectCard={onDevInjectCard}
+            onGiveCompleteSet={onDevGiveCompleteSet}
+            onSetMoney={onDevSetMoney}
+          />
+        )}
     </div>
   );
 }

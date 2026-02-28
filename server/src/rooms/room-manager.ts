@@ -8,9 +8,27 @@ export class RoomManager {
   private rooms = new Map<string, GameState>();
   private engine = new GameEngine();
   private cleanupInterval: ReturnType<typeof setInterval>;
+  private tickInterval: ReturnType<typeof setInterval>;
+  private onStateChange?: (roomCode: string) => void;
 
   constructor() {
-    this.cleanupInterval = setInterval(() => this.cleanupInactiveRooms(), 60_000);
+    this.cleanupInterval = setInterval(
+      () => this.cleanupInactiveRooms(),
+      60_000,
+    );
+    this.tickInterval = setInterval(() => this.tick(), 1000);
+  }
+
+  setOnStateChange(callback: (roomCode: string) => void) {
+    this.onStateChange = callback;
+  }
+
+  private tick(): void {
+    for (const [code, game] of this.rooms.entries()) {
+      if (this.engine.handleTurnTimeout(game)) {
+        this.onStateChange?.(code);
+      }
+    }
   }
 
   generateRoomCode(): string {
@@ -34,7 +52,10 @@ export class RoomManager {
     return this.rooms.get(code) ?? null;
   }
 
-  joinRoom(code: string, playerName: string): { game: GameState; player: Player } {
+  joinRoom(
+    code: string,
+    playerName: string,
+  ): { game: GameState; player: Player } {
     const game = this.rooms.get(code);
     if (!game) throw new Error("Room not found");
     const player = this.engine.addPlayer(game, playerName);

@@ -38,12 +38,16 @@ export class BotPlayer {
     return baseDelay + Math.random() * variance;
   }
 
-  async playTurnAsync(state: GameState, botPlayerId: string, onStateChange?: () => void): Promise<void> {
+  async playTurnAsync(
+    state: GameState,
+    botPlayerId: string,
+    onStateChange?: () => void,
+  ): Promise<void> {
     const player = state.players.find((p) => p.id === botPlayerId);
     if (!player) return;
     if (state.turn?.playerId !== botPlayerId) return;
 
-    const playerCount = state.players.filter(p => p.connected).length;
+    const playerCount = state.players.filter((p) => p.connected).length;
     const maxPlays = 3;
     let plays = state.turn.cardsPlayed;
 
@@ -60,11 +64,13 @@ export class BotPlayer {
       try {
         this.executeAction(state, botPlayerId, action);
         plays = state.turn?.cardsPlayed ?? plays + 1;
-        
+
         // Notify state change and add delay between moves
         if (onStateChange) onStateChange();
         if (plays < maxPlays) {
-          await new Promise((resolve) => setTimeout(resolve, this.getDelayForPlayerCount(playerCount)));
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.getDelayForPlayerCount(playerCount)),
+          );
         }
       } catch {
         break;
@@ -81,14 +87,20 @@ export class BotPlayer {
         try {
           this.engine.discardCards(state, botPlayerId, [worst.id]);
           if (onStateChange) onStateChange();
-          await new Promise((resolve) => setTimeout(resolve, this.getDelayForPlayerCount(playerCount)));
+          await new Promise((resolve) =>
+            setTimeout(resolve, this.getDelayForPlayerCount(playerCount)),
+          );
         } catch {
           break;
         }
       } else break;
     }
 
-    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play" && state.phase === GamePhase.Playing) {
+    if (
+      state.turn?.playerId === botPlayerId &&
+      state.turn.phase === "play" &&
+      state.phase === GamePhase.Playing
+    ) {
       try {
         this.engine.endTurn(state, botPlayerId);
         if (onStateChange) onStateChange();
@@ -140,7 +152,11 @@ export class BotPlayer {
       } else break;
     }
 
-    if (state.turn?.playerId === botPlayerId && state.turn.phase === "play" && state.phase === GamePhase.Playing) {
+    if (
+      state.turn?.playerId === botPlayerId &&
+      state.turn.phase === "play" &&
+      state.phase === GamePhase.Playing
+    ) {
       try {
         this.engine.endTurn(state, botPlayerId);
       } catch {
@@ -152,7 +168,7 @@ export class BotPlayer {
   respondToAction(state: GameState, botPlayerId: string): void {
     const action = state.turn?.pendingAction;
     if (!action) return;
-    
+
     const player = state.players.find((p) => p.id === botPlayerId);
     if (!player) return;
 
@@ -160,14 +176,16 @@ export class BotPlayer {
     if (action.justSayNoChain) {
       // The bot needs to respond if they're not the one who just played JSN
       if (action.justSayNoChain.targetPlayerId === botPlayerId) return;
-      
+
       // Bot is involved if they're either the source or a target of the original action
-      const isInvolved = action.sourcePlayerId === botPlayerId || action.targetPlayerIds.includes(botPlayerId);
+      const isInvolved =
+        action.sourcePlayerId === botPlayerId ||
+        action.targetPlayerIds.includes(botPlayerId);
       if (!isInvolved) return;
-      
+
       // Check if bot has JSN to counter
       const hasJSN = player.hand.some((c) => c.type === CardType.JustSayNo);
-      
+
       // Bots should be very aggressive about countering JSN, especially for valuable actions
       if (hasJSN && this.shouldCounterJustSayNo(action)) {
         try {
@@ -175,7 +193,7 @@ export class BotPlayer {
         } catch {}
         return;
       }
-      
+
       // Otherwise accept the JSN
       try {
         this.engine.respondAcceptAction(state, botPlayerId);
@@ -227,7 +245,7 @@ export class BotPlayer {
 
     const wildcards = hand.filter((c) => c.type === CardType.PropertyWildcard);
     for (const card of wildcards) {
-      const bestColor = this.findBestColorForWildcard(player, card);
+      const bestColor = this.findBestColorForWildcard(state, player, card);
       if (bestColor) {
         return { type: "property", card, color: bestColor };
       }
@@ -243,12 +261,19 @@ export class BotPlayer {
 
     // Check if we have rent cards and double the rent cards
     const rentCards = hand.filter(
-      (c) => c.type === CardType.RentDual || c.type === CardType.RentWild
+      (c) => c.type === CardType.RentDual || c.type === CardType.RentWild,
     );
-    const doubleRentCards = hand.filter((c) => c.type === CardType.DoubleTheRent);
-    
+    const doubleRentCards = hand.filter(
+      (c) => c.type === CardType.DoubleTheRent,
+    );
+
     // If we have both rent cards and double rent cards, and haven't used double rent yet this turn
-    if (rentCards.length > 0 && doubleRentCards.length > 0 && state.turn && state.turn.rentMultiplier === 1) {
+    if (
+      rentCards.length > 0 &&
+      doubleRentCards.length > 0 &&
+      state.turn &&
+      state.turn.rentMultiplier === 1
+    ) {
       // Play double the rent first (can play up to 2)
       const doubleRent = doubleRentCards[0];
       return {
@@ -256,7 +281,7 @@ export class BotPlayer {
         payload: { action: "doubleTheRent", cardId: doubleRent!.id },
       };
     }
-    
+
     // Play rent cards
     for (const card of rentCards) {
       const result = this.tryPlayRent(state, player, card);
@@ -289,7 +314,7 @@ export class BotPlayer {
     const dealBreaker = hand.find((c) => c.type === CardType.DealBreaker);
     if (dealBreaker) {
       for (const opp of state.players.filter(
-        (p) => p.id !== player.id && p.connected
+        (p) => p.id !== player.id && p.connected,
       )) {
         const completeSet = opp.properties.find((s) => isSetComplete(s));
         if (completeSet) {
@@ -309,7 +334,7 @@ export class BotPlayer {
     const forceDeal = hand.find((c) => c.type === CardType.ForceDeal);
     if (forceDeal) {
       for (const opp of state.players.filter(
-        (p) => p.id !== player.id && p.connected
+        (p) => p.id !== player.id && p.connected,
       )) {
         const myTradeable = player.properties
           .filter((s) => !isSetComplete(s))
@@ -317,11 +342,11 @@ export class BotPlayer {
         const oppTradeable = opp.properties
           .filter((s) => !isSetComplete(s))
           .flatMap((s) => s.cards);
-        
+
         if (myTradeable.length > 0 && oppTradeable.length > 0) {
           const myWorst = myTradeable.sort((a, b) => a.value - b.value)[0]!;
           const oppBest = oppTradeable.sort((a, b) => b.value - a.value)[0]!;
-          
+
           if (oppBest.value > myWorst.value) {
             return {
               type: "action",
@@ -341,7 +366,7 @@ export class BotPlayer {
     const slyDeal = hand.find((c) => c.type === CardType.SlyDeal);
     if (slyDeal) {
       for (const opp of state.players.filter(
-        (p) => p.id !== player.id && p.connected
+        (p) => p.id !== player.id && p.connected,
       )) {
         const stealable = opp.properties
           .filter((s) => !isSetComplete(s))
@@ -368,7 +393,7 @@ export class BotPlayer {
           isSetComplete(s) &&
           !s.house &&
           s.color !== PropertyColor.Railroad &&
-          s.color !== PropertyColor.Utility
+          s.color !== PropertyColor.Utility,
       );
       if (eligibleSet) {
         return {
@@ -390,7 +415,7 @@ export class BotPlayer {
           s.house &&
           !s.hotel &&
           s.color !== PropertyColor.Railroad &&
-          s.color !== PropertyColor.Utility
+          s.color !== PropertyColor.Utility,
       );
       if (eligibleSet) {
         return {
@@ -405,7 +430,7 @@ export class BotPlayer {
     }
 
     const bankable = hand.find(
-      (c) => c.type !== CardType.Property && c.value > 0
+      (c) => c.type !== CardType.Property && c.value > 0,
     );
     if (bankable) {
       return { type: "bank", card: bankable };
@@ -422,7 +447,7 @@ export class BotPlayer {
   private executeAction(
     state: GameState,
     botPlayerId: string,
-    action: BotAction
+    action: BotAction,
   ): void {
     switch (action.type) {
       case "bank":
@@ -433,22 +458,19 @@ export class BotPlayer {
           state,
           botPlayerId,
           action.card!.id,
-          action.color!
+          action.color!,
         );
         break;
       case "action":
-        this.engine.playActionCard(
-          state,
-          botPlayerId,
-          action.payload as any
-        );
+        this.engine.playActionCard(state, botPlayerId, action.payload as any);
         break;
     }
   }
 
   private findBestColorForWildcard(
+    state: GameState,
     player: Player,
-    card: Card
+    card: Card,
   ): PropertyColor | null {
     const colors = card.colors ?? [];
     if (colors.length === 0) return null;
@@ -470,8 +492,12 @@ export class BotPlayer {
     }
 
     // If it's a multi-color wildcard, the bot should prefer placing it in an existing set,
-    // but if it has no sets, it can place it in Unassigned (Rainbow)
-    if (colors.length > 2 && bestProgress === 0) {
+    // but if it has no sets, it can place it in Unassigned (Rainbow), unless disabled
+    if (
+      colors.length > 2 &&
+      bestProgress === 0 &&
+      !state.settings.wildcardFlipCountsAsMove
+    ) {
       return PropertyColor.Unassigned;
     }
 
@@ -481,10 +507,10 @@ export class BotPlayer {
   private tryPlayRent(
     state: GameState,
     player: Player,
-    card: Card
+    card: Card,
   ): Record<string, unknown> | null {
     const opponents = state.players.filter(
-      (p) => p.id !== player.id && p.connected
+      (p) => p.id !== player.id && p.connected,
     );
     if (opponents.length === 0) return null;
 
@@ -528,12 +554,9 @@ export class BotPlayer {
     return null;
   }
 
-  private findRichestOpponent(
-    state: GameState,
-    player: Player
-  ): Player | null {
+  private findRichestOpponent(state: GameState, player: Player): Player | null {
     const opponents = state.players.filter(
-      (p) => p.id !== player.id && p.connected
+      (p) => p.id !== player.id && p.connected,
     );
     if (opponents.length === 0) return null;
     return opponents.sort((a, b) => {
@@ -588,31 +611,31 @@ export class BotPlayer {
   private shouldUseJustSayNo(action: PendingAction): boolean {
     // Always use JSN for deal breaker (losing a complete set)
     if (action.type === "dealBreaker") return true;
-    
+
     // Use JSN for property theft with high probability
     if (action.type === "slyDeal") {
       // 80% chance to use JSN
       return Math.random() < 0.8;
     }
-    
+
     // Use JSN for property swaps if we're getting a worse deal
     if (action.type === "forceDeal") {
-      // 70% chance to use JSN  
+      // 70% chance to use JSN
       return Math.random() < 0.7;
     }
-    
+
     // Use JSN for high rent amounts (>=5M)
     if (action.amount && action.amount >= 5) {
       // 60% chance to use JSN for high rent
       return Math.random() < 0.6;
     }
-    
+
     // Use JSN for medium rent amounts (3-4M) sometimes
     if (action.amount && action.amount >= 3) {
       // 30% chance to use JSN for medium rent
       return Math.random() < 0.3;
     }
-    
+
     return false;
   }
 
@@ -626,14 +649,14 @@ export class BotPlayer {
       if (action.amount && action.amount >= 5) return Math.random() < 0.7; // 70% counter for high rent
       return Math.random() < 0.5; // 50% counter for other actions
     }
-    
+
     // If bot was defending (target), less likely to counter since they already defended once
     // But still possible if it's a really valuable thing to defend
     if (action.type === "dealBreaker") return Math.random() < 0.4; // 40% chance to keep fighting
     if (action.type === "slyDeal") return Math.random() < 0.3; // 30% chance
     return Math.random() < 0.2; // 20% chance for other actions
   }
-  
+
   private getBotId(action: PendingAction): string | null {
     // Helper to get bot ID from the action - not a perfect solution but works for this context
     return action.sourcePlayerId;

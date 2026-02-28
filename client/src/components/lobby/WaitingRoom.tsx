@@ -4,16 +4,13 @@ import { X, BookOpen } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
-import {
-  GameSettingsPanel,
-  DEFAULT_GAME_SETTINGS,
-  type GameSettings,
-} from "./GameSettingsPanel";
+import { GameSettingsPanel, type GameSettings } from "./GameSettingsPanel";
 
 interface WaitingRoomProps {
   gameState: ClientGameState;
   playerId: string;
-  onStartGame: (settings?: GameSettings) => void;
+  onStartGame: () => void;
+  onUpdateSettings: (settings: GameSettings) => void;
   onAddBot: () => void;
   onRemovePlayer?: (playerIdToRemove: string) => void;
   musicControls?: {
@@ -27,14 +24,12 @@ export function WaitingRoom({
   gameState,
   playerId,
   onStartGame,
+  onUpdateSettings,
   onAddBot,
   onRemovePlayer,
   musicControls,
 }: WaitingRoomProps) {
   const [showRules, setShowRules] = useState(false);
-  const [gameSettings, setGameSettings] = useState<GameSettings>(
-    DEFAULT_GAME_SETTINGS,
-  );
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
 
@@ -60,7 +55,12 @@ export function WaitingRoom({
         <span className="font-semibold">Rules</span>
       </button>
 
-      <GameRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+      <GameRulesModal
+        isOpen={showRules}
+        maxHandSize={gameState.settings.maxHandSize}
+        allowDuplicateSets={gameState.settings.allowDuplicateSets}
+        onClose={() => setShowRules(false)}
+      />
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -126,8 +126,8 @@ export function WaitingRoom({
 
         <GameSettingsPanel
           isHost={isHost}
-          settings={gameSettings}
-          onSettingsChange={setGameSettings}
+          settings={gameState.settings}
+          onSettingsChange={onUpdateSettings}
         />
 
         {isHost ? (
@@ -140,7 +140,7 @@ export function WaitingRoom({
               + Add Bot
             </button>
             <button
-              onClick={() => onStartGame(gameSettings)}
+              onClick={onStartGame}
               disabled={!canStart}
               className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
             >

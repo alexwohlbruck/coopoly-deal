@@ -34,7 +34,8 @@ export default function App() {
   } = useGameStore();
 
   const { play } = useSoundManager();
-  const { isPlaying, toggleMusic, nextTrack, startMusic } = useBackgroundMusic();
+  const { isPlaying, toggleMusic, nextTrack, startMusic } =
+    useBackgroundMusic();
 
   const handleMessage = useCallback(
     (msg: ServerMessage) => {
@@ -48,7 +49,10 @@ export default function App() {
 
         case "GAME_STATE_UPDATE":
           setGameState(msg.payload.state);
-          if (msg.payload.state.phase === GamePhase.Playing && screen !== "game") {
+          if (
+            msg.payload.state.phase === GamePhase.Playing &&
+            screen !== "game"
+          ) {
             setScreen("game");
           }
           break;
@@ -84,7 +88,7 @@ export default function App() {
           setToast(
             msg.payload.winnerId === playerId
               ? "You win!"
-              : `${msg.payload.winnerName} wins!`
+              : `${msg.payload.winnerName} wins!`,
           );
           break;
 
@@ -95,7 +99,19 @@ export default function App() {
           break;
       }
     },
-    [playerId, playerName, screen, setPlayer, setRoomCode, setGameState, setError, setToast, recordWin, recordLoss, play]
+    [
+      playerId,
+      playerName,
+      screen,
+      setPlayer,
+      setRoomCode,
+      setGameState,
+      setError,
+      setToast,
+      recordWin,
+      recordLoss,
+      play,
+    ],
   );
 
   const { connect, send, disconnect } = useWebSocket(handleMessage);
@@ -129,9 +145,12 @@ export default function App() {
     (code: string, name: string) => {
       startMusic(); // Start music on first user interaction
       setPlayer("", name);
-      send({ type: "JOIN_ROOM", payload: { roomCode: code, playerName: name } });
+      send({
+        type: "JOIN_ROOM",
+        payload: { roomCode: code, playerName: name },
+      });
     },
-    [send, setPlayer, startMusic]
+    [send, setPlayer, startMusic],
   );
 
   const handleNameSubmit = useCallback(
@@ -140,7 +159,7 @@ export default function App() {
         handleJoinRoom(pendingRoomCode, name);
       }
     },
-    [pendingRoomCode, handleJoinRoom]
+    [pendingRoomCode, handleJoinRoom],
   );
 
   const handleStartGame = useCallback(() => {
@@ -152,9 +171,12 @@ export default function App() {
     send({ type: "ADD_BOT" } as any);
   }, [send]);
 
-  const handleRemovePlayer = useCallback((playerIdToRemove: string) => {
-    send({ type: "REMOVE_PLAYER", payload: { playerIdToRemove } } as any);
-  }, [send]);
+  const handleRemovePlayer = useCallback(
+    (playerIdToRemove: string) => {
+      send({ type: "REMOVE_PLAYER", payload: { playerIdToRemove } } as any);
+    },
+    [send],
+  );
 
   const handleRematch = useCallback(() => {
     send({ type: "REMATCH" });
@@ -171,17 +193,32 @@ export default function App() {
     send({ type: "RESIGN" });
   }, [send]);
 
-  const handleDevInjectCard = useCallback((cardType: any, targetPlayerId: string, colors?: any[]) => {
-    send({ type: "DEV_INJECT_CARD", payload: { cardType, targetPlayerId, colors } });
-  }, [send]);
+  const handleDevInjectCard = useCallback(
+    (cardType: any, targetPlayerId: string, colors?: any[]) => {
+      send({
+        type: "DEV_INJECT_CARD",
+        payload: { cardType, targetPlayerId, colors },
+      });
+    },
+    [send],
+  );
 
-  const handleDevGiveCompleteSet = useCallback((color: any, targetPlayerId: string) => {
-    send({ type: "DEV_GIVE_COMPLETE_SET", payload: { color, targetPlayerId } });
-  }, [send]);
+  const handleDevGiveCompleteSet = useCallback(
+    (color: any, targetPlayerId: string) => {
+      send({
+        type: "DEV_GIVE_COMPLETE_SET",
+        payload: { color, targetPlayerId },
+      });
+    },
+    [send],
+  );
 
-  const handleDevSetMoney = useCallback((amount: number, targetPlayerId: string) => {
-    send({ type: "DEV_SET_MONEY", payload: { amount, targetPlayerId } });
-  }, [send]);
+  const handleDevSetMoney = useCallback(
+    (amount: number, targetPlayerId: string) => {
+      send({ type: "DEV_SET_MONEY", payload: { amount, targetPlayerId } });
+    },
+    [send],
+  );
 
   return (
     <div className="min-h-screen">
@@ -218,7 +255,11 @@ export default function App() {
         <LobbyScreen
           onCreateRoom={handleCreateRoom}
           onJoinRoom={handleJoinRoom}
-          musicControls={{ isPlaying, onToggle: toggleMusic, onNext: nextTrack }}
+          musicControls={{
+            isPlaying,
+            onToggle: toggleMusic,
+            onNext: nextTrack,
+          }}
         />
       )}
 
@@ -235,9 +276,16 @@ export default function App() {
           gameState={gameState}
           playerId={playerId}
           onStartGame={handleStartGame}
+          onUpdateSettings={(settings) =>
+            send({ type: "UPDATE_SETTINGS", payload: { settings } })
+          }
           onAddBot={handleAddBot}
           onRemovePlayer={handleRemovePlayer}
-          musicControls={{ isPlaying, onToggle: toggleMusic, onNext: nextTrack }}
+          musicControls={{
+            isPlaying,
+            onToggle: toggleMusic,
+            onNext: nextTrack,
+          }}
         />
       )}
 
@@ -252,20 +300,29 @@ export default function App() {
           }}
           onPlayToProperty={(cardId, asColor, groupWithUnassigned) => {
             play("cardPlay");
-            send({ type: "PLAY_CARD_TO_PROPERTY", payload: { cardId, asColor, groupWithUnassigned } });
+            send({
+              type: "PLAY_CARD_TO_PROPERTY",
+              payload: { cardId, asColor, groupWithUnassigned },
+            });
           }}
           onPlayAction={(payload) => {
-            console.log('[App] onPlayAction called', payload);
+            console.log("[App] onPlayAction called", payload);
             play("actionPlayed");
-            console.log('[App] Sending PLAY_ACTION_CARD to server');
+            console.log("[App] Sending PLAY_ACTION_CARD to server");
             send({ type: "PLAY_ACTION_CARD", payload });
-            console.log('[App] PLAY_ACTION_CARD sent');
+            console.log("[App] PLAY_ACTION_CARD sent");
           }}
           onRearrangeProperty={(cardId, toColor, createNewSet) => {
-            send({ type: "REARRANGE_PROPERTY", payload: { cardId, toColor, createNewSet } });
+            send({
+              type: "REARRANGE_PROPERTY",
+              payload: { cardId, toColor, createNewSet },
+            });
           }}
           onAssignReceivedWildcard={(cardId, color) => {
-            send({ type: "ASSIGN_RECEIVED_WILDCARD", payload: { cardId, color } });
+            send({
+              type: "ASSIGN_RECEIVED_WILDCARD",
+              payload: { cardId, color },
+            });
           }}
           onEndTurn={() => send({ type: "END_TURN" })}
           onDiscardCards={(cardIds) =>
@@ -283,7 +340,11 @@ export default function App() {
           onRematch={handleRematch}
           onGoHome={handleGoHome}
           onResign={handleResign}
-          musicControls={{ isPlaying, onToggle: toggleMusic, onNext: nextTrack }}
+          musicControls={{
+            isPlaying,
+            onToggle: toggleMusic,
+            onNext: nextTrack,
+          }}
           onDevInjectCard={handleDevInjectCard}
           onDevGiveCompleteSet={handleDevGiveCompleteSet}
           onDevSetMoney={handleDevSetMoney}

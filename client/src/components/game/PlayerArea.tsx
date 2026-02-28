@@ -12,10 +12,13 @@ import {
 } from "../../types/game";
 import { FannedCards } from "../cards/FannedCards";
 
+import { type GameSettings } from "../lobby/GameSettingsPanel";
+
 interface PlayerAreaProps {
   player: ClientPlayer;
   isCurrentTurn: boolean;
   isYou: boolean;
+  settings: GameSettings;
   isWaitingForAction?: boolean;
   onDropToBank?: (cardId: string) => void;
   onDropToProperty?: (cardId: string, color: PropertyColor) => void;
@@ -79,15 +82,17 @@ function PropertySetDisplay({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div
-        className={`px-2 py-0.5 rounded text-center ${complete ? "ring-1 ring-yellow-400" : ""}`}
-        style={{ backgroundColor: color }}
-      >
-        <p className="text-white font-bold text-[9px] sm:text-[10px]">
-          {PROPERTY_COLOR_LABEL[set.color]} {set.cards.length}/
-          {SET_SIZE[set.color]}
-        </p>
-      </div>
+      {set.color !== PropertyColor.Unassigned && (
+        <div
+          className={`px-2 py-0.5 rounded text-center ${complete ? "ring-1 ring-yellow-400" : ""}`}
+          style={{ backgroundColor: color }}
+        >
+          <p className="text-white font-bold text-[9px] sm:text-[10px]">
+            {PROPERTY_COLOR_LABEL[set.color]} {set.cards.length}/
+            {SET_SIZE[set.color]}
+          </p>
+        </div>
+      )}
 
       {/* Use FannedCards for hover expansion with wildcard click support */}
       <FannedCards
@@ -113,10 +118,12 @@ function EmptyPropertyDropZone({
   onDrop,
   onDropWildcard,
   existingColors,
+  settings,
 }: {
   onDrop: (cardId: string, color: PropertyColor) => void;
   onDropWildcard?: (card: Card) => void;
   existingColors: PropertyColor[];
+  settings?: GameSettings;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -188,7 +195,7 @@ function EmptyPropertyDropZone({
           onDropWildcard(card);
           return;
         }
-        
+
         // Fallback
         const availableColors = card.colors?.filter(
           (c: PropertyColor) => !existingColors.includes(c),
@@ -196,8 +203,10 @@ function EmptyPropertyDropZone({
         if (availableColors && availableColors.length > 0) {
           color = availableColors[0];
         } else if (card.colors && card.colors.length > 1) {
-          // Only multi-color wildcards can be unassigned
-          color = PropertyColor.Unassigned;
+          // Only multi-color wildcards can be unassigned, unless disabled
+          color = settings?.wildcardFlipCountsAsMove
+            ? card.colors[0]
+            : PropertyColor.Unassigned;
         } else {
           // Single-color wildcard with no available color - reject
           return;
@@ -235,6 +244,7 @@ export function PlayerArea({
   player,
   isCurrentTurn,
   isYou,
+  settings,
   isWaitingForAction,
   onDropToBank,
   onDropToProperty,
@@ -245,13 +255,21 @@ export function PlayerArea({
   availableHeight,
 }: PlayerAreaProps) {
   const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
-  const completeSets = player.properties.filter(isSetComplete).length;
+
+  const completeSetsList = player.properties.filter(isSetComplete);
+  const completeSets = settings?.allowDuplicateSets
+    ? completeSetsList.length
+    : new Set(completeSetsList.map((s) => s.color)).size;
+
   const [isDragOverBank, setIsDragOverBank] = useState(false);
   const [dragOverSetColor, setDragOverSetColor] =
     useState<PropertyColor | null>(null);
 
   // Show drop zones when dragging
-  const isDraggingProperty = draggingCard && (draggingCard.type === CardType.Property || draggingCard.type === CardType.PropertyWildcard);
+  const isDraggingProperty =
+    draggingCard &&
+    (draggingCard.type === CardType.Property ||
+      draggingCard.type === CardType.PropertyWildcard);
   const showDropZones = draggingCard && isYou && isCurrentTurn;
   const showEmptyDropZone = isDraggingProperty && isYou && isCurrentTurn;
   const contentRef = useRef<HTMLDivElement>(null);
@@ -314,7 +332,10 @@ export function PlayerArea({
 
         // Validate wildcard supports this color
         if (card.type === CardType.PropertyWildcard) {
-          if (color !== PropertyColor.Unassigned && !card.colors?.includes(color)) {
+          if (
+            color !== PropertyColor.Unassigned &&
+            !card.colors?.includes(color)
+          ) {
             e.dataTransfer.dropEffect = "none";
             return; // Wildcard doesn't support this color
           }
@@ -367,7 +388,7 @@ export function PlayerArea({
               onDropToRainbow(card);
               return;
             }
-            
+
             // Dropping a property onto a wildcard set - update the set color
             // Find all wildcards in this set and update them
             const wildcards = targetSet.cards.filter(
@@ -623,6 +644,7 @@ export function PlayerArea({
               onDrop={onDropToProperty}
               onDropWildcard={onDropWildcard}
               existingColors={player.properties.map((s) => s.color)}
+              settings={settings}
             />
           )}
         </div>

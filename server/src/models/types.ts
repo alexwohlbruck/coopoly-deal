@@ -42,7 +42,6 @@ export interface GameSettings {
   maxHandSize: number;
   turnTimer: number;
   allowDuplicateSets: boolean;
-  houseHotelRules: boolean;
   wildcardFlipCountsAsMove: boolean;
 }
 
@@ -50,7 +49,6 @@ export const DEFAULT_SETTINGS: GameSettings = {
   maxHandSize: 7,
   turnTimer: 0,
   allowDuplicateSets: true,
-  houseHotelRules: true,
   wildcardFlipCountsAsMove: false,
 };
 
@@ -127,7 +125,13 @@ export enum TurnPhase {
 }
 
 export interface PendingAction {
-  type: "rent" | "debtCollector" | "birthday" | "slyDeal" | "forceDeal" | "dealBreaker";
+  type:
+    | "rent"
+    | "debtCollector"
+    | "birthday"
+    | "slyDeal"
+    | "forceDeal"
+    | "dealBreaker";
   sourcePlayerId: string;
   targetPlayerIds: string[];
   amount?: number;
@@ -158,6 +162,8 @@ export interface TurnState {
   pendingAction: PendingAction | null;
   pendingWildcardAssignment: PendingWildcardAssignment | null;
   rentMultiplier: number; // Tracks active "Double the Rent" multiplier (1 = normal, 2 = doubled, 4 = double-doubled)
+  expiresAt: number | null; // Timestamp when the current turn/action expires
+  pausedTimeLeft: number | null; // How much time was left when paused
 }
 
 export interface GameState {
@@ -190,7 +196,10 @@ export interface ClientPlayer {
   isBot?: boolean;
 }
 
-export function toClientState(state: GameState, forPlayerId: string): ClientGameState {
+export function toClientState(
+  state: GameState,
+  forPlayerId: string,
+): ClientGameState {
   const { deck, players, ...rest } = state;
   return {
     ...rest,
@@ -214,7 +223,15 @@ export type ClientMessage =
   | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }
-  | { type: "PLAY_CARD_TO_PROPERTY"; payload: { cardId: string; asColor: PropertyColor | null; groupWithUnassigned?: boolean; createNewSet?: boolean } }
+  | {
+      type: "PLAY_CARD_TO_PROPERTY";
+      payload: {
+        cardId: string;
+        asColor: PropertyColor | null;
+        groupWithUnassigned?: boolean;
+        createNewSet?: boolean;
+      };
+    }
   | { type: "PLAY_ACTION_CARD"; payload: PlayActionPayload }
   | { type: "END_TURN" }
   | { type: "DISCARD_CARDS"; payload: { cardIds: string[] } }
@@ -222,31 +239,78 @@ export type ClientMessage =
   | { type: "JUST_SAY_NO" }
   | { type: "ACCEPT_ACTION" }
   | { type: "SELECT_PAYMENT_CARDS"; payload: { cardIds: string[] } }
-  | { type: "REARRANGE_PROPERTY"; payload: { cardId: string; toColor: PropertyColor; createNewSet?: boolean } }
-  | { type: "ASSIGN_RECEIVED_WILDCARD"; payload: { cardId: string; color: PropertyColor } }
+  | {
+      type: "REARRANGE_PROPERTY";
+      payload: {
+        cardId: string;
+        toColor: PropertyColor;
+        createNewSet?: boolean;
+      };
+    }
+  | {
+      type: "ASSIGN_RECEIVED_WILDCARD";
+      payload: { cardId: string; color: PropertyColor };
+    }
   | { type: "UPDATE_SETTINGS"; payload: { settings: Partial<GameSettings> } }
   | { type: "REMATCH" }
   | { type: "ADD_BOT" }
   | { type: "RESIGN" }
-  | { type: "DEV_INJECT_CARD"; payload: { cardType: CardType; targetPlayerId?: string; colors?: PropertyColor[] } }
-  | { type: "DEV_GIVE_COMPLETE_SET"; payload: { color: PropertyColor; targetPlayerId?: string } }
-  | { type: "DEV_SET_MONEY"; payload: { amount: number; targetPlayerId?: string } };
+  | {
+      type: "DEV_INJECT_CARD";
+      payload: {
+        cardType: CardType;
+        targetPlayerId?: string;
+        colors?: PropertyColor[];
+      };
+    }
+  | {
+      type: "DEV_GIVE_COMPLETE_SET";
+      payload: { color: PropertyColor; targetPlayerId?: string };
+    }
+  | {
+      type: "DEV_SET_MONEY";
+      payload: { amount: number; targetPlayerId?: string };
+    };
 
 export type PlayActionPayload =
   | { action: "passGo"; cardId: string }
-  | { action: "slyDeal"; cardId: string; targetPlayerId: string; targetCardId: string }
-  | { action: "forceDeal"; cardId: string; myCardId: string; targetPlayerId: string; targetCardId: string }
-  | { action: "dealBreaker"; cardId: string; targetPlayerId: string; targetSetColor: PropertyColor }
+  | {
+      action: "slyDeal";
+      cardId: string;
+      targetPlayerId: string;
+      targetCardId: string;
+    }
+  | {
+      action: "forceDeal";
+      cardId: string;
+      myCardId: string;
+      targetPlayerId: string;
+      targetCardId: string;
+    }
+  | {
+      action: "dealBreaker";
+      cardId: string;
+      targetPlayerId: string;
+      targetSetColor: PropertyColor;
+    }
   | { action: "debtCollector"; cardId: string; targetPlayerId: string }
   | { action: "birthday"; cardId: string }
   | { action: "rentDual"; cardId: string; color: PropertyColor }
-  | { action: "rentWild"; cardId: string; color: PropertyColor; targetPlayerId: string }
+  | {
+      action: "rentWild";
+      cardId: string;
+      color: PropertyColor;
+      targetPlayerId: string;
+    }
   | { action: "doubleTheRent"; cardId: string }
   | { action: "house"; cardId: string; setColor: PropertyColor }
   | { action: "hotel"; cardId: string; setColor: PropertyColor };
 
 export type ServerMessage =
-  | { type: "ROOM_JOINED"; payload: { playerId: string; roomCode: string; state: ClientGameState } }
+  | {
+      type: "ROOM_JOINED";
+      payload: { playerId: string; roomCode: string; state: ClientGameState };
+    }
   | { type: "GAME_STATE_UPDATE"; payload: { state: ClientGameState } }
   | { type: "ERROR"; payload: { message: string } }
   | { type: "PLAYER_JOINED"; payload: { playerName: string; playerId: string } }

@@ -79,7 +79,8 @@ export type SoundEffect =
   | "buttonClick"
   | "playerJoin"
   | "rent"
-  | "steal";
+  | "steal"
+  | "tick";
 
 const soundMap: Record<SoundEffect, () => void> = {
   cardPlay: () => {
@@ -137,6 +138,9 @@ const soundMap: Record<SoundEffect, () => void> = {
     playTone(200, 0.1, "sawtooth", 0.2);
     setTimeout(() => playTone(400, 0.1, "sawtooth", 0.2), 80);
     setTimeout(() => playTone(600, 0.15, "sawtooth", 0.15), 160);
+  },
+  tick: () => {
+    playTone(800, 0.05, "sine", 0.1);
   },
 };
 

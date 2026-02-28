@@ -1,5 +1,10 @@
 import type { ServerWebSocket } from "bun";
-import { type ClientMessage, type ServerMessage, GamePhase, toClientState } from "../models/types.ts";
+import {
+  type ClientMessage,
+  type ServerMessage,
+  GamePhase,
+  toClientState,
+} from "../models/types.ts";
 import { RoomManager } from "../rooms/room-manager.ts";
 import { BotPlayer } from "../engine/bot.ts";
 import { getRandomBotName } from "../utils/bot-names.ts";
@@ -19,7 +24,11 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     ws.send(JSON.stringify(message));
   }
 
-  function broadcastToRoom(roomCode: string, message: ServerMessage, excludePlayerId?: string): void {
+  function broadcastToRoom(
+    roomCode: string,
+    message: ServerMessage,
+    excludePlayerId?: string,
+  ): void {
     const game = roomManager.getRoom(roomCode);
     if (!game) return;
     for (const player of game.players) {
@@ -45,12 +54,20 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     }
   }
 
+  roomManager.setOnStateChange((roomCode) => {
+    sendStateToAll(roomCode);
+    checkBotTurn(roomCode);
+  });
+
   function handleMessage(ws: GameWebSocket, raw: string): void {
     let msg: ClientMessage;
     try {
       msg = JSON.parse(raw) as ClientMessage;
     } catch {
-      send(ws, { type: "ERROR", payload: { message: "Invalid message format" } });
+      send(ws, {
+        type: "ERROR",
+        payload: { message: "Invalid message format" },
+      });
       return;
     }
 
@@ -69,7 +86,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           break;
 
         case "PLAY_CARD_TO_PROPERTY":
-          handlePlayCardToProperty(ws, msg.payload.cardId, msg.payload.asColor, msg.payload.groupWithUnassigned, msg.payload.createNewSet);
+          handlePlayCardToProperty(
+            ws,
+            msg.payload.cardId,
+            msg.payload.asColor,
+            msg.payload.groupWithUnassigned,
+            msg.payload.createNewSet,
+          );
           break;
 
         case "PLAY_ACTION_CARD":
@@ -97,11 +120,20 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           break;
 
         case "REARRANGE_PROPERTY":
-          handleRearrangeProperty(ws, msg.payload.cardId, msg.payload.toColor, msg.payload.createNewSet);
+          handleRearrangeProperty(
+            ws,
+            msg.payload.cardId,
+            msg.payload.toColor,
+            msg.payload.createNewSet,
+          );
           break;
 
         case "ASSIGN_RECEIVED_WILDCARD":
-          handleAssignReceivedWildcard(ws, msg.payload.cardId, msg.payload.color);
+          handleAssignReceivedWildcard(
+            ws,
+            msg.payload.cardId,
+            msg.payload.color,
+          );
           break;
 
         case "UPDATE_SETTINGS":
@@ -121,26 +153,49 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           break;
 
         case "DEV_INJECT_CARD":
-          handleDevInjectCard(ws, msg.payload.cardType, msg.payload.targetPlayerId ?? "", msg.payload.colors);
+          handleDevInjectCard(
+            ws,
+            msg.payload.cardType,
+            msg.payload.targetPlayerId ?? "",
+            msg.payload.colors,
+          );
           break;
 
         case "DEV_GIVE_COMPLETE_SET":
-          handleDevGiveCompleteSet(ws, msg.payload.color, msg.payload.targetPlayerId ?? "");
+          handleDevGiveCompleteSet(
+            ws,
+            msg.payload.color,
+            msg.payload.targetPlayerId ?? "",
+          );
           break;
 
         case "DEV_SET_MONEY":
-          handleDevSetMoney(ws, msg.payload.amount, msg.payload.targetPlayerId ?? "");
+          handleDevSetMoney(
+            ws,
+            msg.payload.amount,
+            msg.payload.targetPlayerId ?? "",
+          );
           break;
 
         default:
-          send(ws, { type: "ERROR", payload: { message: "Unknown message type" } });
+          send(ws, {
+            type: "ERROR",
+            payload: { message: "Unknown message type" },
+          });
       }
     } catch (err: any) {
-      send(ws, { type: "ERROR", payload: { message: err.message ?? "Unknown error" } });
+      send(ws, {
+        type: "ERROR",
+        payload: { message: err.message ?? "Unknown error" },
+      });
     }
   }
 
-  function handleJoinRoom(ws: GameWebSocket, roomCode: string, playerName: string): void {
+  function handleJoinRoom(
+    ws: GameWebSocket,
+    roomCode: string,
+    playerName: string,
+  ): void {
     const { game, player } = roomManager.joinRoom(roomCode, playerName);
 
     ws.data.playerId = player.id;
@@ -156,10 +211,14 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       },
     });
 
-    broadcastToRoom(roomCode, {
-      type: "PLAYER_JOINED",
-      payload: { playerName: player.name, playerId: player.id },
-    }, player.id);
+    broadcastToRoom(
+      roomCode,
+      {
+        type: "PLAYER_JOINED",
+        payload: { playerName: player.name, playerId: player.id },
+      },
+      player.id,
+    );
 
     sendStateToAll(roomCode);
   }
@@ -194,13 +253,28 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     checkBotTurn(roomCode);
   }
 
-  function handlePlayCardToProperty(ws: GameWebSocket, cardId: string, asColor: any, groupWithUnassigned?: boolean, createNewSet?: boolean): void {
+  function handlePlayCardToProperty(
+    ws: GameWebSocket,
+    cardId: string,
+    asColor: any,
+    groupWithUnassigned?: boolean,
+    createNewSet?: boolean,
+  ): void {
     const { roomCode, playerId } = ws.data;
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
-    roomManager.getEngine().playCardToProperty(game, playerId, cardId, asColor, groupWithUnassigned, createNewSet);
+    roomManager
+      .getEngine()
+      .playCardToProperty(
+        game,
+        playerId,
+        cardId,
+        asColor,
+        groupWithUnassigned,
+        createNewSet,
+      );
     sendStateToAll(roomCode);
     checkGameEnd(roomCode);
     checkTurnChanged(roomCode, turnPlayerBefore);
@@ -285,22 +359,35 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     checkBotTurn(roomCode);
   }
 
-  function handleRearrangeProperty(ws: GameWebSocket, cardId: string, toColor: any, createNewSet?: boolean): void {
+  function handleRearrangeProperty(
+    ws: GameWebSocket,
+    cardId: string,
+    toColor: any,
+    createNewSet?: boolean,
+  ): void {
     const { roomCode, playerId } = ws.data;
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
-    roomManager.getEngine().rearrangeProperty(game, playerId, cardId, toColor, createNewSet);
+    roomManager
+      .getEngine()
+      .rearrangeProperty(game, playerId, cardId, toColor, createNewSet);
     sendStateToAll(roomCode);
     checkGameEnd(roomCode);
   }
 
-  function handleAssignReceivedWildcard(ws: GameWebSocket, cardId: string, color: any): void {
+  function handleAssignReceivedWildcard(
+    ws: GameWebSocket,
+    cardId: string,
+    color: any,
+  ): void {
     const { roomCode, playerId } = ws.data;
     if (!roomCode || !playerId) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode)!;
-    roomManager.getEngine().assignReceivedWildcard(game, playerId, cardId, color);
+    roomManager
+      .getEngine()
+      .assignReceivedWildcard(game, playerId, cardId, color);
     sendStateToAll(roomCode);
     checkBotTurn(roomCode);
   }
@@ -313,9 +400,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
     const game = roomManager.getRoom(roomCode);
     if (!game) throw new Error("Room not found");
-    if (game.phase !== GamePhase.Waiting) throw new Error("Cannot add bot after game started");
+    if (game.phase !== GamePhase.Waiting)
+      throw new Error("Cannot add bot after game started");
 
-    const usedNames = game.players.map(p => p.name);
+    const usedNames = game.players.map((p) => p.name);
     const botName = getRandomBotName(usedNames);
     const bot = roomManager.getEngine().addPlayer(game, botName);
     bot.isBot = true;
@@ -333,16 +421,23 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
     if (game.turn?.pendingWildcardAssignment) {
       const assignment = game.turn.pendingWildcardAssignment;
-      const bot = game.players.find(p => p.id === assignment.playerId);
+      const bot = game.players.find((p) => p.id === assignment.playerId);
       if (bot?.isBot) {
         // Delay before assigning
-        const baseDelay = Math.max(600, 1800 - (game.players.filter(p => p.connected).length - 2) * 300);
-        await new Promise((resolve) => setTimeout(resolve, baseDelay + Math.random() * 600));
-        
+        const baseDelay = Math.max(
+          600,
+          1800 - (game.players.filter((p) => p.connected).length - 2) * 300,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, baseDelay + Math.random() * 600),
+        );
+
         // Just pick the first available color for now
         const color = assignment.availableColors[0];
         if (color) {
-          roomManager.getEngine().assignReceivedWildcard(game, bot.id, assignment.cardId, color);
+          roomManager
+            .getEngine()
+            .assignReceivedWildcard(game, bot.id, assignment.cardId, color);
           sendStateToAll(roomCode);
           checkGameEnd(roomCode);
           await checkBotTurn(roomCode);
@@ -353,53 +448,55 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
     if (game.turn?.pendingAction) {
       const action = game.turn.pendingAction;
-      const playerCount = game.players.filter(p => p.connected).length;
-      
+      const playerCount = game.players.filter((p) => p.connected).length;
+
       // Find all bots that need to respond
       let botsToRespond = action.targetPlayerIds
-        .filter(pid => !action.respondedPlayerIds.includes(pid))
-        .map(pid => game.players.find(pl => pl.id === pid))
-        .filter(p => p?.isBot);
-      
+        .filter((pid) => !action.respondedPlayerIds.includes(pid))
+        .map((pid) => game.players.find((pl) => pl.id === pid))
+        .filter((p) => p?.isBot);
+
       // If there's a Just Say No chain, either the source or target player needs to respond
       if (action.justSayNoChain && botsToRespond.length === 0) {
         // The targetPlayerId in the chain is the person who just played JSN
         // The person who needs to respond is the OTHER player involved
         const chainTargetId = action.justSayNoChain.targetPlayerId;
-        
+
         // Check if source player is a bot and needs to respond
-        const sourcePlayer = game.players.find(p => p.id === action.sourcePlayerId);
+        const sourcePlayer = game.players.find(
+          (p) => p.id === action.sourcePlayerId,
+        );
         if (sourcePlayer?.isBot && sourcePlayer.id !== chainTargetId) {
           botsToRespond = [sourcePlayer];
         }
-        
+
         // Also check if any target player is a bot and needs to respond
         if (botsToRespond.length === 0) {
           const botTarget = action.targetPlayerIds
-            .map(pid => game.players.find(p => p.id === pid))
-            .find(p => p?.isBot && p.id !== chainTargetId);
+            .map((pid) => game.players.find((p) => p.id === pid))
+            .find((p) => p?.isBot && p.id !== chainTargetId);
           if (botTarget) {
             botsToRespond = [botTarget];
           }
         }
       }
-      
+
       if (botsToRespond.length === 0) return;
-      
+
       // Each bot responds with a delay, and we update state after each one
       for (const bot of botsToRespond) {
         if (!bot) continue;
-        
+
         // Scaled delay: 2 players = 1200-1800ms, 6 players = 600-1200ms
         const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
         const delay = baseDelay + Math.random() * 600;
         await new Promise((resolve) => setTimeout(resolve, delay));
-        
+
         botPlayer.respondToAction(game, bot.id);
         sendStateToAll(roomCode);
         checkGameEnd(roomCode);
       }
-      
+
       // After all bots have responded, check if there are more actions
       await checkBotTurn(roomCode);
       return;
@@ -409,8 +506,9 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!currentPlayer?.isBot) return;
 
     // Initial delay before bot starts thinking
-    const playerCount = game.players.filter(p => p.connected).length;
-    const initialDelay = Math.max(400, 1000 - (playerCount - 2) * 150) + Math.random() * 300;
+    const playerCount = game.players.filter((p) => p.connected).length;
+    const initialDelay =
+      Math.max(400, 1000 - (playerCount - 2) * 150) + Math.random() * 300;
     await new Promise((resolve) => setTimeout(resolve, initialDelay));
 
     // Use async version with state updates between moves
@@ -418,14 +516,17 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       sendStateToAll(roomCode);
       checkGameEnd(roomCode);
     });
-    
+
     sendStateToAll(roomCode);
     checkGameEnd(roomCode);
 
     await checkBotTurn(roomCode);
   }
 
-  function checkTurnChanged(roomCode: string, previousTurnPlayerId?: string): void {
+  function checkTurnChanged(
+    roomCode: string,
+    previousTurnPlayerId?: string,
+  ): void {
     const game = roomManager.getRoom(roomCode);
     if (!game || !game.turn) return;
     if (game.turn.playerId !== previousTurnPlayerId) {
@@ -436,13 +537,17 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     }
   }
 
-  function handleUpdateSettings(ws: GameWebSocket, settings: Partial<any>): void {
+  function handleUpdateSettings(
+    ws: GameWebSocket,
+    settings: Partial<any>,
+  ): void {
     const { roomCode } = ws.data;
     if (!roomCode) throw new Error("Not in a room");
 
     const game = roomManager.getRoom(roomCode);
     if (!game) throw new Error("Room not found");
-    if (game.phase !== GamePhase.Waiting) throw new Error("Cannot change settings after game started");
+    if (game.phase !== GamePhase.Waiting)
+      throw new Error("Cannot change settings after game started");
 
     game.settings = { ...game.settings, ...settings };
     sendStateToAll(roomCode);
@@ -489,7 +594,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       const winner = game.players.find((p) => p.id === game.winner);
       broadcastToRoom(roomCode, {
         type: "GAME_ENDED",
-        payload: { winnerId: game.winner, winnerName: winner?.name ?? "Unknown" },
+        payload: {
+          winnerId: game.winner,
+          winnerName: winner?.name ?? "Unknown",
+        },
       });
     }
   }
@@ -513,7 +621,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   // Developer Tools Handlers
-  function handleDevInjectCard(ws: GameWebSocket, cardType: any, targetPlayerId: string, colors?: any[]): void {
+  function handleDevInjectCard(
+    ws: GameWebSocket,
+    cardType: any,
+    targetPlayerId: string,
+    colors?: any[],
+  ): void {
     const { roomCode } = ws.data;
     if (!roomCode) throw new Error("Not in a game");
 
@@ -522,12 +635,18 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
     const card = devTools.createCard(cardType, { colors });
     devTools.injectCard(game, targetPlayerId, card);
-    
+
     sendStateToAll(roomCode);
-    console.log(`[DevTools] Injected ${cardType} card for player ${targetPlayerId}`);
+    console.log(
+      `[DevTools] Injected ${cardType} card for player ${targetPlayerId}`,
+    );
   }
 
-  function handleDevGiveCompleteSet(ws: GameWebSocket, color: any, targetPlayerId: string): void {
+  function handleDevGiveCompleteSet(
+    ws: GameWebSocket,
+    color: any,
+    targetPlayerId: string,
+  ): void {
     const { roomCode } = ws.data;
     if (!roomCode) throw new Error("Not in a game");
 
@@ -535,10 +654,21 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!game) throw new Error("Room not found");
 
     devTools.giveCompleteSet(game, targetPlayerId, color);
+
+    // Check for win after giving a complete set
+    const player = game.players.find((p) => p.id === targetPlayerId);
+    if (player) {
+      roomManager.getEngine().checkWin(game, player);
+    }
+
     sendStateToAll(roomCode);
   }
 
-  function handleDevSetMoney(ws: GameWebSocket, amount: number, targetPlayerId: string): void {
+  function handleDevSetMoney(
+    ws: GameWebSocket,
+    amount: number,
+    targetPlayerId: string,
+  ): void {
     const { roomCode } = ws.data;
     if (!roomCode) throw new Error("Not in a game");
 
