@@ -8,11 +8,11 @@ export interface ValidationResult {
 
 export function canPlayDealBreaker(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const opponents = gameState.players.filter((p) => p.id !== playerId);
   const hasCompleteSet = opponents.some((p) =>
-    p.properties.some((set) => isSetComplete(set))
+    p.properties.some((set) => isSetComplete(set)),
   );
 
   if (!hasCompleteSet) {
@@ -27,13 +27,11 @@ export function canPlayDealBreaker(
 
 export function canPlaySlyDeal(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const opponents = gameState.players.filter((p) => p.id !== playerId);
   const hasStealableProperty = opponents.some((p) =>
-    p.properties.some(
-      (set) => !isSetComplete(set) && set.cards.length > 0
-    )
+    p.properties.some((set) => !isSetComplete(set) && set.cards.length > 0),
   );
 
   if (!hasStealableProperty) {
@@ -48,7 +46,7 @@ export function canPlaySlyDeal(
 
 export function canPlayForceDeal(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player) {
@@ -56,7 +54,7 @@ export function canPlayForceDeal(
   }
 
   const hasSwappableProperty = player.properties.some(
-    (set) => !isSetComplete(set) && set.cards.length > 0
+    (set) => !isSetComplete(set) && set.cards.length > 0,
   );
 
   if (!hasSwappableProperty) {
@@ -68,9 +66,7 @@ export function canPlayForceDeal(
 
   const opponents = gameState.players.filter((p) => p.id !== playerId);
   const opponentHasSwappable = opponents.some((p) =>
-    p.properties.some(
-      (set) => !isSetComplete(set) && set.cards.length > 0
-    )
+    p.properties.some((set) => !isSetComplete(set) && set.cards.length > 0),
   );
 
   if (!opponentHasSwappable) {
@@ -86,7 +82,7 @@ export function canPlayForceDeal(
 export function canPlayRent(
   gameState: ClientGameState,
   playerId: string,
-  card: Card
+  card: Card,
 ): ValidationResult {
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player) {
@@ -96,7 +92,7 @@ export function canPlayRent(
   // Check if player has at least one property of a valid color
   const validColors = card.colors || [];
   const hasValidProperty = player.properties.some((set) =>
-    validColors.includes(set.color)
+    validColors.includes(set.color),
   );
 
   if (!hasValidProperty) {
@@ -111,7 +107,7 @@ export function canPlayRent(
 
 export function canPlayHouse(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player) {
@@ -123,7 +119,7 @@ export function canPlayHouse(
       isSetComplete(set) &&
       !set.house &&
       set.color !== "railroad" &&
-      set.color !== "utility"
+      set.color !== "utility",
   );
 
   if (!hasCompleteSet) {
@@ -138,7 +134,7 @@ export function canPlayHouse(
 
 export function canPlayHotel(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player) {
@@ -151,7 +147,7 @@ export function canPlayHotel(
       set.house &&
       !set.hotel &&
       set.color !== "railroad" &&
-      set.color !== "utility"
+      set.color !== "utility",
   );
 
   if (!hasCompleteSetWithHouse) {
@@ -166,21 +162,30 @@ export function canPlayHotel(
 
 export function canPlayDoubleTheRent(
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   const player = gameState.players.find((p) => p.id === playerId);
   if (!player || !player.hand) {
     return { valid: false, reason: "Player not found" };
   }
 
-  const hasRentCard = player.hand.some(
-    (card) => card.type === CardType.RentDual || card.type === CardType.RentWild
-  );
-
-  if (!hasRentCard) {
+  if (gameState.turn && gameState.turn.cardsPlayed >= 2) {
     return {
       valid: false,
-      reason: "You need a rent card to use Double the Rent",
+      reason: "You need at least 2 remaining moves to play Double the Rent",
+    };
+  }
+
+  const hasPlayableRentCard = player.hand.some(
+    (card) =>
+      (card.type === CardType.RentDual || card.type === CardType.RentWild) &&
+      canPlayRent(gameState, playerId, card).valid,
+  );
+
+  if (!hasPlayableRentCard) {
+    return {
+      valid: false,
+      reason: "You need a playable rent card to use Double the Rent",
     };
   }
 
@@ -190,7 +195,7 @@ export function canPlayDoubleTheRent(
 export function validateActionCard(
   card: Card,
   gameState: ClientGameState,
-  playerId: string
+  playerId: string,
 ): ValidationResult {
   switch (card.type) {
     case CardType.DealBreaker:

@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface SoundSettings {
   sfxEnabled: boolean;
@@ -12,16 +13,23 @@ interface SoundSettings {
   setMusicVolume: (v: number) => void;
 }
 
-export const useSoundSettings = create<SoundSettings>((set) => ({
-  sfxEnabled: true,
-  musicEnabled: false,
-  sfxVolume: 0.5,
-  musicVolume: 0.2,
-  toggleSfx: () => set((s) => ({ sfxEnabled: !s.sfxEnabled })),
-  toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
-  setSfxVolume: (v) => set({ sfxVolume: v }),
-  setMusicVolume: (v) => set({ musicVolume: v }),
-}));
+export const useSoundSettings = create<SoundSettings>()(
+  persist(
+    (set) => ({
+      sfxEnabled: true,
+      musicEnabled: false,
+      sfxVolume: 0.5,
+      musicVolume: 0.2,
+      toggleSfx: () => set((s) => ({ sfxEnabled: !s.sfxEnabled })),
+      toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
+      setSfxVolume: (v) => set({ sfxVolume: v }),
+      setMusicVolume: (v) => set({ musicVolume: v }),
+    }),
+    {
+      name: "coopoly-sound-settings",
+    },
+  ),
+);
 
 let audioCtx: AudioContext | null = null;
 
@@ -219,7 +227,7 @@ export function stopBackgroundMusic() {
 // --- Hook ---
 
 export function useSoundManager() {
-  const { sfxEnabled, sfxVolume } = useSoundSettings();
+  const { sfxEnabled } = useSoundSettings();
 
   const play = useCallback(
     (effect: SoundEffect) => {
@@ -230,7 +238,7 @@ export function useSoundManager() {
         // AudioContext might not be initialized yet
       }
     },
-    [sfxEnabled, sfxVolume],
+    [sfxEnabled],
   );
 
   return { play };

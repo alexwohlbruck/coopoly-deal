@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { GameEngine } from "./engine/game-engine.ts";
 import { RoomManager } from "./rooms/room-manager.ts";
 import { CardType, PropertyColor } from "./models/types.ts";

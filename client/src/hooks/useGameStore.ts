@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { ClientGameState } from "../types/game";
+import {
+  type ClientGameState,
+  type GameSettings,
+  DEFAULT_SETTINGS as DEFAULT_GAME_SETTINGS,
+} from "../types/game";
 import type { ThemeName } from "../theme/colors";
 
 interface GameStore {
@@ -17,6 +21,7 @@ interface GameStore {
     gamesPlayed: number;
   };
   theme: ThemeName;
+  preferredSettings: GameSettings;
 
   setPlayer: (id: string, name: string) => void;
   setRoomCode: (code: string) => void;
@@ -26,6 +31,7 @@ interface GameStore {
   recordWin: () => void;
   recordLoss: () => void;
   setTheme: (theme: ThemeName) => void;
+  setPreferredSettings: (settings: GameSettings) => void;
   reset: () => void;
 }
 
@@ -45,6 +51,7 @@ export const useGameStore = create<GameStore>()(
         gamesPlayed: 0,
       },
       theme: "classic",
+      preferredSettings: DEFAULT_GAME_SETTINGS,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),
       setRoomCode: (code) => set({ roomCode: code }),
@@ -52,6 +59,7 @@ export const useGameStore = create<GameStore>()(
       setError: (error) => set({ error }),
       setToast: (toast) => set({ toast }),
       setTheme: (theme) => set({ theme }),
+      setPreferredSettings: (settings) => set({ preferredSettings: settings }),
       recordWin: () =>
         set((state) => ({
           sessionStats: {
@@ -82,7 +90,12 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "coopoly-settings",
-      partialize: (state) => ({ theme: state.theme }),
-    }
-  )
+      partialize: (state) => ({
+        theme: state.theme,
+        playerName: state.playerName,
+        preferredSettings: state.preferredSettings,
+        sessionStats: state.sessionStats,
+      }),
+    },
+  ),
 );

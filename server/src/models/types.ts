@@ -43,13 +43,17 @@ export interface GameSettings {
   turnTimer: number;
   allowDuplicateSets: boolean;
   wildcardFlipCountsAsMove: boolean;
+  useSocialistTheme: boolean;
+  botSpeed: "slow" | "normal" | "fast" | "instant";
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
   maxHandSize: 7,
-  turnTimer: 0,
+  turnTimer: 30,
   allowDuplicateSets: true,
   wildcardFlipCountsAsMove: false,
+  useSocialistTheme: false,
+  botSpeed: "normal",
 };
 
 export const SET_SIZE: Record<PropertyColor, number> = {
@@ -160,7 +164,8 @@ export interface TurnState {
   cardsPlayed: number;
   phase: TurnPhase;
   pendingAction: PendingAction | null;
-  pendingWildcardAssignment: PendingWildcardAssignment | null;
+  pendingWildcardAssignments?: PendingWildcardAssignment[];
+  pendingWildcardAssignment: PendingWildcardAssignment | null; // Keep for backward compatibility, but we'll use the array
   rentMultiplier: number; // Tracks active "Double the Rent" multiplier (1 = normal, 2 = doubled, 4 = double-doubled)
   expiresAt: number | null; // Timestamp when the current turn/action expires
   pausedTimeLeft: number | null; // How much time was left when paused
@@ -178,6 +183,7 @@ export interface GameState {
   createdAt: number;
   lastActivityAt: number;
   settings: GameSettings;
+  gameEndedBroadcasted?: boolean;
 }
 
 export type ClientGameState = Omit<GameState, "deck" | "players"> & {
@@ -221,6 +227,7 @@ export function toClientState(
 
 export type ClientMessage =
   | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
+  | { type: "REMOVE_PLAYER"; payload: { playerIdToRemove: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }
   | {

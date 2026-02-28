@@ -109,6 +109,7 @@ export class GameEngine {
     state.phase = GamePhase.Playing;
     state.turn = null;
     state.winner = null;
+    state.gameEndedBroadcasted = false;
 
     for (const player of state.players) {
       player.hand = [];
@@ -144,6 +145,7 @@ export class GameEngine {
       cardsPlayed: 0,
       phase: TurnPhase.Play,
       pendingAction: null,
+      pendingWildcardAssignments: [],
       pendingWildcardAssignment: null,
       rentMultiplier: 1,
       expiresAt:
@@ -213,8 +215,7 @@ export class GameEngine {
             const target = this.getPlayer(state, targetId);
 
             if (
-              action.type === "rentDual" ||
-              action.type === "rentWild" ||
+              action.type === "rent" ||
               action.type === "debtCollector" ||
               action.type === "birthday"
             ) {
@@ -617,7 +618,10 @@ export class GameEngine {
     };
     state.turn!.phase = TurnPhase.ActionPending;
     if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
-      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.pausedTimeLeft = Math.max(
+        0,
+        state.turn!.expiresAt - Date.now(),
+      );
       state.turn!.expiresAt = null;
     }
 
@@ -651,7 +655,10 @@ export class GameEngine {
     };
     state.turn!.phase = TurnPhase.ActionPending;
     if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
-      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.pausedTimeLeft = Math.max(
+        0,
+        state.turn!.expiresAt - Date.now(),
+      );
       state.turn!.expiresAt = null;
     }
 
@@ -822,14 +829,19 @@ export class GameEngine {
         card.type === CardType.Property ||
         card.type === CardType.PropertyWildcard
       ) {
-        // Multi-color wildcards should go to Unassigned, not auto-assign to brown, UNLESS Rainbow is disabled
         if (
           card.type === CardType.PropertyWildcard &&
           card.colors &&
-          card.colors.length > 1 &&
-          !state.settings.wildcardFlipCountsAsMove
+          card.colors.length > 1
         ) {
-          this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
+          if (
+            card.colors.length > 2 &&
+            !state.settings.wildcardFlipCountsAsMove
+          ) {
+            this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
+          } else {
+            this.queueWildcardAssignment(state, source.id, card);
+          }
         } else {
           const color = card.colors?.[0] ?? PropertyColor.Brown;
           this.addPropertyToPlayer(source, card, color);
@@ -872,23 +884,7 @@ export class GameEngine {
           card.colors &&
           card.colors.length > 1
         ) {
-          // Place in unassigned temporarily
-          this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
-          // Create pending assignment
-          turn.pendingWildcardAssignment = {
-            playerId: source.id,
-            cardId: card.id,
-            availableColors: this.getAvailableColorsForWildcard(
-              state,
-              source,
-              card,
-            ),
-          };
-          turn.phase = TurnPhase.ActionPending;
-          if (state.settings.turnTimer > 0 && turn.expiresAt) {
-            turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
-            turn.expiresAt = null;
-          }
+          this.queueWildcardAssignment(state, source.id, card);
         } else {
           // Regular property or single-color wildcard
           const color = card.colors?.[0] ?? PropertyColor.Brown;
@@ -917,50 +913,22 @@ export class GameEngine {
           targetCard.colors &&
           targetCard.colors.length > 1
         ) {
-          // Source player gets a wildcard - needs to assign color
-          this.addPropertyToPlayer(
-            source,
-            targetCard,
-            PropertyColor.Unassigned,
-          );
-          turn.pendingWildcardAssignment = {
-            playerId: source.id,
-            cardId: targetCard.id,
-            availableColors: this.getAvailableColorsForWildcard(
-              state,
-              source,
-              targetCard,
-            ),
-          };
-          turn.phase = TurnPhase.ActionPending;
-          if (state.settings.turnTimer > 0 && turn.expiresAt) {
-            turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
-            turn.expiresAt = null;
-          }
-          // Target gets source card normally
-          const sourceColor = sourceCard.colors?.[0] ?? PropertyColor.Brown;
-          this.addPropertyToPlayer(target, sourceCard, sourceColor);
-        } else if (
+          this.queueWildcardAssignment(state, source.id, targetCard);
+        } else {
+          const targetColor = targetCard.colors?.[0] ?? PropertyColor.Brown;
+          this.addPropertyToPlayer(source, targetCard, targetColor);
+        }
+
+        // Handle source receiving target's card (might be wildcard)
+        if (
           sourceCard.type === CardType.PropertyWildcard &&
           sourceCard.colors &&
           sourceCard.colors.length > 1
         ) {
-          // Target player gets a wildcard - needs to assign color
-          const targetCardColor = state.settings.wildcardFlipCountsAsMove
-            ? (sourceCard.colors?.[0] ?? PropertyColor.Brown)
-            : PropertyColor.Unassigned;
-          this.addPropertyToPlayer(target, sourceCard, targetCardColor);
-          // For now, we'll handle this immediately for the target
-          // In a more complete implementation, we'd queue multiple assignments
-          const targetColor = targetCard.colors?.[0] ?? PropertyColor.Brown;
-          this.addPropertyToPlayer(source, targetCard, targetColor);
-          // Note: Target's wildcard assignment happens client-side via REARRANGE_PROPERTY
+          this.queueWildcardAssignment(state, target.id, sourceCard);
         } else {
-          // Neither is a multi-color wildcard
           const sourceColor = sourceCard.colors?.[0] ?? PropertyColor.Brown;
-          const targetColor = targetCard.colors?.[0] ?? PropertyColor.Brown;
           this.addPropertyToPlayer(target, sourceCard, sourceColor);
-          this.addPropertyToPlayer(source, targetCard, targetColor);
         }
 
         // Check for wins
@@ -1013,6 +981,38 @@ export class GameEngine {
         }
         this.tryAutoEndTurn(state);
       }
+    }
+  }
+
+  private queueWildcardAssignment(
+    state: GameState,
+    playerId: string,
+    card: Card,
+  ): void {
+    const turn = this.getTurn(state);
+    const player = this.getPlayer(state, playerId);
+
+    // Place in unassigned temporarily
+    this.addPropertyToPlayer(player, card, PropertyColor.Unassigned);
+
+    const assignment = {
+      playerId,
+      cardId: card.id,
+      availableColors: this.getAvailableColorsForWildcard(state, player, card),
+    };
+
+    if (!turn.pendingWildcardAssignments) {
+      turn.pendingWildcardAssignments = [];
+    }
+    turn.pendingWildcardAssignments.push(assignment);
+
+    // Set the legacy property to the first one for backwards compatibility
+    turn.pendingWildcardAssignment = turn.pendingWildcardAssignments[0]!;
+
+    turn.phase = TurnPhase.ActionPending;
+    if (state.settings.turnTimer > 0 && turn.expiresAt) {
+      turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
+      turn.expiresAt = null;
     }
   }
 
@@ -1085,16 +1085,23 @@ export class GameEngine {
     const turn = this.getTurn(state);
 
     // Verify there's a pending assignment for this player and card
-    if (!turn.pendingWildcardAssignment) {
+    if (
+      !turn.pendingWildcardAssignments ||
+      turn.pendingWildcardAssignments.length === 0
+    ) {
       throw new Error("No pending wildcard assignment");
     }
-    if (turn.pendingWildcardAssignment.playerId !== playerId) {
-      throw new Error("Not your wildcard to assign");
+
+    const assignmentIndex = turn.pendingWildcardAssignments.findIndex(
+      (a) => a.playerId === playerId && a.cardId === cardId,
+    );
+
+    if (assignmentIndex === -1) {
+      throw new Error("Not your wildcard to assign or wrong card");
     }
-    if (turn.pendingWildcardAssignment.cardId !== cardId) {
-      throw new Error("Wrong card");
-    }
-    if (!turn.pendingWildcardAssignment.availableColors.includes(color)) {
+
+    const assignment = turn.pendingWildcardAssignments[assignmentIndex]!;
+    if (!assignment.availableColors.includes(color)) {
       throw new Error("Invalid color for this wildcard");
     }
 
@@ -1104,11 +1111,14 @@ export class GameEngine {
     // Assign the wildcard to the selected color
     this.addPropertyToPlayer(player, card, color);
 
-    // Clear pending assignment
-    turn.pendingWildcardAssignment = null;
+    // Remove this assignment
+    turn.pendingWildcardAssignments.splice(assignmentIndex, 1);
 
-    // Resume normal turn flow
-    if (!turn.pendingAction) {
+    // Update legacy property
+    turn.pendingWildcardAssignment = turn.pendingWildcardAssignments[0] ?? null;
+
+    // Resume normal turn flow if no more assignments and no pending actions
+    if (turn.pendingWildcardAssignments.length === 0 && !turn.pendingAction) {
       turn.phase = TurnPhase.Play;
       if (state.settings.turnTimer > 0 && turn.pausedTimeLeft !== null) {
         turn.expiresAt = Date.now() + turn.pausedTimeLeft;
@@ -1139,8 +1149,9 @@ export class GameEngine {
       (c) =>
         c !== PropertyColor.Unassigned &&
         player.properties.some(
-          (s) => s.color === c && s.cards.length > 0 && s.cards.length < SET_SIZE[c]
-        )
+          (s) =>
+            s.color === c && s.cards.length > 0 && s.cards.length < SET_SIZE[c],
+        ),
     );
 
     if (!state.settings.wildcardFlipCountsAsMove) {
@@ -1224,7 +1235,10 @@ export class GameEngine {
     state.turn!.pendingAction = action;
     state.turn!.phase = TurnPhase.ActionPending;
     if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
-      state.turn!.pausedTimeLeft = Math.max(0, state.turn!.expiresAt - Date.now());
+      state.turn!.pausedTimeLeft = Math.max(
+        0,
+        state.turn!.expiresAt - Date.now(),
+      );
       state.turn!.expiresAt = null;
     }
   }

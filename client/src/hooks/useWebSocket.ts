@@ -6,7 +6,11 @@ type MessageHandler = (message: ServerMessage) => void;
 export function useWebSocket(onMessage: MessageHandler) {
   const wsRef = useRef<WebSocket | null>(null);
   const handlersRef = useRef<MessageHandler>(onMessage);
-  handlersRef.current = onMessage;
+  useEffect(() => {
+    handlersRef.current = onMessage;
+  }, [onMessage]);
+
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -24,11 +28,15 @@ export function useWebSocket(onMessage: MessageHandler) {
     };
 
     ws.onclose = () => {
-      setTimeout(() => connect(), 2000);
+      setTimeout(() => connectRef.current(), 2000);
     };
 
     wsRef.current = ws;
   }, []);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   const send = useCallback((data: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

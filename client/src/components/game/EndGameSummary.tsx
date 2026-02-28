@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import type { ClientPlayer, GameSettings } from "../../types/game";
 import { isSetComplete } from "../../types/game";
-import { GameCard } from "../cards/GameCard";
 import { PlayerArea } from "./PlayerArea";
 
 interface EndGameSummaryProps {
@@ -87,6 +86,26 @@ export function EndGameSummary({
               </div>
             </div>
           )}
+
+          {/* Action buttons */}
+          <div className="flex gap-4 justify-center mt-6">
+            {onRematch && (
+              <button
+                onClick={onRematch}
+                className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors text-lg shadow-lg"
+              >
+                Rematch
+              </button>
+            )}
+            {onGoHome && (
+              <button
+                onClick={onGoHome}
+                className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-lg shadow-lg"
+              >
+                Leave
+              </button>
+            )}
+          </div>
         </motion.div>
 
         {/* Final standings */}
@@ -150,73 +169,18 @@ export function EndGameSummary({
                   </div>
                 </div>
 
-                {/* Properties */}
-                {player.properties.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-emerald-300 text-sm font-semibold mb-2">
-                      Properties
-                    </h4>
-                    <div className="bg-black/30 rounded-lg p-3">
-                      <PlayerArea
-                        player={player}
-                        isCurrentTurn={false}
-                        isYou={player.id === currentPlayerId}
-                        settings={settings}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Bank */}
-                {player.bank.length > 0 && (
-                  <div className="mb-4">
-                    <h4 className="text-emerald-300 text-sm font-semibold mb-2">
-                      Bank (${bankTotal}M)
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {player.bank.map((card) => (
-                        <GameCard key={card.id} card={card} small />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Hand (cards left) */}
-                {player.hand && player.hand.length > 0 && (
-                  <div>
-                    <h4 className="text-emerald-300 text-sm font-semibold mb-2">
-                      Hand ({player.hand.length} cards)
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {player.hand.map((card) => (
-                        <GameCard key={card.id} card={card} small />
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Properties, Bank, Hand */}
+                <div className="bg-black/30 rounded-lg p-3">
+                  <PlayerArea
+                    player={player}
+                    isCurrentTurn={false}
+                    isYou={player.id === currentPlayerId}
+                    settings={settings}
+                  />
+                </div>
               </motion.div>
             );
           })}
-        </div>
-
-        {/* Action buttons */}
-        <div className="flex gap-4 justify-center pb-8">
-          {onRematch && (
-            <button
-              onClick={onRematch}
-              className="px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors text-lg"
-            >
-              Rematch
-            </button>
-          )}
-          {onGoHome && (
-            <button
-              onClick={onGoHome}
-              className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors text-lg"
-            >
-              Leave
-            </button>
-          )}
         </div>
       </div>
     </div>

@@ -1,20 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Settings } from "lucide-react";
-
-export interface GameSettings {
-  maxHandSize: number;
-  turnTimer: number;
-  allowDuplicateSets: boolean;
-  wildcardFlipCountsAsMove: boolean;
-}
-
-export const DEFAULT_GAME_SETTINGS: GameSettings = {
-  maxHandSize: 7,
-  turnTimer: 0,
-  allowDuplicateSets: true,
-  wildcardFlipCountsAsMove: false,
-};
+import { type GameSettings } from "../../types/game";
 
 interface GameSettingsPanelProps {
   isHost: boolean;
@@ -111,7 +98,7 @@ export function GameSettingsPanel({
                     />
                   </label>
                 </div>
-                
+
                 {settings.turnTimer > 0 && (
                   <div className="flex items-center gap-4">
                     <input
@@ -179,6 +166,52 @@ export function GameSettingsPanel({
                     </p>
                   </div>
                 </label>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.useSocialistTheme}
+                    onChange={(e) =>
+                      updateSetting("useSocialistTheme", e.target.checked)
+                    }
+                    disabled={!isHost}
+                    className="w-4 h-4 accent-emerald-500 disabled:opacity-50"
+                  />
+                  <div>
+                    <span className="text-white font-medium">
+                      Socialist Theme
+                    </span>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Use alternate card names and quirky dialogs
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-emerald-200 text-sm font-medium mb-2">
+                  Bot Speed
+                </label>
+                <div className="flex gap-2">
+                  {(["slow", "normal", "fast", "instant"] as const).map(
+                    (speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => updateSetting("botSpeed", speed)}
+                        disabled={!isHost}
+                        className={`flex-1 py-1.5 px-2 rounded text-xs font-medium capitalize transition-colors ${
+                          settings.botSpeed === speed
+                            ? "bg-emerald-500 text-white"
+                            : "bg-white/10 text-gray-300 hover:bg-white/20"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        {speed}
+                      </button>
+                    ),
+                  )}
+                </div>
               </div>
 
               {!isHost && (

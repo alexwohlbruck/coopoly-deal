@@ -5,12 +5,12 @@ import {
   type PropertyColor,
   CardType,
   PropertyColor as PC,
-  PROPERTY_COLOR_LABEL,
+  getPropertyColorLabel,
   PROPERTY_COLOR_HEX,
   isSetComplete,
   SET_SIZE,
 } from "../../types/game";
-import { type GameSettings } from "../lobby/GameSettingsPanel";
+import { type GameSettings } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { calculateRent } from "../../utils/rent-calculator";
 import { BottomSheet } from "../common/BottomSheet";
@@ -21,6 +21,7 @@ interface CardActionDialogProps {
   opponents: ClientPlayer[];
   settings: GameSettings;
   rentMultiplier?: number;
+  cardsPlayed: number;
   onClose: () => void;
   onPlayToProperty: (
     cardId: string,
@@ -37,6 +38,7 @@ export function CardActionDialog({
   opponents,
   settings,
   rentMultiplier = 1,
+  cardsPlayed,
   onClose,
   onPlayToProperty,
   onPlayAction,
@@ -53,6 +55,7 @@ export function CardActionDialog({
     | "selectTargetCard"
     | "selectMyCard"
     | "selectTargetSet"
+    | "promptDoubleRent"
   >("choose");
   const [selectedColor, setSelectedColor] = useState<PropertyColor | null>(
     null,
@@ -60,6 +63,10 @@ export function CardActionDialog({
   const [selectedTarget, setSelectedTarget] = useState<ClientPlayer | null>(
     null,
   );
+  const [pendingRentAction, setPendingRentAction] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(
     null,
   );
@@ -289,19 +296,39 @@ export function CardActionDialog({
 
     setSelectedColor(color);
     if (card.type === CardType.RentDual) {
-      markDispatchedAndClose();
-      onPlayAction({ action: "rentDual", cardId: card.id, color });
-      onClose();
+      const doubleRentCard = player.hand?.find(
+        (c) => c.type === CardType.DoubleTheRent,
+      );
+      const action = { action: "rentDual", cardId: card.id, color };
+
+      if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
+        setPendingRentAction(action);
+        setStep("promptDoubleRent");
+      } else {
+        markDispatchedAndClose();
+        onPlayAction(action);
+        onClose();
+      }
     } else if (card.type === CardType.RentWild) {
       if (opponents.length === 1) {
-        markDispatchedAndClose();
-        onPlayAction({
+        const doubleRentCard = player.hand?.find(
+          (c) => c.type === CardType.DoubleTheRent,
+        );
+        const action = {
           action: "rentWild",
           cardId: card.id,
           color,
           targetPlayerId: opponents[0].id,
-        });
-        onClose();
+        };
+
+        if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
+          setPendingRentAction(action);
+          setStep("promptDoubleRent");
+        } else {
+          markDispatchedAndClose();
+          onPlayAction(action);
+          onClose();
+        }
         return;
       }
       setStep("selectTarget");
@@ -329,14 +356,24 @@ export function CardActionDialog({
       });
       onClose();
     } else if (card.type === CardType.RentWild && selectedColor) {
-      markDispatchedAndClose();
-      onPlayAction({
+      const doubleRentCard = player.hand?.find(
+        (c) => c.type === CardType.DoubleTheRent,
+      );
+      const action = {
         action: "rentWild",
         cardId: card.id,
         color: selectedColor,
         targetPlayerId: target.id,
-      });
-      onClose();
+      };
+
+      if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
+        setPendingRentAction(action);
+        setStep("promptDoubleRent");
+      } else {
+        markDispatchedAndClose();
+        onPlayAction(action);
+        onClose();
+      }
     } else if (card.type === CardType.SlyDeal) {
       const stealable = target.properties
         .filter((s) => !isSetComplete(s))
@@ -497,7 +534,10 @@ export function CardActionDialog({
                     (c) =>
                       c !== PC.Unassigned &&
                       player.properties.some(
-                        (s) => s.color === c && s.cards.length > 0 && s.cards.length < SET_SIZE[c],
+                        (s) =>
+                          s.color === c &&
+                          s.cards.length > 0 &&
+                          s.cards.length < SET_SIZE[c],
                       ),
                   );
                   return valid.length > 0 || !settings.wildcardFlipCountsAsMove
@@ -573,11 +613,12 @@ export function CardActionDialog({
       isOpen={true}
       onClose={onClose}
       title="Play Card"
-      height="h-96"
+      height="h-auto"
       footer={footerButtons}
+      playSound={true}
     >
       <div className="flex justify-center mb-3">
-        <GameCard card={card} />
+        <GameCard card={card} useSocialistTheme={settings.useSocialistTheme} />
       </div>
 
       {step === "choose" && (
@@ -627,7 +668,9 @@ export function CardActionDialog({
                   className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center"
                   style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
                 >
-                  <span>{PROPERTY_COLOR_LABEL[color]}</span>
+                  <span>
+                    {getPropertyColorLabel(color, settings.useSocialistTheme)}
+                  </span>
                   {finalRent !== null && (
                     <span className="text-xs mt-1 opacity-90">
                       ${finalRent}M rent
@@ -654,8 +697,9 @@ export function CardActionDialog({
                   }}
                   className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-white/20 shadow-sm"
                   style={{
-                    background: "linear-gradient(to right, #8B4513, #87CEEB, #FF69B4, #FFA500, #FF0000, #FFFF00, #008000, #00008B, #000000, #A0D6B4)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.8)"
+                    background:
+                      "linear-gradient(to right, #8B4513, #87CEEB, #FF69B4, #FFA500, #FF0000, #FFFF00, #008000, #00008B, #000000, #A0D6B4)",
+                    textShadow: "0 1px 2px rgba(0,0,0,0.8)",
                   }}
                 >
                   I'll decide later
@@ -687,7 +731,7 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select a property from {selectedTarget.name}:
           </p>
-          <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
+          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
             {selectedTarget.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
@@ -696,6 +740,7 @@ export function CardActionDialog({
                   key={c.id}
                   card={c}
                   small
+                  useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectTargetCard(c.id)}
                 />
               ))}
@@ -708,7 +753,7 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select your property to swap:
           </p>
-          <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto">
+          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
             {player.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
@@ -717,9 +762,53 @@ export function CardActionDialog({
                   key={c.id}
                   card={c}
                   small
+                  useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectMyCard(c.id)}
                 />
               ))}
+          </div>
+        </div>
+      )}
+
+      {step === "promptDoubleRent" && pendingRentAction && (
+        <div className="flex flex-col items-center text-center space-y-4 px-4">
+          <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg mb-2">
+            <span className="text-3xl">🎯</span>
+          </div>
+          <h3 className="text-xl font-bold text-white">Double the Rent?</h3>
+          <p className="text-gray-300 text-sm">
+            You have a Double the Rent card in your hand. Would you like to play
+            it first?
+          </p>
+          <div className="flex gap-3 w-full mt-4">
+            <button
+              onClick={() => {
+                const doubleRentCard = player.hand?.find(
+                  (c) => c.type === CardType.DoubleTheRent,
+                );
+                if (doubleRentCard) {
+                  markDispatchedAndClose();
+                  onPlayAction({
+                    action: "doubleTheRent",
+                    cardId: doubleRentCard.id,
+                  });
+                  onClose();
+                }
+              }}
+              className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl transition-colors"
+            >
+              Yes, Double It!
+            </button>
+            <button
+              onClick={() => {
+                markDispatchedAndClose();
+                onPlayAction(pendingRentAction);
+                onClose();
+              }}
+              className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors"
+            >
+              No, Just Play Rent
+            </button>
           </div>
         </div>
       )}
@@ -737,7 +826,7 @@ export function CardActionDialog({
                 className="py-2 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                 style={{ backgroundColor: PROPERTY_COLOR_HEX[set.color] }}
               >
-                {PROPERTY_COLOR_LABEL[set.color]}
+                {getPropertyColorLabel(set.color, settings.useSocialistTheme)}
               </button>
             ))}
           </div>

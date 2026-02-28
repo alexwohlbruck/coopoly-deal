@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
+import { useSoundManager } from "../../hooks/useSoundManager";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface BottomSheetProps {
   footer?: ReactNode;
   height?: string; // e.g., "h-64", "h-80"
   maxWidth?: string; // e.g., "max-w-md", "max-w-lg"
+  playSound?: boolean;
 }
 
 export function BottomSheet({
@@ -20,20 +23,28 @@ export function BottomSheet({
   footer,
   height = "h-80",
   maxWidth = "max-w-lg",
+  playSound = false,
 }: BottomSheetProps) {
+  const { play } = useSoundManager();
+
+  useEffect(() => {
+    if (isOpen && playSound) {
+      play("buttonClick"); // Or a specific pop sound
+    }
+  }, [isOpen, playSound, play]);
+
   return (
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - non-modal, allows interaction underneath */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 z-[100]"
-            onClick={onClose}
+            className="fixed inset-0 bg-black/20 z-[100] pointer-events-none"
           />
-          
+
           {/* Bottom Sheet */}
           <motion.div
             initial={{ y: "100%" }}
@@ -54,11 +65,9 @@ export function BottomSheet({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            
+
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 py-3">
-              {children}
-            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3">{children}</div>
 
             {/* Footer */}
             {footer && (

@@ -32,10 +32,19 @@ export class BotPlayer {
    * 4 players: 500-900ms
    * 5-6 players: 400-800ms
    */
-  private getDelayForPlayerCount(playerCount: number): number {
+  private getDelayForPlayerCount(
+    playerCount: number,
+    botSpeed: "slow" | "normal" | "fast" | "instant" = "normal",
+  ): number {
+    if (botSpeed === "instant") return 0;
+
     const baseDelay = Math.max(400, 1200 - (playerCount - 2) * 200);
     const variance = 400;
-    return baseDelay + Math.random() * variance;
+    const delay = baseDelay + Math.random() * variance;
+
+    if (botSpeed === "slow") return delay * 2;
+    if (botSpeed === "fast") return delay * 0.5;
+    return delay;
   }
 
   async playTurnAsync(
@@ -68,9 +77,13 @@ export class BotPlayer {
         // Notify state change and add delay between moves
         if (onStateChange) onStateChange();
         if (plays < maxPlays) {
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.getDelayForPlayerCount(playerCount)),
+          const delay = this.getDelayForPlayerCount(
+            playerCount,
+            state.settings?.botSpeed,
           );
+          if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
         }
       } catch {
         break;
@@ -87,9 +100,13 @@ export class BotPlayer {
         try {
           this.engine.discardCards(state, botPlayerId, [worst.id]);
           if (onStateChange) onStateChange();
-          await new Promise((resolve) =>
-            setTimeout(resolve, this.getDelayForPlayerCount(playerCount)),
+          const delay = this.getDelayForPlayerCount(
+            playerCount,
+            state.settings?.botSpeed,
           );
+          if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
         } catch {
           break;
         }

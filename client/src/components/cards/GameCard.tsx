@@ -2,9 +2,10 @@ import { motion } from "framer-motion";
 import {
   type Card,
   CardType,
-  CARD_TYPE_LABEL,
+  getCardTypeLabel,
   PROPERTY_COLOR_HEX,
-  PROPERTY_COLOR_LABEL,
+  getPropertyColorLabel,
+  getPropertyName,
   RENT_VALUES,
   SET_SIZE,
 } from "../../types/game";
@@ -18,6 +19,7 @@ interface GameCardProps {
   orientation?: "top" | "bottom"; // For two-color wildcards, which color is on top
   disableHover?: boolean; // Disable hover animation when card is scaled
   scale?: number; // Scale factor (0-1) to shrink the card
+  useSocialistTheme?: boolean;
 }
 
 const ACTION_COLORS: Partial<Record<CardType, string>> = {
@@ -82,7 +84,15 @@ function ValueBadge({
   );
 }
 
-function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
+function PropertyCardContent({
+  card,
+  small,
+  useSocialistTheme = false,
+}: {
+  card: Card;
+  small?: boolean;
+  useSocialistTheme?: boolean;
+}) {
   const color = card.colors?.[0];
   const bgColor = color ? PROPERTY_COLOR_HEX[color] : "#888";
   const rents = color ? RENT_VALUES[color] : [];
@@ -100,34 +110,38 @@ function PropertyCardContent({ card, small }: { card: Card; small?: boolean }) {
         <p
           className={`text-white font-black text-center leading-tight ${small ? "text-[7px]" : "text-[10px]"} drop-shadow-md`}
         >
-          {card.name ?? PROPERTY_COLOR_LABEL[color!]}
+          {card.name ? getPropertyName(card.name, useSocialistTheme) : (color ? getPropertyColorLabel(color, useSocialistTheme) : "")}
         </p>
       </div>
 
       {/* Rent table */}
-      {!small && (
-        <div className="flex-1 px-2 py-1.5 bg-white">
-          <div className="bg-gray-50 rounded px-1.5 py-1 border border-gray-200">
-            <p className="text-[7px] text-gray-600 text-center mb-1 font-bold uppercase tracking-wide">
-              Rent
-            </p>
-            <div className="space-y-0.5">
-              {rents.map((rent, i) => (
-                <div
-                  key={i}
-                  className="flex justify-between items-center text-[8px] px-1"
-                >
-                  <span className="text-gray-700 font-semibold">
-                    {i + 1}
-                    {i + 1 === setSize ? " ★" : ""}
-                  </span>
-                  <span className="font-black text-gray-900">${rent}M</span>
-                </div>
-              ))}
-            </div>
+      <div
+        className={`flex-1 ${small ? "px-1 py-1" : "px-2 py-1.5"} bg-white flex flex-col`}
+      >
+        <div
+          className={`flex-1 bg-gray-50 rounded ${small ? "px-1 py-0.5" : "px-1.5 py-1"} border border-gray-200 flex flex-col justify-center`}
+        >
+          <p
+            className={`${small ? "text-[5px] mb-0.5" : "text-[7px] mb-1"} text-gray-600 text-center font-bold uppercase tracking-wide`}
+          >
+            Rent
+          </p>
+          <div className="space-y-0.5">
+            {rents.map((rent, i) => (
+              <div
+                key={i}
+                className={`flex justify-between items-center ${small ? "text-[6px]" : "text-[8px]"} px-1`}
+              >
+                <span className="text-gray-700 font-semibold">
+                  {i + 1}
+                  {i + 1 === setSize ? " ★" : ""}
+                </span>
+                <span className="font-black text-gray-900">${rent}M</span>
+              </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
     </>
   );
 }
@@ -136,10 +150,12 @@ function WildcardPropertyContent({
   card,
   small,
   orientation,
+  useSocialistTheme = false,
 }: {
   card: Card;
   small?: boolean;
   orientation?: "top" | "bottom";
+  useSocialistTheme?: boolean;
 }) {
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
@@ -172,12 +188,16 @@ function WildcardPropertyContent({
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
               <p
                 className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{ 
+                style={{
                   color: PROPERTY_COLOR_HEX[colors[0]],
-                  transform: orientation === "bottom" ? "rotate(180deg)" : undefined
+                  transform:
+                    orientation === "bottom" ? "rotate(180deg)" : undefined,
                 }}
               >
-                {PROPERTY_COLOR_LABEL[colors[0]].toUpperCase()}
+                {getPropertyColorLabel(
+                  colors[0],
+                  useSocialistTheme,
+                ).toUpperCase()}
               </p>
             </div>
           </div>
@@ -200,12 +220,16 @@ function WildcardPropertyContent({
             <div className="bg-white/90 px-2 py-0.5 rounded shadow">
               <p
                 className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{ 
+                style={{
                   color: PROPERTY_COLOR_HEX[colors[1]],
-                  transform: orientation === "bottom" ? "rotate(180deg)" : undefined
+                  transform:
+                    orientation === "bottom" ? "rotate(180deg)" : undefined,
                 }}
               >
-                {PROPERTY_COLOR_LABEL[colors[1]].toUpperCase()}
+                {getPropertyColorLabel(
+                  colors[1],
+                  useSocialistTheme,
+                ).toUpperCase()}
               </p>
             </div>
           </div>
@@ -218,16 +242,18 @@ function WildcardPropertyContent({
           />
           <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
             <div
-              className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-lg border-4 border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}
+              className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-lg border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}
             >
               <p
-                className={`font-black text-center text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase leading-tight px-1`}
+                className={`font-black text-center text-gray-700 ${small ? "text-[5px]" : "text-[8px]"} uppercase leading-tight px-1`}
               >
                 Property Wild Card
               </p>
             </div>
-            {isMulti && !small && (
-              <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+            {isMulti && (
+              <p
+                className={`${small ? "text-[6px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+              >
                 Any Color
               </p>
             )}
@@ -283,16 +309,24 @@ function MoneyCardContent({ card, small }: { card: Card; small?: boolean }) {
           ${card.value}M
         </p>
       </div>
-      {!small && (
-        <p className="text-[8px] text-white font-bold uppercase tracking-wider mt-2 drop-shadow">
-          Money
-        </p>
-      )}
+      <p
+        className={`${small ? "text-[6px] mt-1" : "text-[8px] mt-2"} text-white font-bold uppercase tracking-wider drop-shadow`}
+      >
+        Money
+      </p>
     </div>
   );
 }
 
-function ActionCardContent({ card, small }: { card: Card; small?: boolean }) {
+function ActionCardContent({
+  card,
+  small,
+  useSocialistTheme = false,
+}: {
+  card: Card;
+  small?: boolean;
+  useSocialistTheme?: boolean;
+}) {
   const color = ACTION_COLORS[card.type] ?? "#6B7280";
   const subtitle = getActionSubtitle(card.type);
 
@@ -309,18 +343,20 @@ function ActionCardContent({ card, small }: { card: Card; small?: boolean }) {
       {/* Card content */}
       <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
         <div
-          className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-full flex items-center justify-center border-4 shadow-md bg-white`}
+          className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-full flex items-center justify-center shadow-md bg-white`}
           style={{ borderColor: color }}
         >
           <p
-            className={`font-black text-center leading-tight ${small ? "text-[6px]" : "text-[8px]"} uppercase px-1`}
+            className={`font-black text-center leading-tight ${small ? "text-[5px]" : "text-[8px]"} uppercase px-1`}
             style={{ color }}
           >
-            {CARD_TYPE_LABEL[card.type]}
+            {getCardTypeLabel(card.type, useSocialistTheme)}
           </p>
         </div>
-        {subtitle && !small && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+        {subtitle && (
+          <p
+            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+          >
             {subtitle}
           </p>
         )}
@@ -329,7 +365,15 @@ function ActionCardContent({ card, small }: { card: Card; small?: boolean }) {
   );
 }
 
-function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
+function RentCardContent({
+  card,
+  small,
+  useSocialistTheme = false,
+}: {
+  card: Card;
+  small?: boolean;
+  useSocialistTheme?: boolean;
+}) {
   const isWild = card.type === CardType.RentWild;
   const colors = card.colors ?? [];
 
@@ -360,23 +404,27 @@ function RentCardContent({ card, small }: { card: Card; small?: boolean }) {
       {/* Card content */}
       <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
         <div
-          className={`${small ? "w-11 h-11" : "w-16 h-16"} rounded-full flex items-center justify-center border-4 border-white shadow-lg`}
+          className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-full flex items-center justify-center border-white shadow-lg`}
           style={circleStyle}
         >
           <p
-            className={`font-black text-white text-center ${small ? "text-[8px]" : "text-sm"} drop-shadow-md`}
+            className={`font-black text-white text-center ${small ? "text-[6px]" : "text-sm"} drop-shadow-md`}
           >
-            RENT
+            {useSocialistTheme ? "LEVY" : "RENT"}
           </p>
         </div>
-        {!small && !isWild && colors.length === 2 && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
-            {PROPERTY_COLOR_LABEL[colors[0]]} /{" "}
-            {PROPERTY_COLOR_LABEL[colors[1]]}
+        {!isWild && colors.length === 2 && (
+          <p
+            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+          >
+            {getPropertyColorLabel(colors[0], useSocialistTheme)} /{" "}
+            {getPropertyColorLabel(colors[1], useSocialistTheme)}
           </p>
         )}
-        {!small && isWild && (
-          <p className="text-[8px] text-gray-600 text-center mt-1.5 font-semibold">
+        {isWild && (
+          <p
+            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+          >
             Any color
           </p>
         )}
@@ -389,25 +437,45 @@ function renderCardContent(
   card: Card,
   small?: boolean,
   orientation?: "top" | "bottom",
+  useSocialistTheme?: boolean,
 ) {
   switch (card.type) {
     case CardType.Property:
-      return <PropertyCardContent card={card} small={small} />;
+      return (
+        <PropertyCardContent
+          card={card}
+          small={small}
+          useSocialistTheme={useSocialistTheme}
+        />
+      );
     case CardType.PropertyWildcard:
       return (
         <WildcardPropertyContent
           card={card}
           small={small}
           orientation={orientation}
+          useSocialistTheme={useSocialistTheme}
         />
       );
     case CardType.Money:
       return <MoneyCardContent card={card} small={small} />;
     case CardType.RentDual:
     case CardType.RentWild:
-      return <RentCardContent card={card} small={small} />;
+      return (
+        <RentCardContent
+          card={card}
+          small={small}
+          useSocialistTheme={useSocialistTheme}
+        />
+      );
     default:
-      return <ActionCardContent card={card} small={small} />;
+      return (
+        <ActionCardContent
+          card={card}
+          small={small}
+          useSocialistTheme={useSocialistTheme}
+        />
+      );
   }
 }
 
@@ -420,9 +488,10 @@ export function GameCard({
   orientation,
   disableHover,
   scale = 1,
+  useSocialistTheme = false,
 }: GameCardProps) {
-  const w = small ? "w-16" : "w-24";
-  const h = small ? "h-24" : "h-36";
+  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
+  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
 
   return (
     <motion.div
@@ -448,31 +517,54 @@ export function GameCard({
         }}
         className={`
           w-full h-full rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative bg-[#FFFEF5]
-          ${selected ? "ring-3 ring-yellow-400 ring-offset-2 ring-offset-transparent" : ""}
+          ${selected ? "ring-4 ring-yellow-400 ring-offset-2 ring-offset-transparent" : ""}
           ${disabled ? "opacity-50" : ""}
           select-none shrink-0
         `}
       >
-        {renderCardContent(card, small, orientation)}
+        {renderCardContent(card, small, orientation, useSocialistTheme)}
       </div>
     </motion.div>
   );
 }
 
-export function CardBack({ small }: { small?: boolean }) {
-  const w = small ? "w-16" : "w-24";
-  const h = small ? "h-24" : "h-36";
+export function CardBack({
+  small,
+  useSocialistTheme = false,
+}: {
+  small?: boolean;
+  useSocialistTheme?: boolean;
+}) {
+  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
+  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
 
   return (
     <div
       className={`${w} ${h} rounded-lg shadow-lg bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center border-2 border-red-600 select-none shrink-0`}
     >
-      <div className="w-[80%] h-[80%] rounded border-2 border-red-400/30 flex items-center justify-center">
-        <span
-          className={`font-black text-red-300/50 ${small ? "text-[6px]" : "text-[8px]"}`}
-        >
-          CO-OPOLY
-        </span>
+      <div className="w-[80%] h-[80%] rounded border-2 border-red-400/30 flex flex-col items-center justify-center gap-2">
+        {useSocialistTheme ? (
+          <>
+            <svg
+              className={`${small ? "w-6 h-6" : "w-10 h-10"} text-yellow-500/80`}
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path d="M12.5,2.5 L14,5 L17,5 L15.5,7.5 L17,10 L14,10 L12.5,12.5 L11,10 L8,10 L9.5,7.5 L8,5 L11,5 L12.5,2.5 Z M6,14 C6,17.31 8.69,20 12,20 C15.31,20 18,17.31 18,14 L16,14 C16,16.21 14.21,18 12,18 C9.79,18 8,16.21 8,14 L6,14 Z M10,14 L14,14 L12,17 L10,14 Z" />
+            </svg>
+            <span
+              className={`font-black text-yellow-500/80 ${small ? "text-[5px]" : "text-[7px]"} tracking-widest`}
+            >
+              CO-OPOLY
+            </span>
+          </>
+        ) : (
+          <span
+            className={`font-black text-red-300/50 ${small ? "text-[6px]" : "text-[8px]"}`}
+          >
+            CO-OPOLY
+          </span>
+        )}
       </div>
     </div>
   );

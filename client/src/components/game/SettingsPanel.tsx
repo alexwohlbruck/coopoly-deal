@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { X } from "lucide-react";
+import { useState } from "react";
 import { useI18n, type Locale } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
 import type { ThemeName } from "../../theme/colors";
+import { BottomSheet } from "../common/BottomSheet";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -32,75 +32,51 @@ export function SettingsPanel({
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useGameStore();
   const [handLimit, setHandLimit] = useState(currentHandLimit);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (isOpen) {
-      dialog.showModal();
-    } else if (dialog.open) {
-      dialog.close();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => {
-      onClose();
-    };
-
-    const handleClick = (e: MouseEvent) => {
-      const rect = dialog.getBoundingClientRect();
-      if (
-        e.clientX < rect.left ||
-        e.clientX > rect.right ||
-        e.clientY < rect.top ||
-        e.clientY > rect.bottom
-      ) {
-        onClose();
-      }
-    };
-
-    dialog.addEventListener("close", handleClose);
-    dialog.addEventListener("click", handleClick);
-    return () => {
-      dialog.removeEventListener("close", handleClose);
-      dialog.removeEventListener("click", handleClick);
-    };
-  }, [onClose]);
 
   const handleSave = () => {
     onUpdateSettings?.({ maxHandSize: handLimit });
     onClose();
   };
 
-  return (
-    <dialog
-      ref={dialogRef}
-      className="bg-gray-900 rounded-2xl p-5 shadow-2xl border border-white/20 max-w-sm w-full backdrop:bg-black/60"
-    >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-white font-bold text-lg">{t.settings.title}</h3>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+  const footer =
+    canEdit && onUpdateSettings ? (
+      <button
+        onClick={handleSave}
+        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition-colors"
+      >
+        {t.settings.save}
+      </button>
+    ) : undefined;
 
-      <div className="space-y-4">
+  return (
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t.settings.title}
+      height="h-[80vh]"
+      footer={footer}
+    >
+      <div className="space-y-6 pb-4">
         {/* Theme Selection */}
         <div>
           <label className="text-gray-300 text-sm font-medium mb-2 block">
             {t.settings.theme}
           </label>
           <div className="grid grid-cols-5 gap-2">
-            {(["classic", "ocean", "sunset", "forest", "midnight", "ruby", "arctic", "desert", "neon", "royal"] as ThemeName[]).map((themeName) => (
+            {(
+              [
+                "classic",
+                "ocean",
+                "sunset",
+                "forest",
+                "midnight",
+                "ruby",
+                "arctic",
+                "desert",
+                "neon",
+                "royal",
+              ] as ThemeName[]
+            ).map((themeName) => (
               <button
                 key={themeName}
                 onClick={() => setTheme(themeName)}
@@ -217,18 +193,6 @@ export function SettingsPanel({
           </div>
         )}
       </div>
-
-      {/* Save button (if editable) */}
-      {canEdit && onUpdateSettings && (
-        <div className="mt-5 pt-4 border-t border-white/10">
-          <button
-            onClick={handleSave}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg transition-colors"
-          >
-            {t.settings.save}
-          </button>
-        </div>
-      )}
-    </dialog>
+    </BottomSheet>
   );
 }

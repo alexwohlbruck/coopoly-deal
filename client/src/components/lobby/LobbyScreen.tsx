@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Settings } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
+import { SettingsPanel } from "../game/SettingsPanel";
+import { useSoundSettings } from "../../hooks/useSoundManager";
+
+import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface LobbyScreenProps {
   onCreateRoom: () => void;
@@ -14,11 +19,19 @@ interface LobbyScreenProps {
   };
 }
 
-export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbyScreenProps) {
+export function LobbyScreen({
+  onCreateRoom,
+  onJoinRoom,
+  musicControls,
+}: LobbyScreenProps) {
+  const { t } = useI18n();
+  const { playerName: savedPlayerName } = useGameStore();
   const [mode, setMode] = useState<"menu" | "join">("menu");
   const [roomCode, setRoomCode] = useState("");
-  const [playerName, setPlayerName] = useState("");
+  const [playerName, setPlayerName] = useState(savedPlayerName || "");
   const [showRules, setShowRules] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const { sfxEnabled, toggleSfx } = useSoundSettings();
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +44,14 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
     <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-green-800 to-emerald-950 flex items-center justify-center p-4">
       {/* Music controls in top right */}
       {musicControls && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white p-2 rounded-lg transition-colors border border-white/20"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           <MusicControls
             isPlaying={musicControls.isPlaying}
             onToggle={musicControls.onToggle}
@@ -39,7 +59,7 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
           />
         </div>
       )}
-      
+
       {/* Rules button in top left */}
       <button
         onClick={() => setShowRules(true)}
@@ -50,6 +70,17 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
       </button>
 
       <GameRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+
+      <SettingsPanel
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        currentHandLimit={7}
+        canEdit={false}
+        sfxEnabled={sfxEnabled}
+        onToggleSfx={toggleSfx}
+        musicControls={musicControls}
+      />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -57,12 +88,12 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
       >
         <div className="text-center mb-8">
           <h1 className="text-5xl font-black text-white tracking-tight mb-2">
-            Co-Opoly
+            {t.lobby.title.split(" ")[0]}
           </h1>
-          <h2 className="text-2xl font-bold text-emerald-300">Deal</h2>
-          <p className="text-emerald-400 mt-2 text-sm">
-            Seize the means of property collection
-          </p>
+          <h2 className="text-2xl font-bold text-emerald-300">
+            {t.lobby.title.split(" ")[1]}
+          </h2>
+          <p className="text-emerald-400 mt-2 text-sm">{t.lobby.subtitle}</p>
         </div>
 
         <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
@@ -74,13 +105,13 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
                 }}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
               >
-                Create Room
+                {t.lobby.createRoom}
               </button>
               <button
                 onClick={() => setMode("join")}
                 className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
               >
-                Join Room
+                {t.lobby.joinRoom}
               </button>
             </div>
           ) : (
@@ -90,7 +121,7 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
                 onClick={() => setMode("menu")}
                 className="text-emerald-300 hover:text-white text-sm transition-colors"
               >
-                &larr; Back
+                &larr; {t.lobby.back}
               </button>
               <div>
                 <label className="block text-emerald-200 text-sm font-medium mb-1">
@@ -100,7 +131,7 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
                   type="text"
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Enter your name"
+                  placeholder={t.lobby.enterName}
                   maxLength={20}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                   autoFocus
@@ -108,13 +139,15 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
               </div>
               <div>
                 <label className="block text-emerald-200 text-sm font-medium mb-1">
-                  Room Code
+                  {t.waiting.roomCode}
                 </label>
                 <input
                   type="text"
                   value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, ""))}
-                  placeholder="Enter 6-digit code"
+                  onChange={(e) =>
+                    setRoomCode(e.target.value.replace(/\D/g, ""))
+                  }
+                  placeholder={t.lobby.enterCode}
                   maxLength={6}
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-center text-2xl tracking-[0.5em] font-mono"
                 />
@@ -124,7 +157,7 @@ export function LobbyScreen({ onCreateRoom, onJoinRoom, musicControls }: LobbySc
                 disabled={roomCode.length < 6 || !playerName.trim()}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
               >
-                Join Game
+                {t.lobby.join}
               </button>
             </form>
           )}

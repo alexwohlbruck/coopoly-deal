@@ -46,7 +46,7 @@ export function useBackgroundMusic() {
         audioRef.current.src = "";
       }
     };
-  }, []);
+  }, [volume]);
 
   // Handle volume changes
   useEffect(() => {
@@ -66,7 +66,7 @@ export function useBackgroundMusic() {
         setIsPlaying(false);
       });
     }
-  }, [currentTrackIndex]);
+  }, [currentTrackIndex, isPlaying]);
 
   const toggleMusic = () => {
     if (!audioRef.current) return;

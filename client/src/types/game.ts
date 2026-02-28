@@ -47,13 +47,17 @@ export interface GameSettings {
   turnTimer: number;
   allowDuplicateSets: boolean;
   wildcardFlipCountsAsMove: boolean;
+  useSocialistTheme: boolean;
+  botSpeed: "slow" | "normal" | "fast" | "instant";
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
   maxHandSize: 7,
-  turnTimer: 0,
+  turnTimer: 30,
   allowDuplicateSets: true,
   wildcardFlipCountsAsMove: false,
+  useSocialistTheme: false,
+  botSpeed: "normal",
 };
 
 export interface PropertySet {
@@ -125,6 +129,7 @@ export interface TurnState {
   cardsPlayed: number;
   phase: TurnPhase;
   pendingAction: PendingAction | null;
+  pendingWildcardAssignments?: PendingWildcardAssignment[];
   pendingWildcardAssignment: PendingWildcardAssignment | null;
   rentMultiplier: number;
   expiresAt: number | null;
@@ -173,6 +178,68 @@ export const PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
   [PropertyColor.Unassigned]: "Rainbow",
 };
 
+export const SOCIALIST_PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
+  [PropertyColor.Brown]: "Brown",
+  [PropertyColor.LightBlue]: "Light Blue",
+  [PropertyColor.Pink]: "Pink",
+  [PropertyColor.Orange]: "Orange",
+  [PropertyColor.Red]: "Red",
+  [PropertyColor.Yellow]: "Yellow",
+  [PropertyColor.Green]: "Green",
+  [PropertyColor.DarkBlue]: "Dark Blue",
+  [PropertyColor.Railroad]: "Railroads",
+  [PropertyColor.Utility]: "Utilities",
+  [PropertyColor.Unassigned]: "Rainbow",
+};
+
+export function getPropertyColorLabel(
+  color: PropertyColor,
+  useSocialistTheme: boolean,
+): string {
+  return useSocialistTheme
+    ? SOCIALIST_PROPERTY_COLOR_LABEL[color]
+    : PROPERTY_COLOR_LABEL[color];
+}
+
+export const SOCIALIST_PROPERTY_NAMES: Record<string, string> = {
+  "Baltic Avenue": "The Canteen",
+  "Mediterranean Avenue": "Tool Shop",
+  "Connecticut Avenue": "Collective Farm",
+  "Oriental Avenue": "Grain Silo",
+  "Vermont Avenue": "Textile",
+  "St. Charles Place": "Metropolitan Rail",
+  "Virginia Avenue": "Cinema",
+  "States Avenue": "Radio",
+  "New York Avenue": "Telegraph",
+  "St. James Place": "Press Center",
+  "Tennessee Avenue": "Printing House",
+  "Indiana Avenue": "Tractor Factory",
+  "Illinois Avenue": "Munitions",
+  "Kentucky Avenue": "Steel Mill",
+  "Atlantic Avenue": "The Academy",
+  "Marvin Gardens": "Research Lab",
+  "Ventnor Avenue": "Space Program",
+  "North Carolina Avenue": "Gas Pipeline",
+  "Pacific Avenue": "Oil Field",
+  "Pennsylvania Avenue": "Refinery",
+  Boardwalk: "Politburo",
+  "Park Place": "The Kremlin",
+  "B&O Railroad": "Ural Rail",
+  "Pennsylvania Railroad": "Moscow Rail",
+  "Reading Railroad": "Trans-Siberian Rail",
+  "Short Line": "Volga Rail",
+  "Electric Company": "Atomic Power",
+  "Water Works": "Hydro Dam",
+};
+
+export function getPropertyName(
+  name: string,
+  useSocialistTheme: boolean,
+): string {
+  if (!useSocialistTheme) return name;
+  return SOCIALIST_PROPERTY_NAMES[name] || name;
+}
+
 export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
   [PropertyColor.Brown]: "#8B4513",
   [PropertyColor.LightBlue]: "#87CEEB",
@@ -205,6 +272,33 @@ export const CARD_TYPE_LABEL: Record<CardType, string> = {
   [CardType.Hotel]: "Hotel",
 };
 
+export const SOCIALIST_CARD_TYPE_LABEL: Record<CardType, string> = {
+  [CardType.Money]: "Ledger",
+  [CardType.Property]: "Collective",
+  [CardType.PropertyWildcard]: "Wild Collective",
+  [CardType.RentDual]: "Levy",
+  [CardType.RentWild]: "Wild Levy",
+  [CardType.PassGo]: "Production Quota",
+  [CardType.SlyDeal]: "Requisition",
+  [CardType.ForceDeal]: "Resource Swap",
+  [CardType.DealBreaker]: "Nationalization",
+  [CardType.DebtCollector]: "Party Dues",
+  [CardType.Birthday]: "Hero of Labor",
+  [CardType.JustSayNo]: "Counter-Intelligence",
+  [CardType.DoubleTheRent]: "State Surplus",
+  [CardType.House]: "Worker Outpost",
+  [CardType.Hotel]: "Lenin Monument",
+};
+
+export function getCardTypeLabel(
+  type: CardType,
+  useSocialistTheme: boolean,
+): string {
+  return useSocialistTheme
+    ? SOCIALIST_CARD_TYPE_LABEL[type]
+    : CARD_TYPE_LABEL[type];
+}
+
 export const RENT_VALUES: Record<PropertyColor, number[]> = {
   [PropertyColor.Brown]: [1, 2],
   [PropertyColor.LightBlue]: [1, 2, 3],
@@ -221,6 +315,54 @@ export const RENT_VALUES: Record<PropertyColor, number[]> = {
 
 export function isSetComplete(set: PropertySet): boolean {
   return set.cards.length >= SET_SIZE[set.color];
+}
+
+export function isPlayerWaitingForAction(
+  gameState: ClientGameState,
+  playerId: string,
+): boolean {
+  if (
+    gameState.turn?.pendingWildcardAssignments?.some(
+      (a) => a.playerId === playerId,
+    )
+  ) {
+    return true;
+  }
+  if (gameState.turn?.pendingWildcardAssignment?.playerId === playerId) {
+    return true;
+  }
+
+  const pendingAction = gameState.turn?.pendingAction;
+  if (!pendingAction) return false;
+
+  if (pendingAction.justSayNoChain) {
+    const shouldRespond =
+      pendingAction.justSayNoChain.targetPlayerId !== playerId;
+    const isTarget = pendingAction.targetPlayerIds.includes(playerId);
+    const isSource = pendingAction.sourcePlayerId === playerId;
+    return shouldRespond && (isTarget || isSource);
+  }
+
+  return (
+    pendingAction.targetPlayerIds.includes(playerId) &&
+    !pendingAction.respondedPlayerIds.includes(playerId)
+  );
+}
+
+export function calculateRent(set: PropertySet): number {
+  if (set.color === PropertyColor.Unassigned) return 0;
+  const cardsCount = Math.min(set.cards.length, SET_SIZE[set.color]);
+  if (cardsCount === 0) return 0;
+
+  let rent = RENT_VALUES[set.color][cardsCount - 1];
+
+  // Add house/hotel if set is complete
+  if (isSetComplete(set)) {
+    if (set.house) rent += 3;
+    if (set.hotel) rent += 4;
+  }
+
+  return rent;
 }
 
 export type ServerMessage =

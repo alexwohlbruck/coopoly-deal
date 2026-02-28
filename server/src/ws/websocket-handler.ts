@@ -148,6 +148,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleAddBot(ws);
           break;
 
+        case "REMOVE_PLAYER":
+          handleRemovePlayer(ws, msg.payload.playerIdToRemove);
+          break;
+
         case "RESIGN":
           handleResign(ws);
           break;
@@ -415,22 +419,55 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
   }
 
+  function handleRemovePlayer(
+    ws: GameWebSocket,
+    playerIdToRemove: string,
+  ): void {
+    const { roomCode, playerId } = ws.data;
+    if (!roomCode || !playerId) throw new Error("Not in a room");
+
+    const game = roomManager.getRoom(roomCode);
+    if (!game) throw new Error("Room not found");
+    if (game.phase !== GamePhase.Waiting)
+      throw new Error("Cannot remove player after game started");
+
+    // Only host can remove players
+    if (game.players[0]?.id !== playerId) {
+      throw new Error("Only the host can remove players");
+    }
+
+    roomManager.getEngine().removePlayer(game, playerIdToRemove);
+
+    broadcastToRoom(roomCode, {
+      type: "PLAYER_LEFT",
+      payload: { playerId: playerIdToRemove },
+    });
+    sendStateToAll(roomCode);
+  }
+
   async function checkBotTurn(roomCode: string): Promise<void> {
     const game = roomManager.getRoom(roomCode);
     if (!game || game.phase !== GamePhase.Playing) return;
 
-    if (game.turn?.pendingWildcardAssignment) {
-      const assignment = game.turn.pendingWildcardAssignment;
+    if (
+      game.turn?.pendingWildcardAssignments &&
+      game.turn.pendingWildcardAssignments.length > 0
+    ) {
+      const assignment = game.turn.pendingWildcardAssignments[0]!;
       const bot = game.players.find((p) => p.id === assignment.playerId);
       if (bot?.isBot) {
         // Delay before assigning
-        const baseDelay = Math.max(
-          600,
-          1800 - (game.players.filter((p) => p.connected).length - 2) * 300,
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, baseDelay + Math.random() * 600),
-        );
+        const botSpeed = game.settings?.botSpeed ?? "normal";
+        if (botSpeed !== "instant") {
+          const baseDelay = Math.max(
+            600,
+            1800 - (game.players.filter((p) => p.connected).length - 2) * 300,
+          );
+          let delay = baseDelay + Math.random() * 600;
+          if (botSpeed === "slow") delay *= 2;
+          if (botSpeed === "fast") delay *= 0.5;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
 
         // Just pick the first available color for now
         const color = assignment.availableColors[0];
@@ -483,19 +520,29 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
       if (botsToRespond.length === 0) return;
 
-      // Each bot responds with a delay, and we update state after each one
-      for (const bot of botsToRespond) {
-        if (!bot) continue;
+      // Each bot responds with a randomized delay, but in parallel
+      await Promise.all(
+        botsToRespond.map(async (bot) => {
+          if (!bot) return;
 
-        // Scaled delay: 2 players = 1200-1800ms, 6 players = 600-1200ms
-        const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
-        const delay = baseDelay + Math.random() * 600;
-        await new Promise((resolve) => setTimeout(resolve, delay));
+          const botSpeed = game.settings?.botSpeed ?? "normal";
+          if (botSpeed !== "instant") {
+            // Scaled delay: 2 players = 1200-1800ms, 6 players = 600-1200ms
+            const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
+            let delay = baseDelay + Math.random() * 600;
+            if (botSpeed === "slow") delay *= 2;
+            if (botSpeed === "fast") delay *= 0.5;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
 
-        botPlayer.respondToAction(game, bot.id);
-        sendStateToAll(roomCode);
-        checkGameEnd(roomCode);
-      }
+          // Ensure game is still playing before responding
+          if (game.phase !== GamePhase.Playing) return;
+
+          botPlayer.respondToAction(game, bot.id);
+          sendStateToAll(roomCode);
+          checkGameEnd(roomCode);
+        }),
+      );
 
       // After all bots have responded, check if there are more actions
       await checkBotTurn(roomCode);
@@ -505,11 +552,16 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     const currentPlayer = game.players[game.currentPlayerIndex];
     if (!currentPlayer?.isBot) return;
 
-    // Initial delay before bot starts thinking
-    const playerCount = game.players.filter((p) => p.connected).length;
-    const initialDelay =
-      Math.max(400, 1000 - (playerCount - 2) * 150) + Math.random() * 300;
-    await new Promise((resolve) => setTimeout(resolve, initialDelay));
+    const botSpeed = game.settings?.botSpeed ?? "normal";
+    if (botSpeed !== "instant") {
+      // Initial delay before bot starts thinking
+      const playerCount = game.players.filter((p) => p.connected).length;
+      const baseDelay = Math.max(400, 1000 - (playerCount - 2) * 150);
+      let initialDelay = baseDelay + Math.random() * 300;
+      if (botSpeed === "slow") initialDelay *= 2;
+      if (botSpeed === "fast") initialDelay *= 0.5;
+      await new Promise((resolve) => setTimeout(resolve, initialDelay));
+    }
 
     // Use async version with state updates between moves
     await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
@@ -590,7 +642,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   function checkGameEnd(roomCode: string): void {
     const game = roomManager.getRoom(roomCode);
     if (!game) return;
-    if (game.phase === GamePhase.Finished && game.winner) {
+    if (
+      game.phase === GamePhase.Finished &&
+      game.winner &&
+      !game.gameEndedBroadcasted
+    ) {
+      game.gameEndedBroadcasted = true;
       const winner = game.players.find((p) => p.id === game.winner);
       broadcastToRoom(roomCode, {
         type: "GAME_ENDED",

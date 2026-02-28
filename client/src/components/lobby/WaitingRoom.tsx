@@ -4,7 +4,10 @@ import { X, BookOpen } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
-import { GameSettingsPanel, type GameSettings } from "./GameSettingsPanel";
+import { GameSettingsPanel } from "./GameSettingsPanel";
+import { type GameSettings } from "../../types/game";
+
+import { useI18n } from "../../i18n";
 
 interface WaitingRoomProps {
   gameState: ClientGameState;
@@ -29,6 +32,7 @@ export function WaitingRoom({
   onRemovePlayer,
   musicControls,
 }: WaitingRoomProps) {
+  const { t } = useI18n();
   const [showRules, setShowRules] = useState(false);
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
@@ -69,7 +73,9 @@ export function WaitingRoom({
         <div className="text-center mb-6">
           <h1 className="text-3xl font-black text-white mb-1">Waiting Room</h1>
           <div className="inline-block bg-white/10 backdrop-blur rounded-lg px-6 py-2 border border-white/20">
-            <span className="text-emerald-300 text-sm">Room Code</span>
+            <span className="text-emerald-300 text-sm">
+              {t.waiting.roomCode}
+            </span>
             <p className="text-3xl font-mono font-bold text-white tracking-[0.3em]">
               {gameState.id}
             </p>
@@ -79,7 +85,7 @@ export function WaitingRoom({
         <div className="space-y-4 gap-2">
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
             <h3 className="text-emerald-200 text-sm font-medium mb-3">
-              Players ({gameState.players.length}/6)
+              {t.waiting.players} ({gameState.players.length}/6)
             </h3>
             <div className="space-y-2">
               {gameState.players.map((player, i) => (
@@ -101,7 +107,7 @@ export function WaitingRoom({
                   )}
                   {player.id === playerId && (
                     <span className="text-emerald-400 text-xs ml-auto">
-                      (you)
+                      ({t.common.you})
                     </span>
                   )}
                   {i === 0 && !player.isBot && (
@@ -137,19 +143,19 @@ export function WaitingRoom({
               disabled={gameState.players.length >= 6}
               className="flex-1 py-4 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
             >
-              + Add Bot
+              + {t.waiting.addBot}
             </button>
             <button
               onClick={onStartGame}
               disabled={!canStart}
               className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
             >
-              {canStart ? "Start Game" : "Waiting for players..."}
+              {canStart ? t.waiting.startGame : t.waiting.needMorePlayers}
             </button>
           </div>
         ) : (
           <p className="text-center text-emerald-300 text-sm">
-            Waiting for the host to start the game...
+            {t.waiting.waitingForPlayers}
           </p>
         )}
       </motion.div>

@@ -13,11 +13,8 @@ interface CardHandProps {
   onDragToBank?: (card: Card) => void;
   onDragStart?: (card: Card) => void;
   onDragEnd?: () => void;
+  useSocialistTheme?: boolean;
 }
-
-const CARD_WIDTH = 96;
-const CARD_HEIGHT = 144;
-const GAP = 8;
 
 export function CardHand({
   cards,
@@ -29,6 +26,7 @@ export function CardHand({
   onDragToBank,
   onDragStart,
   onDragEnd,
+  useSocialistTheme = false,
 }: CardHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -54,6 +52,10 @@ export function CardHand({
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  const CARD_WIDTH = isMobile ? 96 : 128; // w-24 vs w-32
+  const CARD_HEIGHT = isMobile ? 144 : 192; // h-36 vs h-48
+  const GAP = 8;
 
   // Calculate layout: distribute cards across rows
   const numCards = cards.length;
@@ -86,9 +88,9 @@ export function CardHand({
       }
     }
   } else {
-    // Desktop layout: up to 2 rows
-    if (numCards <= 6) {
-      rowDistribution = [numCards]; // Single row
+    // Desktop layout: up to 2 rows, but allow more cards per row
+    if (numCards <= 8) {
+      rowDistribution = [numCards]; // Single row up to 8 cards
     } else {
       const perRow = Math.ceil(numCards / 2);
       rowDistribution = [perRow, numCards - perRow];
@@ -116,7 +118,7 @@ export function CardHand({
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, [numCards, maxCardsInRow]);
+  }, [numCards, maxCardsInRow, CARD_WIDTH]);
 
   const scaledCardWidth = CARD_WIDTH * scale;
   const scaledCardHeight = CARD_HEIGHT * scale;
@@ -155,107 +157,15 @@ export function CardHand({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -50, scale: 0.8 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    draggable={!disabled && !needsDiscard && onDragToBank !== undefined}
+                    draggable={
+                      !disabled && !needsDiscard && onDragToBank !== undefined
+                    }
                     onDragStart={(e) => {
                       if ("dataTransfer" in e) {
                         handleDragStart(e as unknown as React.DragEvent, card);
                       }
                     }}
                     onDragEnd={handleDragEnd}
-                    onTouchStart={(e) => {
-                      if (disabled || needsDiscard || !onDragToBank) return;
-
-                      const touch = e.touches[0];
-                      if (!touch) return;
-
-                      const startX = touch.clientX;
-                      const startY = touch.clientY;
-                      let isDragging = false;
-
-                      const handleTouchMove = (moveEvent: TouchEvent) => {
-                        const moveTouch = moveEvent.touches[0];
-                        if (!moveTouch) return;
-
-                        const deltaX = Math.abs(moveTouch.clientX - startX);
-                        const deltaY = Math.abs(moveTouch.clientY - startY);
-
-                        if (!isDragging && (deltaX > 10 || deltaY > 10)) {
-                          isDragging = true;
-                        }
-
-                        if (isDragging) {
-                          moveEvent.preventDefault();
-                        }
-                      };
-
-                      const handleTouchEnd = (endEvent: TouchEvent) => {
-                        document.removeEventListener(
-                          "touchmove",
-                          handleTouchMove,
-                        );
-                        document.removeEventListener(
-                          "touchend",
-                          handleTouchEnd,
-                        );
-
-                        if (!isDragging) {
-                          onDragEnd?.();
-                          return;
-                        }
-
-                        const endTouch = endEvent.changedTouches[0];
-                        if (!endTouch) {
-                          onDragEnd?.();
-                          return;
-                        }
-
-                        const targetElement = document.elementFromPoint(
-                          endTouch.clientX,
-                          endTouch.clientY,
-                        );
-
-                        // Check for bank drop zone
-                        const bankElement = targetElement?.closest(
-                          "[data-bank-drop-zone]",
-                        );
-                        if (bankElement && onDragToBank) {
-                          onDragToBank(card);
-                          onDragEnd?.();
-                          return;
-                        }
-
-                        // Check for property drop zone
-                        const propertyElement = targetElement?.closest(
-                          "[data-property-drop-zone]",
-                        );
-                        if (propertyElement) {
-                          const color = propertyElement.getAttribute(
-                            "data-property-drop-zone",
-                          );
-                          if (color) {
-                            // Trigger the drop event on the property element
-                            const dropEvent = new DragEvent("drop", {
-                              bubbles: true,
-                              cancelable: true,
-                            });
-                            Object.defineProperty(dropEvent, "dataTransfer", {
-                              value: {
-                                getData: (key: string) =>
-                                  key === "cardId" ? card.id : "",
-                              },
-                            });
-                            propertyElement.dispatchEvent(dropEvent);
-                          }
-                        }
-
-                        onDragEnd?.();
-                      };
-
-                      document.addEventListener("touchmove", handleTouchMove, {
-                        passive: false,
-                      });
-                      document.addEventListener("touchend", handleTouchEnd);
-                    }}
                     className={`cursor-grab active:cursor-grabbing touch-none ${card.id === shakingCardId ? "animate-shake" : ""}`}
                     style={{
                       width: `${scaledCardWidth}px`,
@@ -274,6 +184,7 @@ export function CardHand({
                         selected={card.id === selectedCardId}
                         disabled={disabled}
                         disableHover={true}
+                        useSocialistTheme={useSocialistTheme}
                       />
                     </div>
                   </motion.div>

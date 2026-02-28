@@ -9,8 +9,12 @@ interface FannedCardsProps {
   showBacks?: boolean; // Show card backs instead of actual cards
   maxVisible?: number; // Max cards to show before stacking
   onCardClick?: (card: Card) => void;
+  onDragStart?: (e: React.DragEvent, card: Card) => void;
+  onDragEnd?: () => void;
+  draggable?: (card: Card) => boolean;
   orientation?: "top" | "bottom"; // For wildcards (applied to all cards)
   getCardOrientation?: (card: Card) => "top" | "bottom" | undefined; // Per-card orientation function
+  useSocialistTheme?: boolean;
 }
 
 export function FannedCards({
@@ -19,45 +23,50 @@ export function FannedCards({
   showBacks = false,
   maxVisible = 10,
   onCardClick,
+  onDragStart,
+  onDragEnd,
+  draggable,
   orientation,
   getCardOrientation,
+  useSocialistTheme = false,
 }: FannedCardsProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [collapseTimeout, setCollapseTimeout] = useState<number | null>(null);
-  
+
   // Detect mobile on mount
   useState(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640 || 'ontouchstart' in window);
+      setIsMobile(window.innerWidth < 640 || "ontouchstart" in window);
     };
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   });
-  
+
   const cardCount = cards.length;
   const visibleCount = Math.min(cardCount, maxVisible);
-  
+
   // Calculate horizontal spread - tighter when collapsed, full card width when expanded
-  const cardWidth = small ? 64 : 96;
+  const cardWidth = small ? (isMobile ? 64 : 96) : isMobile ? 96 : 128;
+  const cardHeight = small ? (isMobile ? 96 : 144) : isMobile ? 144 : 192;
   const collapsedSpread = small ? 8 : 12;
   const expandedSpread = cardWidth + 4; // Full card width + small gap
-  const spread = (isHovered || isExpanded) ? expandedSpread : collapsedSpread;
-  
+  const spread = isHovered || isExpanded ? expandedSpread : collapsedSpread;
+
   // Handle tap to expand on mobile
   const handleTap = () => {
     if (!isMobile) return;
-    
+
     if (isExpanded) {
       // Already expanded, allow card click
       return;
     }
-    
+
     // First tap: expand
     setIsExpanded(true);
-    
+
     // Auto-collapse after 3 seconds
     if (collapseTimeout) {
       window.clearTimeout(collapseTimeout);
@@ -67,7 +76,7 @@ export function FannedCards({
     }, 3000);
     setCollapseTimeout(timeout);
   };
-  
+
   const handleCardClick = (card: Card) => {
     if (isMobile && !isExpanded) {
       // First tap on mobile: expand instead of clicking
@@ -79,13 +88,13 @@ export function FannedCards({
       onCardClick(card);
     }
   };
-  
+
   const getTransform = (index: number) => {
     // Calculate offset from center
     const totalWidth = (visibleCount - 1) * spread;
     const centerOffset = -totalWidth / 2;
     const x = centerOffset + index * spread;
-    
+
     return {
       x,
       y: 0,
@@ -97,51 +106,66 @@ export function FannedCards({
 
   if (cardCount === 0) return null;
 
-  const cardHeight = small ? 96 : 144;
-  
   // Use collapsed spread for container width (only expand on hover)
   const containerWidth = cardWidth + (visibleCount - 1) * collapsedSpread;
 
   return (
-    <div 
+    <div
       className="relative flex items-center justify-center"
       style={{
         width: `${containerWidth}px`,
         height: `${cardHeight}px`,
-        zIndex: (isHovered || isExpanded) ? 100 : 'auto', // Elevate entire container on hover/expand
+        zIndex: isHovered || isExpanded ? 100 : "auto", // Elevate entire container on hover/expand
       }}
       onMouseEnter={() => !isMobile && setIsHovered(true)}
       onMouseLeave={() => !isMobile && setIsHovered(false)}
       onClick={isMobile ? handleTap : undefined}
     >
-      {cards.slice(0, maxVisible).map((card, index) => (
-        <motion.div
-          key={card.id}
-          className="absolute"
-          initial={{ opacity: 1 }}
-          animate={getTransform(index)}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          style={{
-            transformOrigin: "center center",
-            left: "50%",
-            top: "50%",
-            marginLeft: `${-cardWidth / 2}px`,
-            marginTop: `${-cardHeight / 2}px`,
-          }}
-        >
-          {showBacks ? (
-            <CardBack small={small} />
-          ) : (
-            <GameCard
-              card={card}
-              small={small}
-              onClick={onCardClick ? () => handleCardClick(card) : undefined}
-              orientation={getCardOrientation ? getCardOrientation(card) : orientation}
-            />
-          )}
-        </motion.div>
-      ))}
-      
+      {cards.slice(0, maxVisible).map((card, index) => {
+        const isDraggable = draggable ? draggable(card) : false;
+        return (
+          <motion.div
+            key={card.id}
+            className={`absolute ${isDraggable ? "cursor-grab active:cursor-grabbing touch-none" : ""}`}
+            initial={{ opacity: 1 }}
+            animate={getTransform(index)}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            draggable={isDraggable}
+            onDragStart={(e) => {
+              if (isDraggable && onDragStart) {
+                onDragStart(e as unknown as React.DragEvent, card);
+              }
+            }}
+            onDragEnd={() => {
+              if (isDraggable && onDragEnd) {
+                onDragEnd();
+              }
+            }}
+            style={{
+              transformOrigin: "center center",
+              left: "50%",
+              top: "50%",
+              marginLeft: `${-cardWidth / 2}px`,
+              marginTop: `${-cardHeight / 2}px`,
+            }}
+          >
+            {showBacks ? (
+              <CardBack small={small} useSocialistTheme={useSocialistTheme} />
+            ) : (
+              <GameCard
+                card={card}
+                small={small}
+                onClick={onCardClick ? () => handleCardClick(card) : undefined}
+                orientation={
+                  getCardOrientation ? getCardOrientation(card) : orientation
+                }
+                useSocialistTheme={useSocialistTheme}
+              />
+            )}
+          </motion.div>
+        );
+      })}
+
       {/* Show count if more cards than maxVisible */}
       {cardCount > maxVisible && (
         <div className="absolute -bottom-2 -right-2 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white z-50">

@@ -142,13 +142,24 @@ export default function App() {
   }, [setError, startMusic]);
 
   const handleJoinRoom = useCallback(
-    (code: string, name: string) => {
+    (code: string, name: string, isHost: boolean = false) => {
       startMusic(); // Start music on first user interaction
       setPlayer("", name);
       send({
         type: "JOIN_ROOM",
         payload: { roomCode: code, playerName: name },
       });
+
+      // If host, apply preferred settings after a short delay to ensure room is joined
+      if (isHost) {
+        setTimeout(() => {
+          const { preferredSettings } = useGameStore.getState();
+          send({
+            type: "UPDATE_SETTINGS",
+            payload: { settings: preferredSettings },
+          });
+        }, 500);
+      }
     },
     [send, setPlayer, startMusic],
   );
@@ -156,7 +167,7 @@ export default function App() {
   const handleNameSubmit = useCallback(
     (name: string) => {
       if (pendingRoomCode) {
-        handleJoinRoom(pendingRoomCode, name);
+        handleJoinRoom(pendingRoomCode, name, true); // true because they created the room
       }
     },
     [pendingRoomCode, handleJoinRoom],
@@ -168,12 +179,12 @@ export default function App() {
   }, [send, startMusic]);
 
   const handleAddBot = useCallback(() => {
-    send({ type: "ADD_BOT" } as any);
+    send({ type: "ADD_BOT" });
   }, [send]);
 
   const handleRemovePlayer = useCallback(
     (playerIdToRemove: string) => {
-      send({ type: "REMOVE_PLAYER", payload: { playerIdToRemove } } as any);
+      send({ type: "REMOVE_PLAYER", payload: { playerIdToRemove } });
     },
     [send],
   );
@@ -194,7 +205,7 @@ export default function App() {
   }, [send]);
 
   const handleDevInjectCard = useCallback(
-    (cardType: any, targetPlayerId: string, colors?: any[]) => {
+    (cardType: unknown, targetPlayerId: string, colors?: unknown[]) => {
       send({
         type: "DEV_INJECT_CARD",
         payload: { cardType, targetPlayerId, colors },
@@ -204,7 +215,7 @@ export default function App() {
   );
 
   const handleDevGiveCompleteSet = useCallback(
-    (color: any, targetPlayerId: string) => {
+    (color: unknown, targetPlayerId: string) => {
       send({
         type: "DEV_GIVE_COMPLETE_SET",
         payload: { color, targetPlayerId },
@@ -276,9 +287,12 @@ export default function App() {
           gameState={gameState}
           playerId={playerId}
           onStartGame={handleStartGame}
-          onUpdateSettings={(settings) =>
-            send({ type: "UPDATE_SETTINGS", payload: { settings } })
-          }
+          onUpdateSettings={(settings) => {
+            send({ type: "UPDATE_SETTINGS", payload: { settings } });
+            if (gameState.players[0]?.id === playerId) {
+              useGameStore.getState().setPreferredSettings(settings);
+            }
+          }}
           onAddBot={handleAddBot}
           onRemovePlayer={handleRemovePlayer}
           musicControls={{
