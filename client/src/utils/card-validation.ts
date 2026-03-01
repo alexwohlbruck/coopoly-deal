@@ -6,6 +6,16 @@ export interface ValidationResult {
   reason?: string;
 }
 
+function socialistReason(reason: string, useSocialistTheme: boolean): string {
+  if (!useSocialistTheme) return reason;
+  return reason
+    .replace(/\bPlayer not found\b/g, "Comrade not found")
+    .replace(/\bsteal\b/g, "expropriate")
+    .replace(/\bstealable\b/g, "expropriatable")
+    .replace(/\bDouble the Rent\b/g, "Double the Levy")
+    .replace(/\brent card\b/g, "levy card");
+}
+
 export function canPlayDealBreaker(
   gameState: ClientGameState,
   playerId: string,
@@ -196,24 +206,37 @@ export function validateActionCard(
   card: Card,
   gameState: ClientGameState,
   playerId: string,
+  useSocialistTheme = false,
 ): ValidationResult {
+  let result: ValidationResult;
   switch (card.type) {
     case CardType.DealBreaker:
-      return canPlayDealBreaker(gameState, playerId);
+      result = canPlayDealBreaker(gameState, playerId);
+      break;
     case CardType.SlyDeal:
-      return canPlaySlyDeal(gameState, playerId);
+      result = canPlaySlyDeal(gameState, playerId);
+      break;
     case CardType.ForceDeal:
-      return canPlayForceDeal(gameState, playerId);
+      result = canPlayForceDeal(gameState, playerId);
+      break;
     case CardType.RentDual:
     case CardType.RentWild:
-      return canPlayRent(gameState, playerId, card);
+      result = canPlayRent(gameState, playerId, card);
+      break;
     case CardType.House:
-      return canPlayHouse(gameState, playerId);
+      result = canPlayHouse(gameState, playerId);
+      break;
     case CardType.Hotel:
-      return canPlayHotel(gameState, playerId);
+      result = canPlayHotel(gameState, playerId);
+      break;
     case CardType.DoubleTheRent:
-      return canPlayDoubleTheRent(gameState, playerId);
+      result = canPlayDoubleTheRent(gameState, playerId);
+      break;
     default:
       return { valid: true };
   }
+  if (!result.valid && result.reason) {
+    result = { ...result, reason: socialistReason(result.reason, useSocialistTheme) };
+  }
+  return result;
 }

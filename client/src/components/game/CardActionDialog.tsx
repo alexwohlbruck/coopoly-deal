@@ -602,7 +602,7 @@ export function CardActionDialog({
             disabled={!canUseAction}
             className={`w-full py-3 ${canUseAction ? "bg-purple-600 hover:bg-purple-500" : "bg-gray-600 cursor-not-allowed"} text-white font-semibold rounded-lg transition-colors`}
           >
-            Use Action
+            {settings.useSocialistTheme ? "Use Directive" : "Use Action"}
           </button>
         )}
       </div>
@@ -631,7 +631,7 @@ export function CardActionDialog({
         <div>
           <p className="text-gray-300 text-sm mb-2">
             {card.type === CardType.RentDual || card.type === CardType.RentWild
-              ? "Select a color to charge rent:"
+              ? settings.useSocialistTheme ? "Select a color to charge levy:" : "Select a color to charge rent:"
               : "Select a color:"}
           </p>
           {rentMultiplier > 1 &&
@@ -639,7 +639,7 @@ export function CardActionDialog({
               card.type === CardType.RentWild) && (
               <div className="mb-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
                 <p className="text-yellow-300 text-xs font-semibold text-center">
-                  🎯 Rent will be {rentMultiplier}x (Doubled!)
+                  🎯 {settings.useSocialistTheme ? "Levy" : "Rent"} will be {rentMultiplier}x (Doubled!)
                 </p>
               </div>
             )}
@@ -673,7 +673,7 @@ export function CardActionDialog({
                   </span>
                   {finalRent !== null && (
                     <span className="text-xs mt-1 opacity-90">
-                      ${finalRent}M rent
+                      ${finalRent}M {settings.useSocialistTheme ? "levy" : "rent"}
                       {rentMultiplier > 1 && baseRent !== null && (
                         <span className="ml-1 text-yellow-300">
                           (${baseRent}M × {rentMultiplier})
@@ -711,7 +711,7 @@ export function CardActionDialog({
 
       {step === "selectTarget" && (
         <div>
-          <p className="text-gray-300 text-sm mb-2">Select a player:</p>
+          <p className="text-gray-300 text-sm mb-2">{settings.useSocialistTheme ? "Select a comrade:" : "Select a player:"}</p>
           <div className="space-y-2">
             {opponents.map((opp) => (
               <button
@@ -775,9 +775,9 @@ export function CardActionDialog({
           <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg mb-2">
             <span className="text-3xl">🎯</span>
           </div>
-          <h3 className="text-xl font-bold text-white">Double the Rent?</h3>
+          <h3 className="text-xl font-bold text-white">{settings.useSocialistTheme ? "Double the Levy?" : "Double the Rent?"}</h3>
           <p className="text-gray-300 text-sm">
-            You have a Double the Rent card in your hand. Would you like to play
+            You have a {settings.useSocialistTheme ? "Double the Levy" : "Double the Rent"} card in your hand. Would you like to play
             it first?
           </p>
           <div className="flex gap-3 w-full mt-4">
@@ -807,7 +807,7 @@ export function CardActionDialog({
               }}
               className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors"
             >
-              No, Just Play Rent
+              {settings.useSocialistTheme ? "No, Just Play Levy" : "No, Just Play Rent"}
             </button>
           </div>
         </div>

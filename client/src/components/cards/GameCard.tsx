@@ -35,7 +35,7 @@ const ACTION_COLORS: Partial<Record<CardType, string>> = {
   [CardType.Hotel]: "#DC2626",
 };
 
-function getActionSubtitle(type: CardType): string | null {
+function getActionSubtitle(type: CardType, useSocialistTheme = false): string | null {
   switch (type) {
     case CardType.DebtCollector:
       return "Pay 5M";
@@ -44,19 +44,19 @@ function getActionSubtitle(type: CardType): string | null {
     case CardType.PassGo:
       return "Draw 2 cards";
     case CardType.DoubleTheRent:
-      return "2× Rent";
+      return useSocialistTheme ? "2× Levy" : "2× Rent";
     case CardType.SlyDeal:
-      return "Steal 1 property";
+      return useSocialistTheme ? "Expropriate 1 property" : "Steal 1 property";
     case CardType.ForceDeal:
       return "Swap properties";
     case CardType.DealBreaker:
-      return "Steal full set";
+      return useSocialistTheme ? "Expropriate full set" : "Steal full set";
     case CardType.JustSayNo:
-      return "Block action";
+      return useSocialistTheme ? "Block directive" : "Block action";
     case CardType.House:
-      return "+3M rent";
+      return useSocialistTheme ? "+3M levy" : "+3M rent";
     case CardType.Hotel:
-      return "+4M rent";
+      return useSocialistTheme ? "+4M levy" : "+4M rent";
     default:
       return null;
   }
@@ -124,7 +124,7 @@ function PropertyCardContent({
           <p
             className={`${small ? "text-[5px] mb-0.5" : "text-[7px] mb-1"} text-gray-600 text-center font-bold uppercase tracking-wide`}
           >
-            Rent
+            {useSocialistTheme ? "Levy" : "Rent"}
           </p>
           <div className="space-y-0.5">
             {rents.map((rent, i) => (
@@ -328,7 +328,7 @@ function ActionCardContent({
   useSocialistTheme?: boolean;
 }) {
   const color = ACTION_COLORS[card.type] ?? "#6B7280";
-  const subtitle = getActionSubtitle(card.type);
+  const subtitle = getActionSubtitle(card.type, useSocialistTheme);
 
   return (
     <>

@@ -67,7 +67,7 @@ export default function App() {
           break;
 
         case "PLAYER_LEFT":
-          setToast("A player disconnected");
+          setToast(gameState?.settings?.useSocialistTheme ? "A comrade disconnected" : "A player disconnected");
           break;
 
         case "TURN_STARTED":
@@ -103,6 +103,7 @@ export default function App() {
       playerId,
       playerName,
       screen,
+      gameState?.settings?.useSocialistTheme,
       setPlayer,
       setRoomCode,
       setGameState,

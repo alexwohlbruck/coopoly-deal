@@ -171,7 +171,7 @@ export function PlayerTurnBar({
             <div>
               <div className="flex items-center justify-center gap-2">
                 <p className="text-gray-300 text-sm">
-                  {currentTurnPlayer?.name}'s turn
+                  {currentTurnPlayer?.name}'s {gameState.settings?.useSocialistTheme ? "shift" : "turn"}
                 </p>
                 {timeLeft !== null && (
                   <span

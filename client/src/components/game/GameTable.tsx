@@ -244,7 +244,9 @@ export function GameTable({
     // it should be dragged to the bank if they want to bank it.
     if (card.type === CardType.JustSayNo) {
       setToast(
-        "Just Say No can only be played when an action is played against you, or banked.",
+        gameState.settings?.useSocialistTheme
+          ? "Just Say No can only be played when a directive is played against you, or banked."
+          : "Just Say No can only be played when an action is played against you, or banked.",
       );
       setShakingCardId(card.id);
       play("error");
@@ -268,7 +270,7 @@ export function GameTable({
     );
 
     if (isActionCard) {
-      const validation = validateActionCard(card, gameState, playerId);
+      const validation = validateActionCard(card, gameState, playerId, gameState.settings?.useSocialistTheme);
       if (!validation.valid) {
         // Show error feedback
         setToast(validation.reason || "Cannot play this card");
@@ -431,7 +433,7 @@ export function GameTable({
         {gameState.turn && gameState.turn.rentMultiplier > 1 && (
           <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
             <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-              🎯 Rent Doubled! ({gameState.turn.rentMultiplier}x)
+              🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"} Doubled! ({gameState.turn.rentMultiplier}x)
             </div>
           </div>
         )}

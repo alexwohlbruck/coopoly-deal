@@ -144,7 +144,7 @@ export function ActionPrompt({
 
       // If the current player is the source, they see that opponent countered
       if (isSource) {
-        return `${jsnPlayerName} played Just Say No! Accept to let them counter your action.`;
+        return `${jsnPlayerName} played Just Say No! Accept to let them counter your ${settings.useSocialistTheme ? "directive" : "action"}.`;
       }
 
       // If the current player is the target, they see that opponent countered the JSN
@@ -156,19 +156,19 @@ export function ActionPrompt({
     // Regular action descriptions
     switch (action.type) {
       case "rent":
-        return `${sourcePlayer?.name ?? "Someone"} is charging ${amountDue}M rent!`;
+        return `${sourcePlayer?.name ?? "Someone"} is charging ${amountDue}M ${settings.useSocialistTheme ? "levy" : "rent"}!`;
       case "debtCollector":
         return `${sourcePlayer?.name ?? "Someone"} demands ${amountDue}M!`;
       case "birthday":
         return `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
       case "slyDeal":
-        return `${sourcePlayer?.name ?? "Someone"} wants to steal your property!`;
+        return `${sourcePlayer?.name ?? "Someone"} wants to ${settings.useSocialistTheme ? "expropriate" : "steal"} your property!`;
       case "forceDeal":
         return `${sourcePlayer?.name ?? "Someone"} wants to swap properties!`;
       case "dealBreaker":
         return `${sourcePlayer?.name ?? "Someone"} is taking your complete set!`;
       default:
-        return "An action was played against you.";
+        return settings.useSocialistTheme ? "A directive was played against you." : "An action was played against you.";
     }
   }
 
@@ -259,7 +259,7 @@ export function ActionPrompt({
     <BottomSheet
       isOpen={true}
       onClose={() => {}} // No close button for action prompts - must respond
-      title="Action!"
+      title={settings.useSocialistTheme ? "Directive!" : "Action!"}
       height="h-auto"
       footer={footerButtons}
       playSound={true}
@@ -323,7 +323,7 @@ export function ActionPrompt({
                   d="M13 7l5 5m0 0l-5 5m5-5H6"
                 />
               </svg>
-              <p className="text-red-400 text-[10px] mt-1">Stolen!</p>
+              <p className="text-red-400 text-[10px] mt-1">{settings.useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
             </div>
           </div>
         </div>
@@ -393,7 +393,7 @@ export function ActionPrompt({
                     d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
-                <p className="text-red-400 text-[10px] mt-1">Stolen!</p>
+                <p className="text-red-400 text-[10px] mt-1">{settings.useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
               </div>
             )}
           </div>

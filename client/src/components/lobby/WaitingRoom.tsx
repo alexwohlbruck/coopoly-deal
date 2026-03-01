@@ -63,6 +63,7 @@ export function WaitingRoom({
         isOpen={showRules}
         maxHandSize={gameState.settings.maxHandSize}
         allowDuplicateSets={gameState.settings.allowDuplicateSets}
+        useSocialistTheme={gameState.settings.useSocialistTheme}
         onClose={() => setShowRules(false)}
       />
       <motion.div
@@ -85,7 +86,7 @@ export function WaitingRoom({
         <div className="space-y-4 gap-2">
           <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
             <h3 className="text-emerald-200 text-sm font-medium mb-3">
-              {t.waiting.players} ({gameState.players.length}/6)
+              {gameState.settings.useSocialistTheme ? "Comrades" : t.waiting.players} ({gameState.players.length}/6)
             </h3>
             <div className="space-y-2">
               {gameState.players.map((player, i) => (
@@ -119,7 +120,7 @@ export function WaitingRoom({
                     <button
                       onClick={() => onRemovePlayer(player.id)}
                       className="ml-auto p-1 hover:bg-red-500/20 rounded transition-colors text-red-400 hover:text-red-300"
-                      title="Remove player"
+                      title={gameState.settings.useSocialistTheme ? "Remove comrade" : "Remove player"}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -150,12 +151,12 @@ export function WaitingRoom({
               disabled={!canStart}
               className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
             >
-              {canStart ? t.waiting.startGame : t.waiting.needMorePlayers}
+              {canStart ? t.waiting.startGame : (gameState.settings.useSocialistTheme ? "Need More Comrades" : t.waiting.needMorePlayers)}
             </button>
           </div>
         ) : (
           <p className="text-center text-emerald-300 text-sm">
-            {t.waiting.waitingForPlayers}
+            {gameState.settings.useSocialistTheme ? "Waiting for comrades..." : t.waiting.waitingForPlayers}
           </p>
         )}
       </motion.div>

@@ -5,6 +5,7 @@ interface GameRulesModalProps {
   isOpen: boolean;
   maxHandSize?: number;
   allowDuplicateSets?: boolean;
+  useSocialistTheme?: boolean;
   onClose: () => void;
 }
 
@@ -12,6 +13,7 @@ export function GameRulesModal({
   isOpen,
   maxHandSize = 7,
   allowDuplicateSets = true,
+  useSocialistTheme = false,
   onClose,
 }: GameRulesModalProps) {
   if (!isOpen) return null;
@@ -54,14 +56,14 @@ export function GameRulesModal({
                 Overview
               </h3>
               <p className="text-gray-300 leading-relaxed">
-                Co-Opoly Deal is a card game for 2–6 players. The goal is to be
-                the first player to collect{" "}
+                Co-Opoly Deal is a card game for 2–6 {useSocialistTheme ? "comrades" : "players"}. The goal is to be
+                the first {useSocialistTheme ? "comrade" : "player"} to collect{" "}
                 <span className="font-bold text-white">
                   3 complete property sets
                   {allowDuplicateSets ? "" : " of different colors"}
                 </span>{" "}
-                on the table in front of you. Players take turns drawing cards,
-                playing cards, and using action cards to collect rent, steal
+                on the table in front of you. {useSocialistTheme ? "Comrades" : "Players"} take turns drawing cards,
+                playing cards, and using {useSocialistTheme ? "directive" : "action"} cards to collect {useSocialistTheme ? "levies" : "rent"}, {useSocialistTheme ? "expropriate" : "steal"}
                 properties, and block opponents.
               </p>
             </section>
@@ -80,7 +82,7 @@ export function GameRulesModal({
                   <span className="text-emerald-500 font-bold">2.</span>
                   <span>
                     Deal <span className="font-bold text-white">5 cards</span>{" "}
-                    face-down to each player.
+                    face-down to each {useSocialistTheme ? "comrade" : "player"}.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
@@ -93,7 +95,7 @@ export function GameRulesModal({
                 <li className="flex items-start gap-2">
                   <span className="text-emerald-500 font-bold">4.</span>
                   <span>
-                    The first player is chosen randomly. Play proceeds
+                    The first {useSocialistTheme ? "comrade" : "player"} is chosen randomly. Play proceeds
                     clockwise.
                   </span>
                 </li>
@@ -139,7 +141,7 @@ export function GameRulesModal({
                     </li>
                     <li>
                       • Cards can be played to your bank, property area, or as
-                      action cards
+                      {useSocialistTheme ? "directive" : "action"} cards
                     </li>
                   </ul>
                 </div>
@@ -171,7 +173,7 @@ export function GameRulesModal({
                 Winning the Game
               </h3>
               <p className="text-gray-300 leading-relaxed">
-                The first player to have{" "}
+                The first {useSocialistTheme ? "comrade" : "player"} to have{" "}
                 <span className="font-bold text-white">
                   3 complete property sets
                 </span>{" "}
@@ -196,16 +198,16 @@ export function GameRulesModal({
                         Cards Needed
                       </th>
                       <th className="text-center py-2 px-3 text-gray-400 font-semibold">
-                        Rent (1)
+                        {useSocialistTheme ? "Levy" : "Rent"} (1)
                       </th>
                       <th className="text-center py-2 px-3 text-gray-400 font-semibold">
-                        Rent (2)
+                        {useSocialistTheme ? "Levy" : "Rent"} (2)
                       </th>
                       <th className="text-center py-2 px-3 text-gray-400 font-semibold">
-                        Rent (3)
+                        {useSocialistTheme ? "Levy" : "Rent"} (3)
                       </th>
                       <th className="text-center py-2 px-3 text-gray-400 font-semibold">
-                        Rent (4)
+                        {useSocialistTheme ? "Levy" : "Rent"} (4)
                       </th>
                     </tr>
                   </thead>
@@ -302,7 +304,7 @@ export function GameRulesModal({
             {/* Key Action Cards */}
             <section>
               <h3 className="text-2xl font-bold text-emerald-400 mb-3">
-                Key Action Cards
+                Key {useSocialistTheme ? "Directive" : "Action"} Cards
               </h3>
               <div className="space-y-3">
                 <div className="bg-gray-800/50 rounded-lg p-3">
@@ -314,7 +316,7 @@ export function GameRulesModal({
                 <div className="bg-gray-800/50 rounded-lg p-3">
                   <h4 className="font-semibold text-white mb-1">Sly Deal</h4>
                   <p className="text-gray-300 text-sm">
-                    Steal one property card from any opponent (not from complete
+                    {useSocialistTheme ? "Expropriate" : "Steal"} one property card from any opponent (not from complete
                     sets).
                   </p>
                 </div>
@@ -330,36 +332,36 @@ export function GameRulesModal({
                     Deal Breaker
                   </h4>
                   <p className="text-gray-300 text-sm">
-                    Steal an entire complete property set from an opponent.
+                    {useSocialistTheme ? "Expropriate" : "Steal"} an entire complete property set from an opponent.
                   </p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-3">
                   <h4 className="font-semibold text-white mb-1">
                     Debt Collector
                   </h4>
-                  <p className="text-gray-300 text-sm">Charge one player 5M.</p>
+                  <p className="text-gray-300 text-sm">Charge one {useSocialistTheme ? "comrade" : "player"} 5M.</p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-3">
                   <h4 className="font-semibold text-white mb-1">
                     It's My Birthday
                   </h4>
                   <p className="text-gray-300 text-sm">
-                    All other players pay you 2M.
+                    All other {useSocialistTheme ? "comrades" : "players"} pay you 2M.
                   </p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-3">
                   <h4 className="font-semibold text-white mb-1">Just Say No</h4>
                   <p className="text-gray-300 text-sm">
-                    Cancel any action card played against you. Can be chained!
+                    Cancel any {useSocialistTheme ? "directive" : "action"} card played against you. Can be chained!
                   </p>
                 </div>
                 <div className="bg-gray-800/50 rounded-lg p-3">
                   <h4 className="font-semibold text-white mb-1">
-                    Double the Rent
+                    Double the {useSocialistTheme ? "Levy" : "Rent"}
                   </h4>
                   <p className="text-gray-300 text-sm">
-                    Play with a rent card to double the rent amount. Can stack 2
-                    cards for 4x rent!
+                    Play with a {useSocialistTheme ? "levy" : "rent"} card to double the {useSocialistTheme ? "levy" : "rent"} amount. Can stack 2
+                    cards for 4x {useSocialistTheme ? "levy" : "rent"}!
                   </p>
                 </div>
               </div>
@@ -375,7 +377,7 @@ export function GameRulesModal({
                   <span className="text-emerald-500">•</span>
                   <span>
                     The{" "}
-                    <span className="font-bold text-white">paying player</span>{" "}
+                    <span className="font-bold text-white">paying {useSocialistTheme ? "comrade" : "player"}</span>{" "}
                     decides which cards to use for payment
                   </span>
                 </li>
@@ -391,7 +393,7 @@ export function GameRulesModal({
                   <span className="text-emerald-500">•</span>
                   <span>
                     <span className="font-bold text-white">
-                      Money/action cards
+                      Money/{useSocialistTheme ? "directive" : "action"} cards
                     </span>{" "}
                     go to the recipient's bank
                   </span>
