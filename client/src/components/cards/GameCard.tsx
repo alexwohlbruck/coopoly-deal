@@ -35,7 +35,10 @@ const ACTION_COLORS: Partial<Record<CardType, string>> = {
   [CardType.Hotel]: "#DC2626",
 };
 
-function getActionSubtitle(type: CardType, useSocialistTheme = false): string | null {
+function getActionSubtitle(
+  type: CardType,
+  useSocialistTheme = false,
+): string | null {
   switch (type) {
     case CardType.DebtCollector:
       return "Pay 5M";
@@ -110,7 +113,11 @@ function PropertyCardContent({
         <p
           className={`text-white font-black text-center leading-tight ${small ? "text-[7px]" : "text-[10px]"} drop-shadow-md`}
         >
-          {card.name ? getPropertyName(card.name, useSocialistTheme) : (color ? getPropertyColorLabel(color, useSocialistTheme) : "")}
+          {card.name
+            ? getPropertyName(card.name, useSocialistTheme)
+            : color
+              ? getPropertyColorLabel(color, useSocialistTheme)
+              : ""}
         </p>
       </div>
 

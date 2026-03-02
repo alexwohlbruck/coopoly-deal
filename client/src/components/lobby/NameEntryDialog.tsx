@@ -7,7 +7,11 @@ interface NameEntryDialogProps {
   onBack: () => void;
 }
 
-export function NameEntryDialog({ roomCode, onSubmit, onBack }: NameEntryDialogProps) {
+export function NameEntryDialog({
+  roomCode,
+  onSubmit,
+  onBack,
+}: NameEntryDialogProps) {
   const [name, setName] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {

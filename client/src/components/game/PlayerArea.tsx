@@ -352,7 +352,11 @@ export function PlayerArea({
             animate={{ rotate: 360 }}
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-10"
-            title={settings?.useSocialistTheme ? "Waiting for comrade response" : "Waiting for player response"}
+            title={
+              settings?.useSocialistTheme
+                ? "Waiting for comrade response"
+                : "Waiting for player response"
+            }
           >
             <Clock className="w-4 h-4 text-white" />
           </motion.div>

@@ -158,8 +158,12 @@ export function GameTable({
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
   const timeLeft = useTurnTimer(
-    gameState.phase === GamePhase.Finished ? null : (gameState.turn?.expiresAt ?? null),
-    gameState.phase === GamePhase.Finished ? null : (gameState.turn?.pausedTimeLeft ?? null),
+    gameState.phase === GamePhase.Finished
+      ? null
+      : (gameState.turn?.expiresAt ?? null),
+    gameState.phase === GamePhase.Finished
+      ? null
+      : (gameState.turn?.pausedTimeLeft ?? null),
     play,
   );
   const pendingAction = gameState.turn?.pendingAction;
@@ -265,13 +269,17 @@ export function GameTable({
       CardType.Hotel,
       CardType.DoubleTheRent,
     ];
-  const isActionCard =
-    validatableCardTypes.some(
+    const isActionCard = validatableCardTypes.some(
       (type) => type === card.type,
     );
 
     if (isActionCard) {
-      const validation = validateActionCard(card, gameState, playerId, gameState.settings?.useSocialistTheme);
+      const validation = validateActionCard(
+        card,
+        gameState,
+        playerId,
+        gameState.settings?.useSocialistTheme,
+      );
       if (!validation.valid) {
         // Show error feedback
         setToast(validation.reason || "Cannot play this card");
@@ -434,7 +442,8 @@ export function GameTable({
         {gameState.turn && gameState.turn.rentMultiplier > 1 && (
           <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
             <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-              🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"} Doubled! ({gameState.turn.rentMultiplier}x)
+              🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
+              Doubled! ({gameState.turn.rentMultiplier}x)
             </div>
           </div>
         )}
