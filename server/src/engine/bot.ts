@@ -361,18 +361,45 @@ export class BotPlayer {
           .flatMap((s) => s.cards);
 
         if (myTradeable.length > 0 && oppTradeable.length > 0) {
-          const myWorst = myTradeable.sort((a, b) => a.value - b.value)[0]!;
-          const oppBest = oppTradeable.sort((a, b) => b.value - a.value)[0]!;
+          const mySorted = myTradeable.sort((a, b) => a.value - b.value);
+          const oppSorted = oppTradeable.sort((a, b) => b.value - a.value);
 
-          if (oppBest.value > myWorst.value) {
+          // Find a card to give that doesn't help the opponent
+          let myCardToGive = mySorted[0]!;
+          for (const card of mySorted) {
+            const helpsOpponent = card.colors?.some((color) =>
+              opp.properties.some((s) => s.color === color && s.cards.length > 0),
+            );
+            if (!helpsOpponent) {
+              myCardToGive = card;
+              break;
+            }
+          }
+
+          // Find a card to take that helps us, or just the best one
+          let oppCardToTake = oppSorted[0]!;
+          for (const card of oppSorted) {
+            const helpsMe = card.colors?.some((color) =>
+              player.properties.some((s) => s.color === color && s.cards.length > 0),
+            );
+            if (helpsMe) {
+              oppCardToTake = card;
+              break;
+            }
+          }
+
+          if (
+            oppCardToTake.value > myCardToGive.value ||
+            player.properties.some((s) => oppCardToTake.colors?.includes(s.color))
+          ) {
             return {
               type: "action",
               payload: {
                 action: "forceDeal",
                 cardId: forceDeal.id,
-                myCardId: myWorst.id,
+                myCardId: myCardToGive.id,
                 targetPlayerId: opp.id,
-                targetCardId: oppBest.id,
+                targetCardId: oppCardToTake.id,
               },
             };
           }
@@ -389,7 +416,17 @@ export class BotPlayer {
           .filter((s) => !isSetComplete(s))
           .flatMap((s) => s.cards);
         if (stealable.length > 0) {
-          const target = stealable.sort((a, b) => b.value - a.value)[0]!;
+          const oppSorted = stealable.sort((a, b) => b.value - a.value);
+          let target = oppSorted[0]!;
+          for (const card of oppSorted) {
+            const helpsMe = card.colors?.some((color) =>
+              player.properties.some((s) => s.color === color && s.cards.length > 0),
+            );
+            if (helpsMe) {
+              target = card;
+              break;
+            }
+          }
           return {
             type: "action",
             payload: {

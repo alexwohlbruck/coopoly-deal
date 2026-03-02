@@ -99,6 +99,17 @@ export function canPlayRent(
     return { valid: false, reason: "Player not found" };
   }
 
+  if (card.type === CardType.RentWild) {
+    const hasAnyProperty = player.properties.some((set) => set.cards.length > 0);
+    if (!hasAnyProperty) {
+      return {
+        valid: false,
+        reason: "You don't have any properties to charge rent for",
+      };
+    }
+    return { valid: true };
+  }
+
   // Check if player has at least one property of a valid color
   const validColors = card.colors || [];
   const hasValidProperty = player.properties.some((set) =>

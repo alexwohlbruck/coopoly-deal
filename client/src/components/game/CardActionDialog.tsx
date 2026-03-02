@@ -50,40 +50,47 @@ export function CardActionDialog({
 
   const [step, setStep] = useState<
     | "choose"
+    | "selectRentCards"
     | "selectColor"
     | "selectTarget"
     | "selectTargetCard"
     | "selectMyCard"
     | "selectTargetSet"
-    | "promptDoubleRent"
   >("choose");
   const [selectedColor, setSelectedColor] = useState<PropertyColor | null>(
     null,
   );
-  const [selectedTarget, setSelectedTarget] = useState<ClientPlayer | null>(
-    null,
+  const [selectedTarget, setSelectedTarget] = useState<ClientPlayer | null>(null);
+  const [selectedRentCardId, setSelectedRentCardId] = useState<string | null>(
+    card.type === CardType.RentDual || card.type === CardType.RentWild ? card.id : null
   );
-  const [pendingRentAction, setPendingRentAction] = useState<Record<
-    string,
-    unknown
-  > | null>(null);
-  const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(
-    null,
+  const [selectedDtrCardIds, setSelectedDtrCardIds] = useState<string[]>(
+    card.type === CardType.DoubleTheRent ? [card.id] : []
   );
+  const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
   const [autoTriggered, setAutoTriggered] = useState(false);
   const [actionDispatched, setActionDispatched] = useState(false);
+  const [activeCardId, setActiveCardId] = useState<string>(card.id);
   const closedRef = useRef(false);
   const lastCardIdRef = useRef<string | null>(null);
 
+  const activeCard = player.hand?.find(c => c.id === activeCardId) || card;
+
   useEffect(() => {
     console.log("[CardActionDialog] Component mounted for card", card.id);
-    // Only reset flags when the card ID changes (new card selected)
-    // Do NOT reset on remount of the same card
     if (lastCardIdRef.current !== card.id) {
       console.log("[CardActionDialog] New card detected, resetting flags");
       closedRef.current = false;
       setActionDispatched(false);
       lastCardIdRef.current = card.id;
+      setActiveCardId(card.id);
+      setSelectedRentCardId(card.type === CardType.RentDual || card.type === CardType.RentWild ? card.id : null);
+      setSelectedDtrCardIds(card.type === CardType.DoubleTheRent ? [card.id] : []);
+      setStep("choose");
+      setSelectedColor(null);
+      setSelectedTarget(null);
+      setSelectedTargetCard(null);
+      setAutoTriggered(false);
     } else {
       console.log(
         "[CardActionDialog] Remount of same card detected, keeping closedRef:",
@@ -94,13 +101,13 @@ export function CardActionDialog({
     return () => {
       console.log("[CardActionDialog] Component unmounting for card", card.id);
     };
-  }, [card.id]);
+  }, [card.id, card.type]);
 
   const canPlayToProperty =
-    card.type === CardType.Property || card.type === CardType.PropertyWildcard;
+    activeCard.type === CardType.Property || activeCard.type === CardType.PropertyWildcard;
 
   const isActionCard =
-    card.type === CardType.PassGo ||
+    activeCard.type === CardType.PassGo ||
     card.type === CardType.SlyDeal ||
     card.type === CardType.ForceDeal ||
     card.type === CardType.DealBreaker ||
@@ -108,9 +115,9 @@ export function CardActionDialog({
     card.type === CardType.Birthday ||
     card.type === CardType.RentDual ||
     card.type === CardType.RentWild ||
-    card.type === CardType.DoubleTheRent ||
     card.type === CardType.House ||
-    card.type === CardType.Hotel;
+    card.type === CardType.Hotel ||
+    card.type === CardType.DoubleTheRent;
 
   // Helper to mark as dispatched and close
   // NOTE: This should be called BEFORE onPlayAction to prevent remounts
@@ -120,8 +127,38 @@ export function CardActionDialog({
     closedRef.current = true;
   }, []);
 
+  function dispatchAll(rentAction?: Record<string, unknown>) {
+    markDispatchedAndClose();
+    for (const dtrId of selectedDtrCardIds) {
+      onPlayAction({ action: "doubleTheRent", cardId: dtrId });
+    }
+    if (rentAction) {
+      onPlayAction(rentAction);
+    }
+    onClose();
+  }
+
+  function proceedWithRentCard(rentCardId: string) {
+    const rentCard = player.hand?.find(c => c.id === rentCardId) || activeCard;
+    setActiveCardId(rentCard.id);
+
+    if (rentCard.type === CardType.RentDual) {
+      const colors = rentCard.colors ?? [];
+      const validColors = colors.filter((c) =>
+        player.properties.some((s) => s.color === c && s.cards.length > 0),
+      );
+      if (validColors.length === 1) {
+        dispatchAll({ action: "rentDual", cardId: rentCard.id, color: validColors[0] });
+      } else {
+        setStep("selectColor");
+      }
+    } else if (rentCard.type === CardType.RentWild) {
+      setStep("selectColor");
+    }
+  }
+
   const canUseAction = (() => {
-    if (card.type === CardType.House) {
+    if (activeCard.type === CardType.House) {
       return player.properties.some(
         (s) =>
           isSetComplete(s) &&
@@ -130,7 +167,7 @@ export function CardActionDialog({
           !s.house,
       );
     }
-    if (card.type === CardType.Hotel) {
+    if (activeCard.type === CardType.Hotel) {
       return player.properties.some(
         (s) =>
           isSetComplete(s) &&
@@ -140,17 +177,17 @@ export function CardActionDialog({
           !s.hotel,
       );
     }
-    if (card.type === CardType.DealBreaker) {
+    if (activeCard.type === CardType.DealBreaker) {
       return opponents.some((opp) =>
         opp.properties.some((s) => isSetComplete(s)),
       );
     }
-    if (card.type === CardType.SlyDeal) {
+    if (activeCard.type === CardType.SlyDeal) {
       return opponents.some((opp) =>
         opp.properties.some((s) => !isSetComplete(s) && s.cards.length > 0),
       );
     }
-    if (card.type === CardType.ForceDeal) {
+    if (activeCard.type === CardType.ForceDeal) {
       const hasMyCards = player.properties.some(
         (s) => !isSetComplete(s) && s.cards.length > 0,
       );
@@ -159,32 +196,33 @@ export function CardActionDialog({
       );
       return hasMyCards && hasTheirCards;
     }
-    if (card.type === CardType.RentDual) {
+    if (activeCard.type === CardType.RentDual) {
       return (
-        card.colors?.some((c) =>
+        activeCard.colors?.some((c) =>
           player.properties.some((s) => s.color === c && s.cards.length > 0),
         ) ?? false
       );
     }
-    if (card.type === CardType.RentWild) {
+    if (activeCard.type === CardType.RentWild) {
       return player.properties.some((s) => s.cards.length > 0);
     }
-    if (card.type === CardType.DoubleTheRent) {
-      return true;
+    if (activeCard.type === CardType.DoubleTheRent) {
+      if (cardsPlayed >= 2) return false;
+      const rentCards = player.hand?.filter(c => c.type === CardType.RentDual || c.type === CardType.RentWild) || [];
+      return rentCards.length > 0;
     }
     return true;
   })();
 
   function handlePlayAction() {
     console.log("[CardActionDialog] handlePlayAction called", {
-      cardType: card.type,
-      cardId: card.id,
+      cardType: activeCard.type,
+      cardId: activeCard.id,
       actionDispatched,
       closedRef: closedRef.current,
       step,
     });
 
-    // CRITICAL: Check closedRef FIRST to prevent remount from re-executing
     if (closedRef.current) {
       console.log(
         "[CardActionDialog] Dialog already closed (remount detected), returning",
@@ -192,15 +230,14 @@ export function CardActionDialog({
       return;
     }
 
-    // Check for simple actions that dispatch immediately
     const actionPayload = (() => {
-      switch (card.type) {
+      switch (activeCard.type) {
         case CardType.PassGo:
-          return { action: "passGo", cardId: card.id };
+          return { action: "passGo", cardId: activeCard.id };
         case CardType.Birthday:
-          return { action: "birthday", cardId: card.id };
+          return { action: "birthday", cardId: activeCard.id };
         case CardType.DoubleTheRent:
-          return { action: "doubleTheRent", cardId: card.id };
+          return null;
         default:
           return null;
       }
@@ -218,13 +255,36 @@ export function CardActionDialog({
       return;
     }
 
-    switch (card.type) {
+    switch (activeCard.type) {
+      case CardType.DoubleTheRent:
+      case CardType.RentDual:
+      case CardType.RentWild: {
+        const dtrCards = player.hand?.filter(c => c.type === CardType.DoubleTheRent) || [];
+        const rentCards = player.hand?.filter(c => c.type === CardType.RentDual || c.type === CardType.RentWild) || [];
+        
+        if (activeCard.type === CardType.DoubleTheRent && rentCards.length === 0) {
+          markDispatchedAndClose();
+          onPlayAction({ action: "doubleTheRent", cardId: activeCard.id });
+          onClose();
+          return;
+        }
+        
+        if (activeCard.type === CardType.RentDual || activeCard.type === CardType.RentWild) {
+           if (dtrCards.length === 0 || cardsPlayed >= 2) {
+             proceedWithRentCard(activeCard.id);
+             return;
+           }
+        }
+
+        setStep("selectRentCards");
+        return;
+      }
       case CardType.DebtCollector:
         if (opponents.length === 1) {
           markDispatchedAndClose();
           onPlayAction({
             action: "debtCollector",
-            cardId: card.id,
+            cardId: activeCard.id,
             targetPlayerId: opponents[0].id,
           });
           onClose();
@@ -234,34 +294,21 @@ export function CardActionDialog({
         return;
       case CardType.SlyDeal:
       case CardType.ForceDeal:
-      case CardType.DealBreaker:
-        if (opponents.length === 1) {
-          handleSelectTarget(opponents[0]);
+      case CardType.DealBreaker: {
+        let validOpponents = opponents;
+        if (activeCard.type === CardType.DealBreaker) {
+          validOpponents = opponents.filter(opp => opp.properties.some(isSetComplete));
+        } else {
+          validOpponents = opponents.filter(opp => opp.properties.some(s => !isSetComplete(s) && s.cards.length > 0));
+        }
+
+        if (validOpponents.length === 1) {
+          handleSelectTarget(validOpponents[0]);
           return;
         }
         setStep("selectTarget");
         return;
-      case CardType.RentDual: {
-        const colors = card.colors ?? [];
-        const validColors = colors.filter((c) =>
-          player.properties.some((s) => s.color === c && s.cards.length > 0),
-        );
-        if (validColors.length === 1) {
-          markDispatchedAndClose();
-          onPlayAction({
-            action: "rentDual",
-            cardId: card.id,
-            color: validColors[0],
-          });
-          onClose();
-          return;
-        }
-        setStep("selectColor");
-        return;
       }
-      case CardType.RentWild:
-        setStep("selectColor");
-        return;
       case CardType.House:
       case CardType.Hotel: {
         const sets = player.properties.filter(
@@ -271,15 +318,15 @@ export function CardActionDialog({
             s.color !== PC.Utility,
         );
         const validSets =
-          card.type === CardType.House
+          activeCard.type === CardType.House
             ? sets.filter((s) => !s.house)
             : sets.filter((s) => s.house && !s.hotel);
         if (validSets.length === 1) {
-          const action = card.type === CardType.House ? "house" : "hotel";
+          const action = activeCard.type === CardType.House ? "house" : "hotel";
           markDispatchedAndClose();
           onPlayAction({
             action,
-            cardId: card.id,
+            cardId: activeCard.id,
             setColor: validSets[0].color,
           });
           onClose();
@@ -295,50 +342,21 @@ export function CardActionDialog({
     if (closedRef.current) return;
 
     setSelectedColor(color);
-    if (card.type === CardType.RentDual) {
-      const doubleRentCard = player.hand?.find(
-        (c) => c.type === CardType.DoubleTheRent,
-      );
-      const action = { action: "rentDual", cardId: card.id, color };
-
-      if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
-        setPendingRentAction(action);
-        setStep("promptDoubleRent");
-      } else {
-        markDispatchedAndClose();
-        onPlayAction(action);
-        onClose();
-      }
-    } else if (card.type === CardType.RentWild) {
+    if (activeCard.type === CardType.RentDual) {
+      dispatchAll({ action: "rentDual", cardId: activeCard.id, color });
+    } else if (activeCard.type === CardType.RentWild) {
       if (opponents.length === 1) {
-        const doubleRentCard = player.hand?.find(
-          (c) => c.type === CardType.DoubleTheRent,
-        );
-        const action = {
-          action: "rentWild",
-          cardId: card.id,
-          color,
-          targetPlayerId: opponents[0].id,
-        };
-
-        if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
-          setPendingRentAction(action);
-          setStep("promptDoubleRent");
-        } else {
-          markDispatchedAndClose();
-          onPlayAction(action);
-          onClose();
-        }
+        dispatchAll({ action: "rentWild", cardId: activeCard.id, color, targetPlayerId: opponents[0].id });
         return;
       }
       setStep("selectTarget");
-    } else if (card.type === CardType.House) {
+    } else if (activeCard.type === CardType.House) {
       markDispatchedAndClose();
-      onPlayAction({ action: "house", cardId: card.id, setColor: color });
+      onPlayAction({ action: "house", cardId: activeCard.id, setColor: color });
       onClose();
-    } else if (card.type === CardType.Hotel) {
+    } else if (activeCard.type === CardType.Hotel) {
       markDispatchedAndClose();
-      onPlayAction({ action: "hotel", cardId: card.id, setColor: color });
+      onPlayAction({ action: "hotel", cardId: activeCard.id, setColor: color });
       onClose();
     }
   }
@@ -347,34 +365,22 @@ export function CardActionDialog({
     if (closedRef.current) return;
 
     setSelectedTarget(target);
-    if (card.type === CardType.DebtCollector) {
+    if (activeCard.type === CardType.DebtCollector) {
       markDispatchedAndClose();
       onPlayAction({
         action: "debtCollector",
-        cardId: card.id,
+        cardId: activeCard.id,
         targetPlayerId: target.id,
       });
       onClose();
-    } else if (card.type === CardType.RentWild && selectedColor) {
-      const doubleRentCard = player.hand?.find(
-        (c) => c.type === CardType.DoubleTheRent,
-      );
-      const action = {
+    } else if (activeCard.type === CardType.RentWild && selectedColor) {
+      dispatchAll({
         action: "rentWild",
-        cardId: card.id,
+        cardId: activeCard.id,
         color: selectedColor,
         targetPlayerId: target.id,
-      };
-
-      if (doubleRentCard && rentMultiplier === 1 && cardsPlayed < 2) {
-        setPendingRentAction(action);
-        setStep("promptDoubleRent");
-      } else {
-        markDispatchedAndClose();
-        onPlayAction(action);
-        onClose();
-      }
-    } else if (card.type === CardType.SlyDeal) {
+      });
+    } else if (activeCard.type === CardType.SlyDeal) {
       const stealable = target.properties
         .filter((s) => !isSetComplete(s))
         .flatMap((s) => s.cards);
@@ -382,7 +388,7 @@ export function CardActionDialog({
         markDispatchedAndClose();
         onPlayAction({
           action: "slyDeal",
-          cardId: card.id,
+          cardId: activeCard.id,
           targetPlayerId: target.id,
           targetCardId: stealable[0].id,
         });
@@ -390,7 +396,7 @@ export function CardActionDialog({
         return;
       }
       setStep("selectTargetCard");
-    } else if (card.type === CardType.ForceDeal) {
+    } else if (activeCard.type === CardType.ForceDeal) {
       const stealable = target.properties
         .filter((s) => !isSetComplete(s))
         .flatMap((s) => s.cards);
@@ -403,7 +409,7 @@ export function CardActionDialog({
           markDispatchedAndClose();
           onPlayAction({
             action: "forceDeal",
-            cardId: card.id,
+            cardId: activeCard.id,
             myCardId: myCards[0].id,
             targetPlayerId: target.id,
             targetCardId: stealable[0].id,
@@ -415,13 +421,13 @@ export function CardActionDialog({
         return;
       }
       setStep("selectTargetCard");
-    } else if (card.type === CardType.DealBreaker) {
+    } else if (activeCard.type === CardType.DealBreaker) {
       const completeSets = target.properties.filter(isSetComplete);
       if (completeSets.length === 1) {
         markDispatchedAndClose();
         onPlayAction({
           action: "dealBreaker",
-          cardId: card.id,
+          cardId: activeCard.id,
           targetPlayerId: target.id,
           targetSetColor: completeSets[0].color,
         });
@@ -436,16 +442,16 @@ export function CardActionDialog({
     if (closedRef.current) return;
 
     setSelectedTargetCard(cardId);
-    if (card.type === CardType.SlyDeal && selectedTarget) {
+    if (activeCard.type === CardType.SlyDeal && selectedTarget) {
       markDispatchedAndClose();
       onPlayAction({
         action: "slyDeal",
-        cardId: card.id,
+        cardId: activeCard.id,
         targetPlayerId: selectedTarget.id,
         targetCardId: cardId,
       });
       onClose();
-    } else if (card.type === CardType.ForceDeal) {
+    } else if (activeCard.type === CardType.ForceDeal) {
       setStep("selectMyCard");
     }
   }
@@ -456,7 +462,7 @@ export function CardActionDialog({
       markDispatchedAndClose();
       onPlayAction({
         action: "forceDeal",
-        cardId: card.id,
+        cardId: activeCard.id,
         myCardId,
         targetPlayerId: selectedTarget.id,
         targetCardId: selectedTargetCard,
@@ -471,7 +477,7 @@ export function CardActionDialog({
       markDispatchedAndClose();
       onPlayAction({
         action: "dealBreaker",
-        cardId: card.id,
+        cardId: activeCard.id,
         targetPlayerId: selectedTarget.id,
         targetSetColor: color,
       });
@@ -480,26 +486,26 @@ export function CardActionDialog({
   }
 
   function handlePlayToProperty() {
-    if (card.colors && card.colors.length === 1) {
+    if (activeCard.colors && activeCard.colors.length === 1) {
       markDispatchedAndClose();
-      onPlayToProperty(card.id, card.colors[0]);
+      onPlayToProperty(activeCard.id, activeCard.colors[0]);
       onClose();
-    } else if (card.colors && card.colors.length >= 2) {
+    } else if (activeCard.colors && activeCard.colors.length >= 2) {
       setStep("selectColor");
     }
   }
 
   const isMultiWildcard =
-    card.type === CardType.PropertyWildcard && (card.colors?.length ?? 0) > 2;
+    activeCard.type === CardType.PropertyWildcard && (activeCard.colors?.length ?? 0) > 2;
 
   const availableColors =
-    card.type === CardType.RentDual
-      ? (card.colors ?? []).filter(
+    activeCard.type === CardType.RentDual
+      ? (activeCard.colors ?? []).filter(
           (c) =>
             c !== PC.Unassigned &&
             player.properties.some((s) => s.color === c && s.cards.length > 0),
         )
-      : card.type === CardType.RentWild
+      : activeCard.type === CardType.RentWild
         ? Object.values(PC).filter(
             (c) =>
               c !== PC.Unassigned &&
@@ -507,7 +513,7 @@ export function CardActionDialog({
                 (s) => s.color === c && s.cards.length > 0,
               ),
           )
-        : card.type === CardType.House
+        : activeCard.type === CardType.House
           ? player.properties
               .filter(
                 (s) =>
@@ -517,7 +523,7 @@ export function CardActionDialog({
                   !s.house,
               )
               .map((s) => s.color)
-          : card.type === CardType.Hotel
+          : activeCard.type === CardType.Hotel
             ? player.properties
                 .filter(
                   (s) =>
@@ -530,7 +536,7 @@ export function CardActionDialog({
                 .map((s) => s.color)
             : isMultiWildcard
               ? (() => {
-                  const valid = (card.colors ?? []).filter(
+                  const valid = (activeCard.colors ?? []).filter(
                     (c) =>
                       c !== PC.Unassigned &&
                       player.properties.some(
@@ -542,15 +548,15 @@ export function CardActionDialog({
                   );
                   return valid.length > 0 || !settings.wildcardFlipCountsAsMove
                     ? valid
-                    : (card.colors ?? []).filter((c) => c !== PC.Unassigned);
+                    : (activeCard.colors ?? []).filter((c) => c !== PC.Unassigned);
                 })()
-              : (card.colors ?? []).filter((c) => c !== PC.Unassigned);
+              : (activeCard.colors ?? []).filter((c) => c !== PC.Unassigned);
 
   useEffect(() => {
     console.log("[CardActionDialog] useEffect triggered", {
       autoTriggered,
       step,
-      cardType: card.type,
+      cardType: activeCard.type,
       canPlayToProperty,
       isActionCard,
       actionDispatched,
@@ -617,9 +623,11 @@ export function CardActionDialog({
       footer={footerButtons}
       playSound={true}
     >
-      <div className="flex justify-center mb-3">
-        <GameCard card={card} useSocialistTheme={settings.useSocialistTheme} />
-      </div>
+      {step !== "selectRentCards" && (
+        <div className="flex justify-center mb-3">
+          <GameCard card={activeCard} useSocialistTheme={settings.useSocialistTheme} />
+        </div>
+      )}
 
       {step === "choose" && (
         <p className="text-gray-400 text-xs text-center">
@@ -630,28 +638,29 @@ export function CardActionDialog({
       {step === "selectColor" && (
         <div>
           <p className="text-gray-300 text-sm mb-2">
-            {card.type === CardType.RentDual || card.type === CardType.RentWild
+            {activeCard.type === CardType.RentDual || activeCard.type === CardType.RentWild
               ? settings.useSocialistTheme ? "Select a color to charge levy:" : "Select a color to charge rent:"
               : "Select a color:"}
           </p>
-          {rentMultiplier > 1 &&
-            (card.type === CardType.RentDual ||
-              card.type === CardType.RentWild) && (
+          {(rentMultiplier > 1 || selectedDtrCardIds.length > 0) &&
+            (activeCard.type === CardType.RentDual ||
+              activeCard.type === CardType.RentWild) && (
               <div className="mb-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
                 <p className="text-yellow-300 text-xs font-semibold text-center">
-                  🎯 {settings.useSocialistTheme ? "Levy" : "Rent"} will be {rentMultiplier}x (Doubled!)
+                  🎯 {settings.useSocialistTheme ? "Levy" : "Rent"} will be {rentMultiplier * Math.pow(2, selectedDtrCardIds.length)}x (Doubled!)
                 </p>
               </div>
             )}
           <div className="grid grid-cols-2 gap-2">
             {availableColors.map((color) => {
               const baseRent =
-                card.type === CardType.RentDual ||
-                card.type === CardType.RentWild
+                activeCard.type === CardType.RentDual ||
+                activeCard.type === CardType.RentWild
                   ? calculateRent(player, color)
                   : null;
+              const combinedMultiplier = rentMultiplier * Math.pow(2, selectedDtrCardIds.length);
               const finalRent =
-                baseRent !== null ? baseRent * rentMultiplier : null;
+                baseRent !== null ? baseRent * combinedMultiplier : null;
 
               return (
                 <button
@@ -659,7 +668,7 @@ export function CardActionDialog({
                   onClick={() => {
                     if (canPlayToProperty) {
                       markDispatchedAndClose();
-                      onPlayToProperty(card.id, color);
+                      onPlayToProperty(activeCard.id, color);
                       onClose();
                     } else {
                       handleSelectColor(color);
@@ -674,9 +683,9 @@ export function CardActionDialog({
                   {finalRent !== null && (
                     <span className="text-xs mt-1 opacity-90">
                       ${finalRent}M {settings.useSocialistTheme ? "levy" : "rent"}
-                      {rentMultiplier > 1 && baseRent !== null && (
+                      {combinedMultiplier > 1 && baseRent !== null && (
                         <span className="ml-1 text-yellow-300">
-                          (${baseRent}M × {rentMultiplier})
+                          (${baseRent}M × {combinedMultiplier})
                         </span>
                       )}
                     </span>
@@ -686,13 +695,13 @@ export function CardActionDialog({
             })}
             {canPlayToProperty &&
               !settings.wildcardFlipCountsAsMove &&
-              card.type === CardType.PropertyWildcard &&
-              card.colors &&
-              card.colors.length > 2 && (
+              activeCard.type === CardType.PropertyWildcard &&
+              activeCard.colors &&
+              activeCard.colors.length > 2 && (
                 <button
                   onClick={() => {
                     markDispatchedAndClose();
-                    onPlayToProperty(card.id, PC.Unassigned);
+                    onPlayToProperty(activeCard.id, PC.Unassigned);
                     onClose();
                   }}
                   className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-white/20 shadow-sm"
@@ -713,15 +722,24 @@ export function CardActionDialog({
         <div>
           <p className="text-gray-300 text-sm mb-2">{settings.useSocialistTheme ? "Select a comrade:" : "Select a player:"}</p>
           <div className="space-y-2">
-            {opponents.map((opp) => (
-              <button
-                key={opp.id}
-                onClick={() => handleSelectTarget(opp)}
-                className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-colors text-sm text-left px-4"
-              >
-                {opp.name}
-              </button>
-            ))}
+            {(() => {
+              let validOpponents = opponents;
+              if (activeCard.type === CardType.DealBreaker) {
+                validOpponents = opponents.filter(opp => opp.properties.some(isSetComplete));
+              } else if (activeCard.type === CardType.SlyDeal || activeCard.type === CardType.ForceDeal) {
+                validOpponents = opponents.filter(opp => opp.properties.some(s => !isSetComplete(s) && s.cards.length > 0));
+              }
+              
+              return validOpponents.map((opp) => (
+                <button
+                  key={opp.id}
+                  onClick={() => handleSelectTarget(opp)}
+                  className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-colors text-sm text-left px-4"
+                >
+                  {opp.name}
+                </button>
+              ));
+            })()}
           </div>
         </div>
       )}
@@ -770,45 +788,163 @@ export function CardActionDialog({
         </div>
       )}
 
-      {step === "promptDoubleRent" && pendingRentAction && (
-        <div className="flex flex-col items-center text-center space-y-4 px-4">
-          <div className="w-16 h-16 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg mb-2">
-            <span className="text-3xl">🎯</span>
+      {step === "selectRentCards" && (
+        <div className="flex flex-col items-center space-y-4 px-4 w-full">
+          <div className="w-full text-left">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              {settings.useSocialistTheme ? "Collect the Mandatory State Levy" : "Play Rent Cards"}
+            </h3>
+            
+            {settings.useSocialistTheme && (
+              <div className="bg-yellow-500/10 border-l-4 border-yellow-500 p-2 text-sm italic text-yellow-200/80 mb-4">
+                "The state demands its fair share. Combine directives to maximize your expropriation."
+              </div>
+            )}
+            
+            <p className="text-gray-300 text-sm">
+              Select a {settings.useSocialistTheme ? "levy" : "rent"} card and any multipliers you wish to use. You can play up to {3 - cardsPlayed} cards total.
+            </p>
           </div>
-          <h3 className="text-xl font-bold text-white">{settings.useSocialistTheme ? "Double the Levy?" : "Double the Rent?"}</h3>
-          <p className="text-gray-300 text-sm">
-            You have a {settings.useSocialistTheme ? "Double the Levy" : "Double the Rent"} card in your hand. Would you like to play
-            it first?
-          </p>
-          <div className="flex gap-3 w-full mt-4">
+
+          <div className="w-full bg-[#1A1A24] rounded-xl p-4 border border-white/5 flex flex-col items-center justify-center">
+            {selectedRentCardId ? (() => {
+                const multiplier = Math.pow(2, selectedDtrCardIds.length);
+                let baseRent = 0;
+                let isExactBase = false;
+                
+                const rCard = player.hand?.find(c => c.id === selectedRentCardId);
+                if (rCard) {
+                   const colors = rCard.type === CardType.RentDual ? (rCard.colors || []) : 
+                                  rCard.type === CardType.RentWild ? Object.values(PC).filter(c => c !== PC.Unassigned) : [];
+                   const validColors = colors.filter(c => player.properties.some(s => s.color === c && s.cards.length > 0));
+                   
+                   if (validColors.length === 1) {
+                     baseRent = calculateRent(player, validColors[0]);
+                     isExactBase = true;
+                   } else {
+                     const rents = colors.map(c => calculateRent(player, c));
+                     baseRent = Math.max(...rents, 0);
+                     isExactBase = false;
+                   }
+                }
+                
+                if (baseRent === 0) {
+                  return <div className="text-gray-400 italic text-sm py-4">No valid properties to charge {settings.useSocialistTheme ? "levy" : "rent"}</div>;
+                }
+                
+                return (
+                  <div className="flex items-center justify-center gap-3 w-full">
+                    <div className="flex flex-col items-center bg-black/30 rounded-lg py-2 px-4 flex-1">
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Base</span>
+                      <span className="text-sm font-bold text-white">
+                        {!isExactBase && <span className="text-xs font-normal text-gray-400 mr-1">Up to</span>}${baseRent}M
+                      </span>
+                    </div>
+                    
+                    <span className="text-lg text-gray-500 font-bold">×</span>
+                    
+                    <div className={`flex flex-col items-center rounded-lg py-2 px-4 flex-1 border ${selectedDtrCardIds.length > 0 ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-black/30 border-transparent'}`}>
+                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-yellow-500' : 'text-gray-400'}`}>Multiplier</span>
+                      <span className={`text-sm font-bold ${selectedDtrCardIds.length > 0 ? 'text-yellow-400' : 'text-white'}`}>{multiplier}x</span>
+                    </div>
+                    
+                    <span className="text-lg text-gray-500 font-bold">=</span>
+                    
+                    <div className={`flex flex-col items-center rounded-lg py-2 px-4 flex-1 border ${selectedDtrCardIds.length > 0 ? 'bg-green-500/20 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.15)]' : 'bg-black/30 border-transparent'}`}>
+                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-green-500' : 'text-gray-400'}`}>Total</span>
+                      <span className={`text-base font-bold ${selectedDtrCardIds.length > 0 ? 'text-green-400' : 'text-white'}`}>
+                        {!isExactBase && <span className="text-[10px] font-normal text-gray-400 mr-1">Up to</span>}${baseRent * multiplier}M
+                      </span>
+                    </div>
+                  </div>
+                );
+            })() : (
+              <div className="text-gray-400 italic text-sm py-4">Select a {settings.useSocialistTheme ? "levy" : "rent"} card to see total</div>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 max-h-[35vh] overflow-y-auto py-2 justify-center w-full px-2">
+            {player.hand
+              ?.filter(
+                (c) =>
+                  c.type === CardType.RentDual ||
+                  c.type === CardType.RentWild ||
+                  c.type === CardType.DoubleTheRent
+              )
+              .map((c) => {
+                const isRentCard = c.type === CardType.RentDual || c.type === CardType.RentWild;
+                const isSelected = isRentCard
+                  ? selectedRentCardId === c.id
+                  : selectedDtrCardIds.includes(c.id);
+
+                return (
+                  <GameCard
+                    key={c.id}
+                    card={c}
+                    small
+                    selected={isSelected}
+                    useSocialistTheme={settings.useSocialistTheme}
+                    onClick={() => {
+                      if (isRentCard) {
+                        if (selectedRentCardId === c.id) {
+                          setSelectedRentCardId(null);
+                        } else {
+                          setSelectedRentCardId(c.id);
+                        }
+                      } else {
+                        if (selectedDtrCardIds.includes(c.id)) {
+                          setSelectedDtrCardIds(prev => prev.filter(id => id !== c.id));
+                        } else {
+                          setSelectedDtrCardIds(prev => [...prev, c.id]);
+                        }
+                      }
+                    }}
+                  />
+                );
+              })}
+          </div>
+
+          <div className="flex flex-col gap-2 w-full mt-2">
             <button
               onClick={() => {
-                const doubleRentCard = player.hand?.find(
-                  (c) => c.type === CardType.DoubleTheRent,
-                );
-                if (doubleRentCard) {
-                  markDispatchedAndClose();
-                  onPlayAction({
-                    action: "doubleTheRent",
-                    cardId: doubleRentCard.id,
-                  });
-                  onClose();
+                const totalSelected = (selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length;
+                if (totalSelected === 0) return;
+                if (totalSelected > 3 - cardsPlayed) return;
+                if (!selectedRentCardId && selectedDtrCardIds.length > 0) return;
+
+                if (selectedRentCardId) {
+                  proceedWithRentCard(selectedRentCardId);
+                } else {
+                  dispatchAll();
                 }
               }}
-              className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-xl transition-colors"
+              disabled={
+                ((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) === 0 ||
+                ((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) > 3 - cardsPlayed ||
+                (!selectedRentCardId && selectedDtrCardIds.length > 0)
+              }
+              className={`flex-1 py-3 font-bold rounded-xl transition-colors ${
+                ((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) > 0 &&
+                ((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) <= 3 - cardsPlayed &&
+                (selectedRentCardId || selectedDtrCardIds.length === 0)
+                  ? "bg-yellow-500 hover:bg-yellow-400 text-black"
+                  : "bg-gray-700 text-gray-400 cursor-not-allowed"
+              }`}
             >
-              Yes, Double It!
+              {(!selectedRentCardId && selectedDtrCardIds.length > 0)
+                ? (settings.useSocialistTheme ? "Select a Levy card" : "Select a Rent card")
+                : "Play Selected Cards"}
             </button>
-            <button
-              onClick={() => {
-                markDispatchedAndClose();
-                onPlayAction(pendingRentAction);
-                onClose();
-              }}
-              className="flex-1 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-colors"
-            >
-              {settings.useSocialistTheme ? "No, Just Play Levy" : "No, Just Play Rent"}
-            </button>
+            {(!selectedRentCardId && selectedDtrCardIds.length > 0) && (
+              <p className="text-red-400 text-xs text-center">
+                You must select a {settings.useSocialistTheme ? "levy" : "rent"} card to use a multiplier.
+              </p>
+            )}
+            {((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) > 3 - cardsPlayed && (
+              <p className="text-red-400 text-xs text-center">
+                You only have {3 - cardsPlayed} {3 - cardsPlayed === 1 ? "move" : "moves"} left this turn.
+              </p>
+            )}
           </div>
         </div>
       )}

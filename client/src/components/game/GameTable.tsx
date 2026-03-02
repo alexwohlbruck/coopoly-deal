@@ -158,8 +158,8 @@ export function GameTable({
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
   const timeLeft = useTurnTimer(
-    gameState.turn?.expiresAt ?? null,
-    gameState.turn?.pausedTimeLeft ?? null,
+    gameState.phase === GamePhase.Finished ? null : (gameState.turn?.expiresAt ?? null),
+    gameState.phase === GamePhase.Finished ? null : (gameState.turn?.pausedTimeLeft ?? null),
     play,
   );
   const pendingAction = gameState.turn?.pendingAction;
@@ -265,7 +265,8 @@ export function GameTable({
       CardType.Hotel,
       CardType.DoubleTheRent,
     ];
-    const isActionCard = validatableCardTypes.some(
+  const isActionCard =
+    validatableCardTypes.some(
       (type) => type === card.type,
     );
 

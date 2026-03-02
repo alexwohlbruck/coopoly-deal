@@ -469,6 +469,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
 
+        if (game.phase !== GamePhase.Playing) return;
+
         // Just pick the first available color for now
         const color = assignment.availableColors[0];
         if (color) {
@@ -562,6 +564,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       if (botSpeed === "fast") initialDelay *= 0.5;
       await new Promise((resolve) => setTimeout(resolve, initialDelay));
     }
+
+    if (game.phase !== GamePhase.Playing) return;
 
     // Use async version with state updates between moves
     await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
