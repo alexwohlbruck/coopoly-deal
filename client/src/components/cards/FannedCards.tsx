@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard, CardBack } from "./GameCard";
 
@@ -272,14 +272,21 @@ export function HoverFanHand({
 
   const sideMargin = 12;
   const effective = Math.max(240, railW - 2 * sideMargin);
-  const pushHeadroom = Math.min(40, effective * 0.08);
+  // Reserve enough horizontal headroom for the peek shove. We need to
+  // push neighbors aside by AT LEAST cardWidth/2 + a comfort gap so the
+  // peeked card doesn't overlap with its immediate neighbors.
+  const pushHeadroom = Math.min(cardWidth * 0.7, effective * 0.18);
   const fitSpread =
     n <= 1 ? 0 : (effective - cardWidth - pushHeadroom * 2) / (n - 1);
   const fallbackSpread = Math.max(34, 96 - n * 5);
   const requested = spread != null ? spread : fallbackSpread;
   const baseSpread = Math.max(20, Math.min(requested, fitSpread));
   const tiltStep = 2.2;
-  const pushAmount = Math.min(baseSpread * 1.2 + 22, pushHeadroom);
+  // The neighbor immediately next to the peeked card needs to clear
+  // cardWidth/2 minus baseSpread (because base position is already
+  // baseSpread away). Use that as the floor; bump up for comfort.
+  const minPush = Math.max(0, cardWidth / 2 - baseSpread + 14);
+  const pushAmount = Math.max(minPush, Math.min(baseSpread * 1.2 + 22, pushHeadroom));
   const cardLift = (fanHeight - cardHeight) / 2 + 6;
 
   const onMove = (e: React.MouseEvent) => {
@@ -308,55 +315,65 @@ export function HoverFanHand({
       onMouseMove={onMove}
       onMouseLeave={() => setHovered(peekedDefault)}
     >
-      {items.map((item, i) => {
-        const off = i - mid;
-        const tilt = off * tiltStep;
-        let x = off * baseSpread;
-        let y = Math.abs(off) * 2;
-        let extraTilt = 0;
-        let z = i;
+      <AnimatePresence initial={false}>
+        {items.map((item, i) => {
+          const off = i - mid;
+          const tilt = off * tiltStep;
+          let x = off * baseSpread;
+          let y = Math.abs(off) * 2;
+          let extraTilt = 0;
+          let z = i;
 
-        if (hovered != null) {
-          if (i === hovered) {
-            y -= cardLift;
-            extraTilt = -tilt;
-            z = 100;
-          } else {
-            const dist = i - hovered;
-            const sign = dist > 0 ? 1 : -1;
-            const falloff = 1 / Math.max(1, Math.abs(dist) * 0.6);
-            x += sign * pushAmount * falloff;
+          if (hovered != null) {
+            if (i === hovered) {
+              y -= cardLift;
+              extraTilt = -tilt;
+              z = 100;
+            } else {
+              const dist = i - hovered;
+              const sign = dist > 0 ? 1 : -1;
+              // Sharper falloff: only the immediate neighbor on each
+              // side gets a strong push; further cards barely move.
+              const falloff = Math.pow(0.45, Math.abs(dist) - 1);
+              x += sign * pushAmount * falloff;
+            }
+          } else if (selectedId === item.id) {
+            y -= cardLift * 0.6;
           }
-        } else if (selectedId === item.id) {
-          y -= cardLift * 0.6;
-        }
 
-        return (
-          <div
-            key={item.id}
-            onMouseEnter={() => setHovered(i)}
-            draggable={item.draggable}
-            onDragStart={(e) => item.onDragStart?.(e)}
-            onDragEnd={() => item.onDragEnd?.()}
-            onClick={item.onClick}
-            style={{
-              position: "absolute",
-              bottom: 0,
-              left: "50%",
-              transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) rotate(${tilt + extraTilt}deg)`,
-              transformOrigin: "bottom center",
-              zIndex: z,
-              transition:
-                "transform var(--d-base, 220ms) var(--ease-out-soft, cubic-bezier(.22,.9,.32,1))",
-              cursor: item.onClick || item.draggable ? "pointer" : "default",
-              filter:
-                hovered != null && hovered !== i ? "brightness(0.9)" : "none",
-            }}
-          >
-            {item.node}
-          </div>
-        );
-      })}
+          return (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onMouseEnter={() => setHovered(i)}
+              draggable={item.draggable}
+              onDragStart={(e) => item.onDragStart?.(e as unknown as React.DragEvent)}
+              onDragEnd={() => item.onDragEnd?.()}
+              onClick={item.onClick}
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: "50%",
+                transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) rotate(${tilt + extraTilt}deg)`,
+                transformOrigin: "bottom center",
+                zIndex: z,
+                transition:
+                  "transform var(--d-base, 220ms) var(--ease-out-soft, cubic-bezier(.22,.9,.32,1))",
+                cursor: item.onClick || item.draggable ? "pointer" : "default",
+                filter:
+                  hovered != null && hovered !== i
+                    ? "brightness(0.88)"
+                    : "none",
+              }}
+            >
+              {item.node}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }

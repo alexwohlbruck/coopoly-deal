@@ -141,7 +141,10 @@ export function GameTableDesktop({
   const OPP_RAIL_HEIGHT = 78;
   const OPP_RAIL_TOP = TOP_BAR_HEIGHT + 8; // 64
   const CENTER_TOP = OPP_RAIL_TOP + OPP_RAIL_HEIGHT + 16; // 158
-  const BOTTOM_RESERVE = 360; // gold platter footprint
+  // Gold platter needs room for: crest+caption row (~32) + 8 gap + your-sets
+  // row (260 at scale 1.0) AND/OR the hand (218 fan height + 36 turn info).
+  // ~440 keeps the hand from clipping while letting sets reach scale=1.0.
+  const BOTTOM_RESERVE = 440;
 
   // Scroll opponents rail (used by < / > nav arrows)
   const railScroll = useRef<HTMLDivElement | null>(null);
@@ -163,12 +166,21 @@ export function GameTableDesktop({
           players={seatPlayers}
           activeId={activeOppId}
           onSelect={setActiveOppId}
-          onScrollLeft={() =>
-            railScroll.current?.scrollBy({ left: -300, behavior: "smooth" })
-          }
-          onScrollRight={() =>
-            railScroll.current?.scrollBy({ left: 300, behavior: "smooth" })
-          }
+          onScrollLeft={() => {
+            if (!seatPlayers.length) return;
+            const idx = seatPlayers.findIndex((p) => p.id === activeOppId);
+            const prev =
+              seatPlayers[
+                (idx - 1 + seatPlayers.length) % seatPlayers.length
+              ];
+            setActiveOppId(prev.id);
+          }}
+          onScrollRight={() => {
+            if (!seatPlayers.length) return;
+            const idx = seatPlayers.findIndex((p) => p.id === activeOppId);
+            const next = seatPlayers[(idx + 1) % seatPlayers.length];
+            setActiveOppId(next.id);
+          }}
           railRef={railScroll}
         />
       </div>
@@ -570,9 +582,10 @@ function YourTableGrid({
         ref={setsColRef}
         style={{
           minWidth: 0,
-          maxHeight: 240,
+          maxHeight: 320,
           overflowY: "auto",
           overflowX: "hidden",
+          alignSelf: "stretch",
         }}
         className="scrollbar-hide"
       >
@@ -595,7 +608,7 @@ function YourTableGrid({
           onCardDragStart={onWildcardDragStart}
           onCardDragEnd={onWildcardDragEnd}
           maxWidth={Math.max(280, setsColWidth - 4)}
-          maxHeight={230}
+          maxHeight={310}
         />
       </div>
       <div

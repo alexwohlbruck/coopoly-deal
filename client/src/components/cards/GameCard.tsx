@@ -826,9 +826,8 @@ export function GameCard({
             ? `0 0 0 3px var(--accent, #f0c14a), ${liftedShadow}`
             : baseShadow,
           filter: disabled
-            ? "grayscale(0.92) brightness(0.62) contrast(0.85)"
+            ? "grayscale(1) brightness(0.55) contrast(0.92)"
             : undefined,
-          opacity: disabled ? 0.7 : 1,
           transition:
             "transform var(--d-base) var(--ease-out-soft), box-shadow var(--d-base) var(--ease-out-soft), filter var(--d-base) var(--ease-out-soft)",
         }}

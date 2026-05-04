@@ -281,7 +281,7 @@ export function ActionPrompt({
                   <GameCard
                     key={card.id}
                     card={card}
-                    width={64}
+                    width={96}
                     useSocialistTheme={settings.useSocialistTheme}
                   />
                 ))}
@@ -289,7 +289,7 @@ export function ActionPrompt({
                   <GameCard
                     key={targetSet.house.id}
                     card={targetSet.house}
-                    width={64}
+                    width={96}
                     useSocialistTheme={settings.useSocialistTheme}
                   />
                 )}
@@ -297,7 +297,7 @@ export function ActionPrompt({
                   <GameCard
                     key={targetSet.hotel.id}
                     card={targetSet.hotel}
-                    width={64}
+                    width={96}
                     useSocialistTheme={settings.useSocialistTheme}
                   />
                 )}
@@ -338,7 +338,7 @@ export function ActionPrompt({
                   </p>
                   <GameCard
                     card={sourceCard}
-                    width={64}
+                    width={96}
                     useSocialistTheme={settings.useSocialistTheme}
                   />
                 </div>
@@ -367,7 +367,7 @@ export function ActionPrompt({
               {targetCard && (
                 <GameCard
                   card={targetCard}
-                  width={64}
+                  width={96}
                   useSocialistTheme={settings.useSocialistTheme}
                 />
               )}
@@ -413,7 +413,7 @@ export function ActionPrompt({
                     <GameCard
                       key={card.id}
                       card={card}
-                      width={64}
+                      width={96}
                       selected={selectedCardIds.includes(card.id)}
                       onClick={() => toggleCard(card.id)}
                       useSocialistTheme={settings.useSocialistTheme}
@@ -435,7 +435,7 @@ export function ActionPrompt({
                       <GameCard
                         key={card.id}
                         card={card}
-                        width={64}
+                        width={96}
                         selected={selectedCardIds.includes(card.id)}
                         onClick={() => toggleCard(card.id)}
                         useSocialistTheme={settings.useSocialistTheme}
@@ -446,7 +446,7 @@ export function ActionPrompt({
                         <GameCard
                           key={set.house.id}
                           card={set.house}
-                          width={64}
+                          width={96}
                           selected={selectedCardIds.includes(set.house.id)}
                           onClick={() => toggleCard(set.house!.id)}
                           useSocialistTheme={settings.useSocialistTheme}
@@ -458,7 +458,7 @@ export function ActionPrompt({
                         <GameCard
                           key={set.hotel.id}
                           card={set.hotel}
-                          width={64}
+                          width={96}
                           selected={selectedCardIds.includes(set.hotel.id)}
                           onClick={() => toggleCard(set.hotel!.id)}
                           useSocialistTheme={settings.useSocialistTheme}
