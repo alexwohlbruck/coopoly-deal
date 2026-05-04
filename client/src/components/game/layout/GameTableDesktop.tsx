@@ -146,8 +146,8 @@ export function GameTableDesktop({
           top: 158,
           left: 36,
           right: 36,
-          // Leave space for the bottom platter (~ 220px reserved).
-          bottom: 240,
+          // Leave space for the bottom platter (~ 320px reserved).
+          bottom: 340,
           display: "grid",
           gridTemplateColumns: "1fr 168px",
           gap: 16,
@@ -351,7 +351,7 @@ export function GameTableDesktop({
             display: "flex",
             flexDirection: "column",
             gap: 8,
-            maxHeight: 224,
+            maxHeight: 320,
             overflow: "hidden",
           }}
         >
