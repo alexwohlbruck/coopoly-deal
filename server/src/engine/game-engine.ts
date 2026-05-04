@@ -1060,6 +1060,11 @@ export class GameEngine {
 
     this.addPropertyToPlayer(player, card, toColor, false, createNewSet);
 
+    // After moving the wildcard, regroup any orphaned properties of the old color
+    if (currentColor !== PropertyColor.Unassigned && currentColor !== toColor) {
+      this.regroupProperties(player, currentColor);
+    }
+
     // If setting is enabled, count this as a move (only during Play phase, not during steal/swap)
     // EXCEPTION: Moving a wildcard from the Rainbow set does not cost a move
     const turn = this.getTurn(state);
@@ -1348,6 +1353,62 @@ export class GameEngine {
       }
     }
     throw new Error("Card not found in properties");
+  }
+
+  /**
+   * Regroups all property sets of a given color. 
+   * When a wildcard is removed from a set, orphaned properties may be left in separate sets.
+   * This consolidates them into fewer sets.
+   */
+  private regroupProperties(player: Player, color: PropertyColor): void {
+    // Find all sets of the specified color
+    const setsOfColor = player.properties.filter((s) => s.color === color);
+    
+    if (setsOfColor.length <= 1) {
+      return; // Nothing to regroup
+    }
+
+    // Collect all cards and houses/hotels from these sets
+    const allCards: Card[] = [];
+    const houses: Card[] = [];
+    const hotels: Card[] = [];
+
+    for (const set of setsOfColor) {
+      allCards.push(...set.cards);
+      if (set.house) houses.push(set.house);
+      if (set.hotel) hotels.push(set.hotel);
+    }
+
+    // Remove all existing sets of this color
+    player.properties = player.properties.filter((s) => s.color !== color);
+
+    // Re-add all cards, which will naturally group them optimally
+    for (const card of allCards) {
+      this.addPropertyToPlayer(player, card, color, false, false);
+    }
+
+    // Re-add houses and hotels to complete sets
+    const completeSets = player.properties.filter(
+      (s) => s.color === color && isSetComplete(s)
+    );
+    
+    for (const house of houses) {
+      const targetSet = completeSets.find((s) => !s.house && !s.hotel);
+      if (targetSet) {
+        targetSet.house = house;
+      } else {
+        player.bank.push(house); // No valid set, return to bank
+      }
+    }
+
+    for (const hotel of hotels) {
+      const targetSet = completeSets.find((s) => !s.hotel);
+      if (targetSet) {
+        targetSet.hotel = hotel;
+      } else {
+        player.bank.push(hotel); // No valid set, return to bank
+      }
+    }
   }
 
   private removeCardFromTable(player: Player, cardId: string): Card {

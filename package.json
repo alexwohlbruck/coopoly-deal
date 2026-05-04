@@ -6,7 +6,11 @@
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && bun dev\" --names \"client,server\" --prefix-colors \"cyan,yellow\"",
     "build": "cd client && npm run build && cd ../server && rm -rf public && cp -r ../client/dist public",
     "start": "cd server && bun start",
-    "docker:deploy": "docker buildx build --platform linux/amd64,linux/arm64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} --push ."
+    "docker:deploy": "bun run docker:deploy:amd64 && bun run docker:deploy:arm64 && bun run docker:deploy:manifest",
+    "docker:deploy:amd64": "docker buildx build --platform linux/amd64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-amd64 --push .",
+    "docker:deploy:arm64": "docker buildx build --platform linux/arm64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-arm64 --push .",
+    "docker:deploy:manifest": "docker buildx imagetools create -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-amd64 alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-arm64",
+    "docker:deploy:single": "docker buildx build --platform linux/amd64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} --push ."
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
