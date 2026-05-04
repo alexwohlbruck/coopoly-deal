@@ -8,6 +8,7 @@ import { useSoundSettings } from "../../hooks/useSoundManager";
 
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
+import { getTheme } from "../../theme/colors";
 
 interface LobbyScreenProps {
   onCreateRoom: () => void;
@@ -25,13 +26,14 @@ export function LobbyScreen({
   musicControls,
 }: LobbyScreenProps) {
   const { t } = useI18n();
-  const { playerName: savedPlayerName } = useGameStore();
+  const { playerName: savedPlayerName, theme } = useGameStore();
   const [mode, setMode] = useState<"menu" | "join">("menu");
   const [roomCode, setRoomCode] = useState("");
   const [playerName, setPlayerName] = useState(savedPlayerName || "");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const { sfxEnabled, toggleSfx } = useSoundSettings();
+  const themeData = getTheme(theme);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +43,9 @@ export function LobbyScreen({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-green-800 to-emerald-950 flex items-center justify-center p-4">
+    <div
+      className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+    >
       {/* Music controls in top right */}
       {musicControls && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
@@ -87,29 +91,95 @@ export function LobbyScreen({
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-black text-white tracking-tight mb-2">
-            {t.lobby.title.split(" ")[0]}
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.2em",
+              color: "rgba(245,234,208,0.55)",
+              marginBottom: 8,
+              textTransform: "uppercase",
+            }}
+          >
+            Welcome back{savedPlayerName ? `, ${savedPlayerName}` : ""}
+          </div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 44,
+              fontWeight: 800,
+              color: "#f5ead0",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.05,
+              margin: 0,
+            }}
+          >
+            Co-Opoly Deal
           </h1>
-          <h2 className="text-2xl font-bold text-emerald-300">
-            {t.lobby.title.split(" ")[1]}
-          </h2>
-          <p className="text-emerald-400 mt-2 text-sm">{t.lobby.subtitle}</p>
+          <p
+            style={{
+              fontSize: 13,
+              color: "rgba(245,234,208,0.65)",
+              marginTop: 8,
+            }}
+          >
+            {t.lobby.subtitle}
+          </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 shadow-2xl border border-white/20">
+        <div
+          style={{
+            background:
+              "linear-gradient(180deg, rgba(28,22,20,0.85) 0%, rgba(16,10,8,0.92) 100%)",
+            border: "1px solid rgba(245,234,208,0.1)",
+            borderRadius: 18,
+            padding: 32,
+            boxShadow: "var(--sh-panel)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
           {mode === "menu" ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <button
                 onClick={() => {
                   onCreateRoom();
                 }}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
+                style={{
+                  width: "100%",
+                  padding: "14px 18px",
+                  borderRadius: 10,
+                  background:
+                    "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, #000) 100%)",
+                  color: "#1a1208",
+                  border: "none",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  cursor: "pointer",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 10px -2px rgba(0,0,0,0.5)",
+                }}
               >
                 {t.lobby.createRoom}
               </button>
               <button
                 onClick={() => setMode("join")}
-                className="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
+                style={{
+                  width: "100%",
+                  padding: "14px 18px",
+                  borderRadius: 10,
+                  background:
+                    "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+                  color: "rgba(245,234,208,0.9)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                  cursor: "pointer",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+                }}
               >
                 {t.lobby.joinRoom}
               </button>
@@ -155,7 +225,32 @@ export function LobbyScreen({
               <button
                 type="submit"
                 disabled={roomCode.length < 6 || !playerName.trim()}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
+                style={{
+                  width: "100%",
+                  padding: "14px 18px",
+                  borderRadius: 10,
+                  background:
+                    roomCode.length < 6 || !playerName.trim()
+                      ? "rgba(255,255,255,0.06)"
+                      : "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, #000) 100%)",
+                  color:
+                    roomCode.length < 6 || !playerName.trim()
+                      ? "rgba(255,255,255,0.35)"
+                      : "#1a1208",
+                  border: "none",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  cursor:
+                    roomCode.length < 6 || !playerName.trim()
+                      ? "not-allowed"
+                      : "pointer",
+                  boxShadow:
+                    roomCode.length < 6 || !playerName.trim()
+                      ? "none"
+                      : "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 10px -2px rgba(0,0,0,0.5)",
+                }}
               >
                 {t.lobby.join}
               </button>

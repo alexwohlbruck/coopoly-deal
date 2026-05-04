@@ -228,9 +228,16 @@
   pointer-events: none;
   z-index: 1;
 }
-.felt-surface > * {
+/* Lift static children above the noise + vignette pseudos, but DON'T override
+   position: fixed on corner buttons (Rules, Music, Settings...). The .fixed
+   class is Tailwind's position:fixed; .absolute is position:absolute. */
+.felt-surface > *:not(.fixed):not(.absolute) {
   position: relative;
   z-index: 2;
+}
+.felt-surface > .fixed,
+.felt-surface > .absolute {
+  z-index: 50;
 }
 
 /* Inner leather/wood frame (sits inside felt) */

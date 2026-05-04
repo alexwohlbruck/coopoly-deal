@@ -3,6 +3,8 @@ import type { ClientPlayer, GameSettings } from "../../types/game";
 import { isSetComplete } from "../../types/game";
 import { PropertySetDisplay } from "./PropertySetDisplay";
 import { FannedCards } from "../cards/FannedCards";
+import { useGameStore } from "../../hooks/useGameStore";
+import { getTheme } from "../../theme/colors";
 
 interface EndGameSummaryProps {
   players: ClientPlayer[];
@@ -28,6 +30,8 @@ export function EndGameSummary({
   onRematch,
   onGoHome,
 }: EndGameSummaryProps) {
+  const { theme } = useGameStore();
+  const themeData = getTheme(theme);
   const winner = players.find((p) => p.id === winnerId);
   const sortedPlayers = [...players].sort((a, b) => {
     if (a.id === winnerId) return -1;
@@ -45,8 +49,10 @@ export function EndGameSummary({
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto py-8">
-      <div className="container mx-auto px-4 max-w-7xl">
+    <div
+      className={`min-h-screen ${themeData.feltClass} felt-surface overflow-y-auto py-8`}
+    >
+      <div className="container mx-auto px-4 max-w-7xl relative z-10">
         {/* Winner announcement */}
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}

@@ -377,6 +377,7 @@ export function GameTable({
         onCardClick={handleCardClick}
         onPlayToBank={onPlayToBank}
         setDraggingCard={setDraggingCard}
+        hideRedundantChrome={layoutMode === "table"}
       />
     </div>
   ) : null;

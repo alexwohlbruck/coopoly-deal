@@ -20,6 +20,10 @@ interface PlayerTurnBarProps {
   onCardClick: (card: Card) => void;
   onPlayToBank: (cardId: string) => void;
   setDraggingCard: (card: Card | null) => void;
+  /** When true, hide the redundant player-switcher pill and mini deck/discard
+   * (which are already provided by OpponentRail and the right-rail pile in the
+   * desktop layout). */
+  hideRedundantChrome?: boolean;
 }
 
 export function PlayerTurnBar({
@@ -35,6 +39,7 @@ export function PlayerTurnBar({
   onCardClick,
   onPlayToBank,
   setDraggingCard,
+  hideRedundantChrome = false,
 }: PlayerTurnBarProps) {
   const { t } = useI18n();
 
@@ -53,6 +58,7 @@ export function PlayerTurnBar({
   return (
     <div className="z-10 border-t border-white/10 bg-black/20 flex flex-col shrink-0 relative">
       {/* Player indicators */}
+      {!hideRedundantChrome && (
       <div className="absolute left-1/2 -translate-x-1/2 -top-3 z-20">
         <div className="flex gap-1.5 px-3 py-1 bg-gray-900/90 backdrop-blur-md rounded-full border border-white/10 shadow-lg">
           {allPlayers.map((player, idx) => {
@@ -102,10 +108,14 @@ export function PlayerTurnBar({
           })}
         </div>
       </div>
+      )}
 
       {/* Combined turn info bar with deck/discard */}
       <div className="flex items-center justify-between px-3 py-1.5 shrink-0 mt-1">
         {/* Deck/Discard - left side */}
+        {hideRedundantChrome ? (
+          <div className="shrink-0" style={{ width: 90 }} />
+        ) : (
         <div className="flex items-center gap-1.5 scale-75 origin-left">
           <div className="relative">
             <CardBack
@@ -133,6 +143,7 @@ export function PlayerTurnBar({
             </div>
           </div>
         </div>
+        )}
 
         {/* Turn info - center */}
         <div className="text-center flex-1">
