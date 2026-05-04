@@ -6,7 +6,6 @@ import { useTurnTimer } from "../../hooks/useTurnTimer";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
 import { validateActionCard } from "../../utils/card-validation";
-import { PlayerCarousel } from "./PlayerCarousel";
 import { PlayerTurnBar } from "./PlayerTurnBar";
 import { CardActionDialog } from "./CardActionDialog";
 import { ActionPrompt } from "./ActionPrompt";
@@ -18,6 +17,7 @@ import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
 import { TopBar } from "./layout/Chrome";
 import { GameTableDesktop } from "./layout/GameTableDesktop";
+import { GameTableCompact } from "./layout/GameTableCompact";
 import { useLayout } from "../../hooks/useLayout";
 
 interface GameTableProps {
@@ -425,31 +425,36 @@ export function GameTable({
         />
       ) : (
         <>
-          {/* Compact (mobile) — keep the existing carousel + turn bar layout. */}
-          <div
-            className="flex-1 flex flex-col min-h-0 relative overflow-hidden"
-            style={{ paddingTop: 48 }}
-          >
-            <PlayerCarousel
-              gameState={gameState}
-              playerId={playerId}
-              draggingCard={draggingCard}
-              onPlayToBank={onPlayToBank}
-              onPlayToProperty={onPlayToProperty}
-              onRainbowDrop={(card) => setRainbowDropData({ card })}
-              onWildcardClick={handleWildcardClick}
-              playerRefs={playerRefs}
-            />
-            {gameState.turn && gameState.turn.rentMultiplier > 1 && (
-              <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
-                <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-                  🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
-                  Doubled! ({gameState.turn.rentMultiplier}x)
-                </div>
+          <GameTableCompact
+            gameState={gameState}
+            playerId={playerId}
+            draggingCard={draggingCard}
+            selectedCard={selectedCard}
+            shakingCardId={shakingCardId}
+            needsDiscard={needsDiscard ?? false}
+            onPlayToBank={onPlayToBank}
+            onPlayToProperty={onPlayToProperty}
+            onRainbowDrop={(card) => setRainbowDropData({ card })}
+            onWildcardClick={handleWildcardClick}
+            onWildcardDragStart={(e, card) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("cardId", card.id);
+              e.dataTransfer.setData("cardData", JSON.stringify(card));
+              setDraggingCard(card);
+            }}
+            onWildcardDragEnd={() => setDraggingCard(null)}
+            onCardClick={handleCardClick}
+            onEndTurn={handleEndTurn}
+            setDraggingCard={setDraggingCard}
+          />
+          {gameState.turn && gameState.turn.rentMultiplier > 1 && (
+            <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
+                🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
+                Doubled! ({gameState.turn.rentMultiplier}x)
               </div>
-            )}
-          </div>
-          {bottomBar}
+            </div>
+          )}
         </>
       )}
 
