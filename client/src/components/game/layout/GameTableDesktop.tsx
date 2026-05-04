@@ -239,41 +239,11 @@ export function GameTableDesktop({
               </div>
             )}
           </div>
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflow: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            className="scrollbar-hide"
-          >
-            {activeOpp ? (
-              <PlayerBoard
-                player={activeOpp}
-                isYou={false}
-                isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
-                settings={gameState.settings}
-                draggingCard={draggingCard}
-                maxWidth={1100}
-                maxHeight={300}
-              />
-            ) : (
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "rgba(245,234,208,0.4)",
-                  letterSpacing: "0.18em",
-                  padding: 36,
-                }}
-              >
-                no opponents
-              </div>
-            )}
-          </div>
+          <ActiveOpponentBoardWrapper
+            activeOpp={activeOpp}
+            gameState={gameState}
+            draggingCard={draggingCard}
+          />
         </div>
 
         {/* Deck + Discard rail */}
@@ -434,63 +404,209 @@ export function GameTableDesktop({
             </div>
           </div>
 
-          {/* Sets+bank row + hand placeholder */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(280px, 1fr) minmax(560px, auto)",
-              gap: 12,
-              alignItems: "flex-start",
-              minHeight: 0,
-              flex: 1,
-            }}
-          >
-            <div
-              style={{
-                minWidth: 0,
-                maxHeight: 230,
-                overflowY: "auto",
-                overflowX: "hidden",
-              }}
-              className="scrollbar-hide"
-            >
-              <PlayerBoard
-                player={me}
-                isYou
-                isCurrentTurn={isMyTurn}
-                settings={gameState.settings}
-                draggingCard={draggingCard}
-                onDropToBank={(cardId) => {
-                  const card = me.hand?.find((c) => c.id === cardId);
-                  if (card) onPlayToBank(cardId);
-                }}
-                onDropToProperty={(cardId, color) => {
-                  const card = me.hand?.find((c) => c.id === cardId);
-                  if (card) onPlayToProperty(cardId, color);
-                }}
-                onDropToRainbow={onRainbowDrop}
-                onWildcardClick={onWildcardClick}
-                onCardDragStart={onWildcardDragStart}
-                onCardDragEnd={onWildcardDragEnd}
-                maxWidth={420}
-                maxHeight={220}
-              />
-            </div>
-            <div
-              style={{
-                minWidth: 0,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              {bottomBar}
-            </div>
-          </div>
+          {/* Sets+bank row + hand placeholder.
+              Hand is fixed-ish (the HoverFanHand naturally fits 7-12 cards
+              in ~620px); sets+bank get every other px on the left. */}
+          <YourTableGrid
+            me={me}
+            settings={gameState.settings}
+            isMyTurn={isMyTurn}
+            draggingCard={draggingCard}
+            onPlayToBank={onPlayToBank}
+            onPlayToProperty={onPlayToProperty}
+            onRainbowDrop={onRainbowDrop}
+            onWildcardClick={onWildcardClick}
+            onWildcardDragStart={onWildcardDragStart}
+            onWildcardDragEnd={onWildcardDragEnd}
+            bottomBar={bottomBar}
+          />
         </div>
       )}
-      {/* keep React happy if no me (shouldn't happen mid-game). The TurnPill
-          export is referenced here just so its import isn't unused when
-          someone removes the crest above. */}
     </>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// ActiveOpponentBoardWrapper — measures its container with a
+// ResizeObserver and passes the actual width through as PropertySetsRow's
+// maxWidth, so 6+ stacks scale appropriately on wide screens.
+// ────────────────────────────────────────────────────────────────────
+
+interface ActiveOpponentBoardWrapperProps {
+  activeOpp: ClientPlayer | null;
+  gameState: ClientGameState;
+  draggingCard: Card | null;
+}
+
+function ActiveOpponentBoardWrapper({
+  activeOpp,
+  gameState,
+  draggingCard,
+}: ActiveOpponentBoardWrapperProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [width, setWidth] = useState(900);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => setWidth(el.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        flex: 1,
+        minHeight: 0,
+        overflow: "auto",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      className="scrollbar-hide"
+    >
+      {activeOpp ? (
+        <PlayerBoard
+          player={activeOpp}
+          isYou={false}
+          isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
+          settings={gameState.settings}
+          draggingCard={draggingCard}
+          maxWidth={Math.max(280, width - 16)}
+          maxHeight={300}
+        />
+      ) : (
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            color: "rgba(245,234,208,0.4)",
+            letterSpacing: "0.18em",
+            padding: 36,
+          }}
+        >
+          no opponents
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// YourTableGrid — the sets+bank | hand split inside the gold platter.
+// Pulled out so a ResizeObserver can measure the actual sets-column
+// width and pass it through to PropertySetsRow as maxWidth — without
+// that the grid was capping everything at a fixed 420px even on a
+// 1440px viewport, making my-table cards look comically small.
+// ────────────────────────────────────────────────────────────────────
+
+interface YourTableGridProps {
+  me: ClientPlayer;
+  settings: ClientGameState["settings"];
+  isMyTurn: boolean;
+  draggingCard: Card | null;
+  onPlayToBank: (cardId: string) => void;
+  onPlayToProperty: (cardId: string, color: PropertyColor) => void;
+  onRainbowDrop: (card: Card) => void;
+  onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
+  onWildcardDragStart?: (e: React.DragEvent, card: Card) => void;
+  onWildcardDragEnd?: () => void;
+  bottomBar: React.ReactNode;
+}
+
+function YourTableGrid({
+  me,
+  settings,
+  isMyTurn,
+  draggingCard,
+  onPlayToBank,
+  onPlayToProperty,
+  onRainbowDrop,
+  onWildcardClick,
+  onWildcardDragStart,
+  onWildcardDragEnd,
+  bottomBar,
+}: YourTableGridProps) {
+  const setsColRef = useRef<HTMLDivElement | null>(null);
+  const [setsColWidth, setSetsColWidth] = useState(600);
+
+  useEffect(() => {
+    const el = setsColRef.current;
+    if (!el) return;
+    const measure = () => setSetsColWidth(el.getBoundingClientRect().width);
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        // Hand needs ~620px to fit 7-12 cards in HoverFanHand without
+        // crushing them. Sets+bank gets the rest; on wide screens that's
+        // 700-800px, plenty for 6+ stacks at scale 1.0.
+        gridTemplateColumns: "1fr 620px",
+        gap: 16,
+        alignItems: "flex-start",
+        minHeight: 0,
+        flex: 1,
+      }}
+    >
+      <div
+        ref={setsColRef}
+        style={{
+          minWidth: 0,
+          maxHeight: 240,
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+        className="scrollbar-hide"
+      >
+        <PlayerBoard
+          player={me}
+          isYou
+          isCurrentTurn={isMyTurn}
+          settings={settings}
+          draggingCard={draggingCard}
+          onDropToBank={(cardId) => {
+            const card = me.hand?.find((c) => c.id === cardId);
+            if (card) onPlayToBank(cardId);
+          }}
+          onDropToProperty={(cardId, color) => {
+            const card = me.hand?.find((c) => c.id === cardId);
+            if (card) onPlayToProperty(cardId, color);
+          }}
+          onDropToRainbow={onRainbowDrop}
+          onWildcardClick={onWildcardClick}
+          onCardDragStart={onWildcardDragStart}
+          onCardDragEnd={onWildcardDragEnd}
+          maxWidth={Math.max(280, setsColWidth - 4)}
+          maxHeight={230}
+        />
+      </div>
+      <div
+        style={{
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {bottomBar}
+      </div>
+    </div>
   );
 }

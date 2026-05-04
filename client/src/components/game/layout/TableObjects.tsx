@@ -522,8 +522,12 @@ export function PropertySetsRow({
   const { cols, scale, gap } = best;
   const cellW = baseWidth * scale;
   const cellH = baseHeight * scale;
-  // Card width inside each set, after grid scaling.
-  const cardWidth = Math.round(96 * scale);
+  // Card width passed to PropertySetDisplay. Held at the lg/compact base
+  // (88 / 76) so cards render at full natural size; the outer wrapper's
+  // CSS scale transform is what shrinks the stack to fit. Otherwise we'd
+  // be scaling twice (once via cardWidth, once via transform) and stacks
+  // would render at scale².
+  const cardWidth = compact ? 76 : 88;
 
   return (
     <div
