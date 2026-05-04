@@ -1,6 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
+import {
+  HoverFanHand,
+  DragPeekHand,
+  type HandRenderItem,
+} from "../cards/FannedCards";
 import { useEffect, useRef, useState } from "react";
 
 interface CardHandProps {
@@ -14,6 +19,9 @@ interface CardHandProps {
   onDragStart?: (card: Card) => void;
   onDragEnd?: () => void;
   useSocialistTheme?: boolean;
+  /** When set, render the hand as an arc fan (desktop) or drag-peek
+   * rail (mobile) per the design's hover-to-peek pattern. */
+  fanMode?: "hover" | "drag" | null;
 }
 
 export function CardHand({
@@ -27,6 +35,7 @@ export function CardHand({
   onDragStart,
   onDragEnd,
   useSocialistTheme = false,
+  fanMode = null,
 }: CardHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -41,6 +50,52 @@ export function CardHand({
   const handleDragEnd = () => {
     onDragEnd?.();
   };
+
+  // ───────── Fan rendering (HoverFanHand desktop / DragPeekHand mobile) ─────
+  if (fanMode) {
+    const draggable = !disabled && !needsDiscard && onDragToBank !== undefined;
+    const cardWidth = fanMode === "hover" ? 116 : 96;
+    const cardHeight = Math.round(cardWidth * 1.5);
+    const items: HandRenderItem[] = cards.map((card) => ({
+      id: card.id,
+      legal: !disabled,
+      draggable,
+      onClick: () => onCardClick(card),
+      onDragStart: (e) => handleDragStart(e, card),
+      onDragEnd: handleDragEnd,
+      node: (
+        <div className={card.id === shakingCardId ? "animate-shake" : undefined}>
+          <GameCard
+            card={card}
+            selected={card.id === selectedCardId}
+            disabled={disabled}
+            useSocialistTheme={useSocialistTheme}
+            width={cardWidth}
+            disableHover
+          />
+        </div>
+      ),
+    }));
+    return (
+      <div className="w-full">
+        {fanMode === "hover" ? (
+          <HoverFanHand
+            items={items}
+            selectedId={selectedCardId}
+            cardWidth={cardWidth}
+            cardHeight={cardHeight}
+          />
+        ) : (
+          <DragPeekHand
+            items={items}
+            selectedId={selectedCardId}
+            cardWidth={cardWidth}
+            cardHeight={cardHeight}
+          />
+        )}
+      </div>
+    );
+  }
 
   const CARD_WIDTH = 96; // w-24
   const CARD_HEIGHT = 144; // h-36

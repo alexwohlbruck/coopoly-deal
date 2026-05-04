@@ -204,15 +204,31 @@ export function PlayerTurnBar({
           <button
             onClick={needsDiscard ? undefined : onEndTurn}
             disabled={needsDiscard}
-            className={`relative overflow-hidden px-3 py-1 ${needsDiscard ? "bg-gray-600 cursor-not-allowed text-white" : "text-[#1a1208] hover:brightness-110"} font-semibold rounded transition-colors text-xs shrink-0`}
+            className={`relative overflow-hidden ${needsDiscard ? "cursor-not-allowed text-white" : "text-[#1a1208] hover:brightness-110"} shrink-0`}
             style={
               needsDiscard
-                ? undefined
+                ? {
+                    padding: "8px 14px",
+                    fontFamily: "var(--font-display)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    borderRadius: 8,
+                    background: "rgba(255,255,255,0.06)",
+                  }
                 : {
+                    padding: "9px 18px",
+                    fontFamily: "var(--font-display)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                    borderRadius: 8,
                     background:
                       "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 70%, #000) 100%)",
                     boxShadow:
-                      "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.18)",
+                      "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 10px -2px rgba(0,0,0,0.5)",
                   }
             }
           >
@@ -236,8 +252,15 @@ export function PlayerTurnBar({
       </div>
 
       {/* My hand */}
-      <div ref={cardHandRef} className="border-t border-white/10 overflow-y-auto max-h-[40vh]">
-        <div className="px-3 py-4">
+      <div
+        ref={cardHandRef}
+        className={
+          hideRedundantChrome
+            ? "overflow-visible"
+            : "border-t border-white/10 overflow-y-auto max-h-[40vh]"
+        }
+      >
+        <div className={hideRedundantChrome ? "px-3 pt-2 pb-1" : "px-3 py-4"}>
           <CardHand
             cards={me.hand ?? []}
             onCardClick={onCardClick}
@@ -249,8 +272,24 @@ export function PlayerTurnBar({
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={gameState.settings.useSocialistTheme}
+            fanMode={hideRedundantChrome ? "hover" : null}
           />
         </div>
+        {hideRedundantChrome && (
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              color: "rgba(245,234,208,0.45)",
+              letterSpacing: "0.18em",
+              textAlign: "center",
+              padding: "0 0 6px",
+              textTransform: "uppercase",
+            }}
+          >
+            hover to peek · click to play
+          </div>
+        )}
       </div>
     </div>
   );

@@ -586,6 +586,10 @@ interface OpponentRailProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   compact?: boolean;
+  /** Imperative scroll ref so a parent can step the rail with nav arrows. */
+  railRef?: React.RefObject<HTMLDivElement | null>;
+  onScrollLeft?: () => void;
+  onScrollRight?: () => void;
 }
 
 export function OpponentRail({
@@ -593,8 +597,13 @@ export function OpponentRail({
   activeId,
   onSelect,
   compact = false,
+  railRef,
+  onScrollLeft,
+  onScrollRight,
 }: OpponentRailProps) {
   const scale = compact ? 0.78 : 1;
+  const showArrows = !compact && players.length > 1 && !!onScrollLeft && !!onScrollRight;
+
   return (
     <div
       style={{
@@ -604,6 +613,7 @@ export function OpponentRail({
       }}
     >
       <div
+        ref={railRef}
         style={{
           display: "flex",
           alignItems: "center",
@@ -649,6 +659,64 @@ export function OpponentRail({
           pointerEvents: "none",
         }}
       />
+      {showArrows && (
+        <>
+          <button
+            onClick={onScrollLeft}
+            aria-label="Previous opponent"
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: 24,
+              transform: "translateY(-50%)",
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.55)",
+              border: "none",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 12px rgba(0,0,0,0.4)",
+              color: "#f5ead0",
+              fontSize: 18,
+              cursor: "pointer",
+              zIndex: 7,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              lineHeight: 1,
+            }}
+          >
+            ‹
+          </button>
+          <button
+            onClick={onScrollRight}
+            aria-label="Next opponent"
+            style={{
+              position: "absolute",
+              top: "50%",
+              right: 24,
+              transform: "translateY(-50%)",
+              width: 36,
+              height: 36,
+              borderRadius: 999,
+              background: "rgba(0,0,0,0.55)",
+              border: "none",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 12px rgba(0,0,0,0.4)",
+              color: "#f5ead0",
+              fontSize: 18,
+              cursor: "pointer",
+              zIndex: 7,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              lineHeight: 1,
+            }}
+          >
+            ›
+          </button>
+        </>
+      )}
     </div>
   );
 }

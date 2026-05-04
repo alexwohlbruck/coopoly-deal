@@ -3,17 +3,21 @@
 // the active opponent's full board sits center-left, deck+discard live
 // center-right, and "you" pin to the bottom in a gold platter.
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type {
   ClientGameState,
   Card,
   PropertyColor,
   ClientPlayer,
 } from "../../../types/game";
-import { isPlayerWaitingForAction } from "../../../types/game";
-import { PlayerArea } from "../PlayerArea";
-import { OpponentRail, type OpponentSeatPlayer } from "./Chrome";
+import {
+  OpponentRail,
+  PlayerCrest,
+  type OpponentSeatPlayer,
+} from "./Chrome";
 import { CardStack } from "./TableObjects";
+import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
+import { GameCard } from "../../cards/GameCard";
 
 interface GameTableDesktopProps {
   gameState: ClientGameState;
@@ -23,6 +27,8 @@ interface GameTableDesktopProps {
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
+  onWildcardDragStart?: (e: React.DragEvent, card: Card) => void;
+  onWildcardDragEnd?: () => void;
   /** Bottom-bar (turn pill, end turn, hand). Already handles hand interactions. */
   bottomBar: React.ReactNode;
 }
@@ -37,42 +43,26 @@ const AVATAR_COLORS = [
   "#88d4ff",
 ];
 
-function avatarColorFor(player: ClientPlayer, index: number): string {
+function avatarColorFor(_player: ClientPlayer, index: number): string {
   return AVATAR_COLORS[index % AVATAR_COLORS.length];
 }
 
 function toSeatPlayer(
   player: ClientPlayer,
   index: number,
+  allowDuplicateSets: boolean,
 ): OpponentSeatPlayer {
   const money = player.bank.reduce((sum, c) => sum + c.value, 0);
-  const completeSets = player.properties.filter((s) =>
-    s.color !== undefined ? s.cards.length >= setSizeFor(s.color) : false,
-  ).length;
   return {
     id: player.id,
     name: player.name,
     initial: player.name[0]?.toUpperCase() ?? "?",
     color: avatarColorFor(player, index),
-    sets: completeSets,
+    sets: completeSetsCount(player, allowDuplicateSets),
     totalSetsNeeded: 3,
     money,
     handCount: player.hand?.length ?? 0,
   };
-}
-
-// Property set size lookup (mirror SET_SIZE without importing it back here).
-function setSizeFor(color: PropertyColor): number {
-  switch (color) {
-    case "brown":
-    case "darkBlue":
-    case "utility":
-      return 2;
-    case "railroad":
-      return 4;
-    default:
-      return 3;
-  }
 }
 
 export function GameTableDesktop({
@@ -83,6 +73,8 @@ export function GameTableDesktop({
   onPlayToProperty,
   onRainbowDrop,
   onWildcardClick,
+  onWildcardDragStart,
+  onWildcardDragEnd,
   bottomBar,
 }: GameTableDesktopProps) {
   const opponents = useMemo(
@@ -90,14 +82,14 @@ export function GameTableDesktop({
     [gameState.players, playerId],
   );
   const me = gameState.players.find((p) => p.id === playerId);
+  const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
 
   // Active opponent (the one whose board is shown center). Defaults to whoever
   // is currently taking a turn (if it's an opponent), else the first opponent.
   const turnOwnerId = gameState.turn?.playerId;
   const turnOwnerIsOpponent = turnOwnerId && turnOwnerId !== playerId;
   const [activeOppId, setActiveOppId] = useState<string | null>(
-    () =>
-      (turnOwnerIsOpponent ? turnOwnerId : opponents[0]?.id) ?? null,
+    () => (turnOwnerIsOpponent ? turnOwnerId : opponents[0]?.id) ?? null,
   );
 
   // Auto-follow the turn owner if they're an opponent.
@@ -113,12 +105,46 @@ export function GameTableDesktop({
   );
 
   const seatPlayers: OpponentSeatPlayer[] = useMemo(
-    () => opponents.map((p, i) => toSeatPlayer(p, i)),
-    [opponents],
+    () => opponents.map((p, i) => toSeatPlayer(p, i, allowDuplicateSets)),
+    [opponents, allowDuplicateSets],
   );
 
   const deckCount = gameState.deckCount ?? 0;
-  const discardCount = gameState.discardPile?.length ?? 0;
+  const discardPile = gameState.discardPile ?? [];
+  const discardCount = discardPile.length;
+  const topDiscard = discardPile[discardPile.length - 1];
+
+  // Active-opponent header subtitle: "X complete · Y partial · Z cards in hand"
+  const activeOppStats = activeOpp
+    ? (() => {
+        const complete = completeSetsCount(activeOpp, allowDuplicateSets);
+        const partial = activeOpp.properties.length - complete;
+        const setsToWin = 3 - complete;
+        return {
+          complete,
+          partial,
+          handCount: activeOpp.hand?.length ?? 0,
+          setsToWin,
+        };
+      })()
+    : null;
+
+  const myCompleteSets = me ? completeSetsCount(me, allowDuplicateSets) : 0;
+  const myMoney = me ? me.bank.reduce((s, c) => s + c.value, 0) : 0;
+  const myHandCount = me?.hand?.length ?? 0;
+
+  const isMyTurn = gameState.turn?.playerId === playerId;
+
+  // ───────── Layout heights ─────────
+  // top bar (56) → opp rail (78) at top:64 → center grid → bottom platter
+  const TOP_BAR_HEIGHT = 56;
+  const OPP_RAIL_HEIGHT = 78;
+  const OPP_RAIL_TOP = TOP_BAR_HEIGHT + 8; // 64
+  const CENTER_TOP = OPP_RAIL_TOP + OPP_RAIL_HEIGHT + 16; // 158
+  const BOTTOM_RESERVE = 360; // gold platter footprint
+
+  // Scroll opponents rail (used by < / > nav arrows)
+  const railScroll = useRef<HTMLDivElement | null>(null);
 
   return (
     <>
@@ -126,16 +152,24 @@ export function GameTableDesktop({
       <div
         style={{
           position: "absolute",
-          top: 64,
+          top: OPP_RAIL_TOP,
           left: 0,
           right: 0,
           zIndex: 6,
+          height: OPP_RAIL_HEIGHT,
         }}
       >
         <OpponentRail
           players={seatPlayers}
           activeId={activeOppId}
           onSelect={setActiveOppId}
+          onScrollLeft={() =>
+            railScroll.current?.scrollBy({ left: -300, behavior: "smooth" })
+          }
+          onScrollRight={() =>
+            railScroll.current?.scrollBy({ left: 300, behavior: "smooth" })
+          }
+          railRef={railScroll}
         />
       </div>
 
@@ -143,13 +177,12 @@ export function GameTableDesktop({
       <div
         style={{
           position: "absolute",
-          top: 158,
+          top: CENTER_TOP,
           left: 36,
           right: 36,
-          // Leave space for the bottom platter (~ 320px reserved).
-          bottom: 340,
+          bottom: BOTTOM_RESERVE,
           display: "grid",
-          gridTemplateColumns: "1fr 168px",
+          gridTemplateColumns: "1fr 200px",
           gap: 16,
           zIndex: 4,
           minHeight: 0,
@@ -182,12 +215,17 @@ export function GameTableDesktop({
                 fontSize: 10,
                 color: "rgba(245,234,208,0.55)",
                 letterSpacing: "0.18em",
+                textTransform: "uppercase",
               }}
             >
               {activeOpp ? `${activeOpp.name}'s table` : "No opponent"}
               {turnOwnerId === activeOppId && " · in play"}
+              {activeOppStats &&
+                activeOppStats.setsToWin > 0 &&
+                activeOppStats.setsToWin <= 1 &&
+                " · 1 set from win"}
             </div>
-            {activeOpp && (
+            {activeOppStats && (
               <div
                 style={{
                   fontFamily: "var(--font-mono)",
@@ -195,8 +233,9 @@ export function GameTableDesktop({
                   color: "rgba(245,234,208,0.4)",
                 }}
               >
-                {activeOpp.properties.length} sets ·{" "}
-                {activeOpp.hand?.length ?? 0} cards
+                {activeOppStats.complete} complete ·{" "}
+                {activeOppStats.partial} partial ·{" "}
+                {activeOppStats.handCount} cards in hand
               </div>
             )}
           </div>
@@ -206,26 +245,20 @@ export function GameTableDesktop({
               minHeight: 0,
               overflow: "auto",
               display: "flex",
-              alignItems: "flex-start",
+              alignItems: "center",
               justifyContent: "center",
             }}
             className="scrollbar-hide"
           >
             {activeOpp ? (
-              <PlayerArea
+              <PlayerBoard
                 player={activeOpp}
-                isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
                 isYou={false}
+                isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
                 settings={gameState.settings}
-                isWaitingForAction={isPlayerWaitingForAction(
-                  gameState,
-                  activeOpp.id,
-                )}
                 draggingCard={draggingCard}
-                onDropToBank={undefined}
-                onDropToProperty={undefined}
-                onDropToRainbow={undefined}
-                onWildcardClick={undefined}
+                maxWidth={1100}
+                maxHeight={300}
               />
             ) : (
               <div
@@ -246,16 +279,15 @@ export function GameTableDesktop({
         {/* Deck + Discard rail */}
         <div
           style={{
-            display: "grid",
-            gridTemplateRows: "auto 1fr 1fr",
-            rowGap: 8,
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
             padding: "12px 12px 8px",
             borderRadius: 14,
             background: "rgba(0,0,0,0.28)",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-            justifyItems: "center",
-            alignItems: "center",
             minHeight: 0,
+            overflow: "hidden",
           }}
         >
           <div
@@ -264,70 +296,84 @@ export function GameTableDesktop({
               fontSize: 9,
               color: "rgba(245,234,208,0.55)",
               letterSpacing: "0.18em",
-              justifySelf: "start",
+              textTransform: "uppercase",
             }}
           >
             Table
           </div>
           <div
             style={{
+              flex: 1,
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 2,
+              gap: 12,
+              justifyContent: "space-around",
               minHeight: 0,
             }}
           >
-            <CardStack
-              depth={Math.min(5, Math.max(2, Math.round(deckCount / 18)))}
-              width={84}
-              height={114}
-              faceDown
-            />
             <div
               style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 10,
-                color: "rgba(245,234,208,0.7)",
-                letterSpacing: "0.1em",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              <span style={{ opacity: 0.65 }}>Deck</span>{" "}
-              <span
-                style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
+              <CardStack
+                depth={Math.min(5, Math.max(2, Math.round(deckCount / 18)))}
+                width={84}
+                height={114}
+                faceDown
+              />
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  color: "rgba(245,234,208,0.7)",
+                  letterSpacing: "0.1em",
+                }}
               >
-                {deckCount}
-              </span>
+                <span style={{ opacity: 0.65 }}>Deck</span>{" "}
+                <span
+                  style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
+                >
+                  {deckCount}
+                </span>
+              </div>
             </div>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 2,
-              minHeight: 0,
-            }}
-          >
-            <CardStack
-              depth={Math.min(3, Math.max(1, Math.round(discardCount / 2)))}
-              width={84}
-              height={114}
-            />
             <div
               style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 10,
-                color: "rgba(245,234,208,0.7)",
-                letterSpacing: "0.1em",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 4,
               }}
             >
-              <span style={{ opacity: 0.65 }}>Discard</span>{" "}
-              <span
-                style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
+              <CardStack
+                depth={Math.min(3, Math.max(1, Math.round(discardCount / 2)))}
+                width={84}
+                height={114}
               >
-                {discardCount}
-              </span>
+                {topDiscard ? (
+                  <GameCard card={topDiscard} width={84} disableHover />
+                ) : null}
+              </CardStack>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  color: "rgba(245,234,208,0.7)",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                <span style={{ opacity: 0.65 }}>Discard</span>{" "}
+                <span
+                  style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
+                >
+                  {discardCount}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -341,7 +387,7 @@ export function GameTableDesktop({
             bottom: 18,
             left: 18,
             right: 18,
-            padding: "12px 18px 10px",
+            padding: "12px 18px 8px",
             borderRadius: 18,
             background:
               "linear-gradient(180deg, rgba(196,154,82,0.22) 0%, rgba(132,94,42,0.30) 45%, rgba(68,44,18,0.38) 100%)",
@@ -350,57 +396,101 @@ export function GameTableDesktop({
             zIndex: 8,
             display: "flex",
             flexDirection: "column",
-            gap: 8,
-            maxHeight: 320,
-            overflow: "hidden",
+            gap: 6,
+            maxHeight: BOTTOM_RESERVE - 36,
+            overflow: "visible",
           }}
         >
-          {/* Your sets/bank header */}
+          {/* Crest + turn pill row */}
           <div
             style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 9,
-              color: "rgba(245,234,208,0.6)",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-            }}
-          >
-            Your table
-          </div>
-          {/* Inline your PlayerArea (with drop targets active) — scoped to fit */}
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              overflow: "auto",
               display: "flex",
-              justifyContent: "center",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexShrink: 0,
             }}
-            className="scrollbar-hide"
           >
-            <PlayerArea
-              player={me}
-              isCurrentTurn={gameState.turn?.playerId === me.id}
-              isYou={true}
-              settings={gameState.settings}
-              isWaitingForAction={isPlayerWaitingForAction(gameState, me.id)}
-              draggingCard={draggingCard}
-              onDropToBank={(cardId) => {
-                const card = me.hand?.find((c) => c.id === cardId);
-                if (card) onPlayToBank(cardId);
-              }}
-              onDropToProperty={(cardId, color) => {
-                const card = me.hand?.find((c) => c.id === cardId);
-                if (card) onPlayToProperty(cardId, color);
-              }}
-              onDropToRainbow={(card) => onRainbowDrop(card)}
-              onWildcardClick={onWildcardClick}
+            <PlayerCrest
+              name={me.name}
+              initial={me.name[0]?.toUpperCase() ?? "?"}
+              color="var(--accent, #f0c14a)"
+              sets={myCompleteSets}
+              totalSetsNeeded={3}
+              money={myMoney}
+              handCount={myHandCount}
+              isYou
+              active={isMyTurn}
             />
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                color: "rgba(245,234,208,0.55)",
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+              }}
+            >
+              Your sets · {myCompleteSets} complete · bank
+            </div>
           </div>
-          {/* Bottom bar (turn pill, end turn, hand) sits below the gold platter */}
-          <div>{bottomBar}</div>
+
+          {/* Sets+bank row + hand placeholder */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(280px, 1fr) minmax(560px, auto)",
+              gap: 12,
+              alignItems: "flex-start",
+              minHeight: 0,
+              flex: 1,
+            }}
+          >
+            <div
+              style={{
+                minWidth: 0,
+                maxHeight: 230,
+                overflowY: "auto",
+                overflowX: "hidden",
+              }}
+              className="scrollbar-hide"
+            >
+              <PlayerBoard
+                player={me}
+                isYou
+                isCurrentTurn={isMyTurn}
+                settings={gameState.settings}
+                draggingCard={draggingCard}
+                onDropToBank={(cardId) => {
+                  const card = me.hand?.find((c) => c.id === cardId);
+                  if (card) onPlayToBank(cardId);
+                }}
+                onDropToProperty={(cardId, color) => {
+                  const card = me.hand?.find((c) => c.id === cardId);
+                  if (card) onPlayToProperty(cardId, color);
+                }}
+                onDropToRainbow={onRainbowDrop}
+                onWildcardClick={onWildcardClick}
+                onCardDragStart={onWildcardDragStart}
+                onCardDragEnd={onWildcardDragEnd}
+                maxWidth={420}
+                maxHeight={220}
+              />
+            </div>
+            <div
+              style={{
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {bottomBar}
+            </div>
+          </div>
         </div>
       )}
+      {/* keep React happy if no me (shouldn't happen mid-game). The TurnPill
+          export is referenced here just so its import isn't unused when
+          someone removes the crest above. */}
     </>
   );
 }
