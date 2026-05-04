@@ -14,6 +14,7 @@ import { type GameSettings } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { calculateRent } from "../../utils/rent-calculator";
 import { BottomSheet } from "../common/BottomSheet";
+import { PrimaryButton } from "../ui/Button";
 
 interface CardActionDialogProps {
   card: Card;
@@ -593,23 +594,25 @@ export function CardActionDialog({
 
   const footerButtons =
     step === "choose" ? (
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {canPlayToProperty && (
-          <button
+          <PrimaryButton
             onClick={handlePlayToProperty}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
+            fullWidth
+            size="lg"
           >
             Play as Property
-          </button>
+          </PrimaryButton>
         )}
         {isActionCard && !canPlayToProperty && (
-          <button
+          <PrimaryButton
             onClick={handlePlayAction}
             disabled={!canUseAction}
-            className={`w-full py-3 ${canUseAction ? "bg-purple-600 hover:bg-purple-500" : "bg-gray-600 cursor-not-allowed"} text-white font-semibold rounded-lg transition-colors`}
+            fullWidth
+            size="lg"
           >
             {settings.useSocialistTheme ? "Use Directive" : "Use Action"}
-          </button>
+          </PrimaryButton>
         )}
       </div>
     ) : null;

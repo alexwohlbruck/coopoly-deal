@@ -9,6 +9,7 @@ import { CardType } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { BottomSheet } from "../common/BottomSheet";
 import { getQuirkySaying } from "../../utils/quirkySayings";
+import { PrimaryButton, DangerButton } from "../ui/Button";
 
 interface ActionPromptProps {
   action: PendingAction;
@@ -220,37 +221,32 @@ export function ActionPrompt({
   const showDealBreakerPreview = action.type === "dealBreaker" && targetSet;
 
   const footerButtons = (
-    <div className="flex gap-2">
+    <div style={{ display: "flex", gap: 8 }}>
       {needsPayment && (
-        <button
+        <PrimaryButton
           onClick={() => onPayWithCards(selectedCardIds)}
           disabled={!canSubmitPayment}
-          className={`flex-1 py-3 ${canSubmitPayment ? "bg-blue-600 hover:bg-blue-500" : "bg-gray-700 cursor-not-allowed opacity-50"} text-white font-semibold rounded-lg transition-colors`}
+          fullWidth
+          size="lg"
         >
           {totalTableValue === 0
             ? "I Can't Pay"
             : selectedCardIds.length > 0
               ? `Pay ${selectedTotal}M`
               : "Select Cards"}
-        </button>
+        </PrimaryButton>
       )}
 
       {!needsPayment && (
-        <button
-          onClick={onAccept}
-          className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
-        >
+        <PrimaryButton onClick={onAccept} fullWidth size="lg">
           Accept
-        </button>
+        </PrimaryButton>
       )}
 
       {hasJustSayNo && (
-        <button
-          onClick={onJustSayNo}
-          className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-lg transition-colors"
-        >
+        <DangerButton onClick={onJustSayNo} fullWidth size="lg">
           Just Say No!
-        </button>
+        </DangerButton>
       )}
     </div>
   );

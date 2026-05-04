@@ -238,15 +238,44 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      {/* Toast */}
+      {/* Toast — themed pill that sits below the TopBar (top: 70 in-game,
+          top: 16 elsewhere). Pointer-events-none so it can't intercept
+          clicks on the table behind. */}
       <AnimatePresence>
         {toast && (
           <motion.div
-            initial={{ opacity: 0, y: -50 }}
+            initial={{ opacity: 0, y: -16 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-white/10 backdrop-blur-lg text-white px-6 py-3 rounded-xl shadow-lg border border-white/20"
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.18, ease: [0.22, 0.9, 0.32, 1] }}
+            className="fixed left-1/2 -translate-x-1/2 z-[100] pointer-events-none"
+            style={{
+              top: 70,
+              padding: "8px 14px",
+              borderRadius: 999,
+              background:
+                "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+              border: "1px solid rgba(245,234,208,0.12)",
+              color: "#f5ead0",
+              fontFamily: "var(--font-ui)",
+              fontSize: 12,
+              fontWeight: 600,
+              boxShadow:
+                "0 6px 16px -4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
           >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                background: "var(--accent, #f0c14a)",
+                boxShadow: "0 0 6px var(--accent, #f0c14a)",
+              }}
+            />
             {toast}
           </motion.div>
         )}
