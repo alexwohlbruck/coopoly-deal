@@ -24,6 +24,8 @@ interface PlayerTurnBarProps {
    * (which are already provided by OpponentRail and the right-rail pile in the
    * desktop layout). */
   hideRedundantChrome?: boolean;
+  /** Tick this to clear the hand's peek state. */
+  peekResetSignal?: number | string | null;
 }
 
 export function PlayerTurnBar({
@@ -40,6 +42,7 @@ export function PlayerTurnBar({
   onPlayToBank,
   setDraggingCard,
   hideRedundantChrome = false,
+  peekResetSignal = null,
 }: PlayerTurnBarProps) {
   const { t } = useI18n();
 
@@ -273,6 +276,7 @@ export function PlayerTurnBar({
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={gameState.settings.useSocialistTheme}
             fanMode={hideRedundantChrome ? "hover" : null}
+            peekResetSignal={peekResetSignal}
           />
         </div>
         {hideRedundantChrome && (

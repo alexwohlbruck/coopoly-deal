@@ -1,11 +1,14 @@
+// EndGameSummary — winner spotlight + final standings ledger.
+// Mirrors mockup-gameover.jsx from the design bundle.
+
 import { motion } from "framer-motion";
-import type { ClientPlayer, GameSettings } from "../../types/game";
-import { isSetComplete } from "../../types/game";
-import { PropertySetDisplay } from "./PropertySetDisplay";
-import { FannedCards } from "../cards/FannedCards";
+import type { ClientPlayer, GameSettings, PropertySet } from "../../types/game";
+import { isSetComplete, PropertyColor } from "../../types/game";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
+import { useLayout } from "../../hooks/useLayout";
 import { PrimaryButton, SecondaryButton } from "../ui/Button";
+import { PropertySetsRow } from "./layout/TableObjects";
 
 interface EndGameSummaryProps {
   players: ClientPlayer[];
@@ -22,19 +25,1018 @@ interface EndGameSummaryProps {
   onGoHome?: () => void;
 }
 
+// ─── Confetti drift over the felt ─────────────────────────────────
+function ConfettiLayer({ count = 60, seed = 7 }: { count?: number; seed?: number }) {
+  let s = seed;
+  const rnd = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return (s % 10000) / 10000;
+  };
+  const palette = ["#f0c14a", "#d96aa1", "#7adb88", "#6c9bd2", "#e08840", "#f5ead0"];
+  const bits = Array.from({ length: count }, () => ({
+    x: rnd() * 100,
+    y: rnd() * 100,
+    r: rnd() * 360,
+    s: 5 + rnd() * 8,
+    c: palette[Math.floor(rnd() * palette.length)],
+    flat: rnd() > 0.5,
+    delay: rnd() * 4,
+  }));
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        pointerEvents: "none",
+        zIndex: 5,
+        overflow: "hidden",
+      }}
+    >
+      {bits.map((b, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${b.x}%`,
+            top: `${b.y}%`,
+            width: b.s,
+            height: b.flat ? b.s * 0.4 : b.s * 1.3,
+            background: b.c,
+            transform: `rotate(${b.r}deg)`,
+            borderRadius: b.flat ? 1 : 1.5,
+            boxShadow: "0 1px 1px rgba(0,0,0,0.35)",
+            opacity: 0.85,
+            animation: `confetti-drift ${5 + b.s * 0.4}s ease-in-out ${b.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── Wax-stamp WINNER seal ────────────────────────────────────────
+function WinnerSeal({ size = 92 }: { size?: number }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        position: "relative",
+        background:
+          "radial-gradient(circle at 35% 30%, #f5d883 0%, #d4a132 45%, #8a6420 90%)",
+        boxShadow:
+          "inset 0 -3px 6px rgba(0,0,0,0.45), inset 0 3px 4px rgba(255,235,180,0.5), 0 4px 14px rgba(0,0,0,0.45)",
+        transform: "rotate(-7deg)",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          inset: 6,
+          borderRadius: "50%",
+          border: "2px dashed rgba(60,40,10,0.55)",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#3a2810",
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          textShadow: "0 1px 0 rgba(255,235,180,0.4)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: size * 0.22,
+            letterSpacing: "0.18em",
+            lineHeight: 1,
+          }}
+        >
+          WIN
+        </div>
+        <div
+          style={{
+            fontSize: size * 0.085,
+            letterSpacing: "0.32em",
+            marginTop: 3,
+            opacity: 0.7,
+          }}
+        >
+          NER
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Crown icon ───────────────────────────────────────────────────
+function CrownIcon({
+  size = 22,
+  color = "var(--accent, #f0c14a)",
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size * 0.78}
+      viewBox="0 0 22 17"
+      style={{ flexShrink: 0 }}
+    >
+      <defs>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff4c0" />
+          <stop offset="1" stopColor={color} />
+        </linearGradient>
+      </defs>
+      <path
+        d="M2 5 L5 11 L7.5 4 L11 12 L14.5 4 L17 11 L20 5 L19 14 L3 14 Z"
+        fill="url(#cg)"
+        stroke="rgba(60,40,10,0.6)"
+        strokeWidth="0.6"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="2"
+        cy="5"
+        r="1.4"
+        fill="#f0c14a"
+        stroke="rgba(60,40,10,0.5)"
+        strokeWidth="0.4"
+      />
+      <circle
+        cx="11"
+        cy="3"
+        r="1.4"
+        fill="#d96aa1"
+        stroke="rgba(60,40,10,0.5)"
+        strokeWidth="0.4"
+      />
+      <circle
+        cx="20"
+        cy="5"
+        r="1.4"
+        fill="#f0c14a"
+        stroke="rgba(60,40,10,0.5)"
+        strokeWidth="0.4"
+      />
+    </svg>
+  );
+}
+
+// ─── Rank ribbon — left-side gilded numeral ──────────────────────
+function RankRibbon({ rank, height = 72 }: { rank: number; height?: number }) {
+  const tone =
+    rank === 1
+      ? {
+          bg: "linear-gradient(180deg, #f5d883 0%, #c98f24 100%)",
+          fg: "#3a2810",
+          stroke: "rgba(60,40,10,0.55)",
+        }
+      : rank === 2
+        ? {
+            bg: "linear-gradient(180deg, #d8d8d8 0%, #888 100%)",
+            fg: "#1c1a14",
+            stroke: "rgba(0,0,0,0.4)",
+          }
+        : rank === 3
+          ? {
+              bg: "linear-gradient(180deg, #d4925a 0%, #7a4818 100%)",
+              fg: "#2a1808",
+              stroke: "rgba(0,0,0,0.4)",
+            }
+          : {
+              bg: "linear-gradient(180deg, #555 0%, #2a2a2a 100%)",
+              fg: "#f5ead0",
+              stroke: "rgba(0,0,0,0.4)",
+            };
+  return (
+    <div
+      style={{
+        width: 56,
+        height,
+        background: tone.bg,
+        color: tone.fg,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.4)",
+        borderRight: `1px solid ${tone.stroke}`,
+        clipPath:
+          "polygon(0 0, 100% 0, 100% calc(100% - 10px), 50% 100%, 0 calc(100% - 10px))",
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 9,
+          letterSpacing: "0.16em",
+          opacity: 0.7,
+          fontWeight: 700,
+        }}
+      >
+        RANK
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-display)",
+          fontSize: 28,
+          fontWeight: 800,
+          lineHeight: 1,
+          letterSpacing: "-0.03em",
+        }}
+      >
+        #{rank}
+      </div>
+    </div>
+  );
+}
+
+// ─── Stat readout ────────────────────────────────────────────────
+function StatReadout({
+  label,
+  value,
+  accent = "var(--accent, #f0c14a)",
+  mono = true,
+  size = "md",
+}: {
+  label: string;
+  value: string | number;
+  accent?: string;
+  mono?: boolean;
+  size?: "sm" | "md" | "lg";
+}) {
+  const fs = size === "lg" ? 22 : size === "sm" ? 14 : 17;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "flex-start",
+        gap: 1,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 9,
+          letterSpacing: "0.18em",
+          color: "rgba(245,234,208,0.55)",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          fontFamily: mono ? "var(--font-mono)" : "var(--font-display)",
+          fontSize: fs,
+          fontWeight: 800,
+          color: accent,
+          letterSpacing: mono ? 0 : "-0.01em",
+          fontVariantNumeric: "tabular-nums",
+          lineHeight: 1,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+// ─── Compact property strip — chip pills per stack ───────────────
+const COLOR_BANDS_LITE: Record<string, string> = {
+  brown: "#6a4a31",
+  lightBlue: "#6fb7d4",
+  pink: "#d96aa1",
+  orange: "#e08840",
+  red: "#c83a3a",
+  yellow: "#e6b73c",
+  green: "#2f8f5e",
+  darkBlue: "#1c3a6e",
+  railroad: "#1a1a1a",
+  utility: "#4a3a78",
+  unassigned: "#888",
+};
+
+function CompactPropertyStrip({
+  sets,
+  bank,
+  dense = false,
+}: {
+  sets: PropertySet[];
+  bank: number[];
+  dense?: boolean;
+}) {
+  const totalBank = bank.reduce((a, b) => a + b, 0);
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: dense ? 6 : 8,
+        flexWrap: "wrap",
+      }}
+    >
+      {sets.map((s, i) => {
+        const c = COLOR_BANDS_LITE[s.color as string] || "#888";
+        const complete = isSetComplete(s);
+        return (
+          <div
+            key={i}
+            title={`${s.cards.length}/${s.color}`}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: dense ? "4px 9px" : "5px 11px",
+              borderRadius: 999,
+              background: complete ? c : "rgba(0,0,0,0.45)",
+              color: complete ? "#fff" : "rgba(245,234,208,0.85)",
+              fontFamily: "var(--font-mono)",
+              fontSize: dense ? 10 : 11,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              boxShadow: complete
+                ? "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.25)"
+                : `inset 0 0 0 1px ${c}66`,
+            }}
+          >
+            {!complete && (
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 2,
+                  background: c,
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                }}
+              />
+            )}
+            <span>
+              {s.cards.length}/{neededFor(s.color)}
+            </span>
+            {complete && (
+              <span
+                style={{
+                  opacity: 0.85,
+                  fontSize: 9,
+                  letterSpacing: "0.14em",
+                }}
+              >
+                ✓ SET
+              </span>
+            )}
+            {s.house && <span style={{ fontSize: 10 }}>🏠</span>}
+            {s.hotel && <span style={{ fontSize: 10 }}>🏨</span>}
+          </div>
+        );
+      })}
+      {sets.length === 0 && (
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            color: "rgba(245,234,208,0.45)",
+            letterSpacing: "0.12em",
+          }}
+        >
+          NO PROPERTIES
+        </span>
+      )}
+      <span
+        style={{
+          width: 1,
+          height: 16,
+          background: "rgba(245,234,208,0.15)",
+          margin: "0 4px",
+        }}
+      />
+      <span
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: dense ? 10 : 11,
+          color: "rgba(245,234,208,0.55)",
+          letterSpacing: "0.12em",
+        }}
+      >
+        BANK{" "}
+        <span style={{ color: "#7adb88", fontWeight: 700 }}>${totalBank}M</span>
+      </span>
+    </div>
+  );
+}
+
+function neededFor(color: PropertyColor): number {
+  switch (color) {
+    case PropertyColor.Brown:
+    case PropertyColor.DarkBlue:
+    case PropertyColor.Utility:
+      return 2;
+    case PropertyColor.Railroad:
+      return 4;
+    default:
+      return 3;
+  }
+}
+
+// ─── Quips per rank ──────────────────────────────────────────────
+const QUIPS: Record<number, string[]> = {
+  1: [
+    "Sole owner of three city blocks. The board complies.",
+    "Built a property empire in 14 turns.",
+    "The first to three. Rent is, as ever, theft.",
+  ],
+  2: [
+    "One set short. The Boardwalk awaits.",
+    "Came up a deed shy. Rematch?",
+    "Silver medal, gilded edges.",
+  ],
+  3: [
+    "Built things. Lost things. Mostly built.",
+    "Held the middle. The middle held back.",
+  ],
+  4: ["Honored to participate.", "Last place, first principles."],
+};
+
+function quipFor(rank: number, isYou: boolean): string {
+  // YOU at rank ≥ 3 gets the "loser framing" first quip.
+  if (isYou && rank >= 3) return QUIPS[3][0] ?? "Built things. Lost things.";
+  const arr = QUIPS[rank] ?? QUIPS[4];
+  return arr[0];
+}
+
+// ─── HeroPlaque (desktop spotlight) ──────────────────────────────
+function HeroPlaque({
+  winner,
+  isYouWinner,
+  bankTotal,
+  completeSets,
+}: {
+  winner: ClientPlayer;
+  isYouWinner: boolean;
+  bankTotal: number;
+  completeSets: number;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        padding: "22px 28px 22px 22px",
+        borderRadius: 16,
+        background:
+          "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+        border: "1px solid rgba(245,234,208,0.10)",
+        boxShadow:
+          "var(--sh-panel), 0 0 0 1px rgba(212,168,96,0.18), 0 0 60px -12px rgba(240,193,74,0.35)",
+        display: "flex",
+        alignItems: "center",
+        gap: 22,
+        minHeight: 130,
+      }}
+    >
+      <div
+        style={{
+          width: 84,
+          height: 84,
+          borderRadius: "50%",
+          background:
+            "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 55%, #000) 100%)",
+          color: "#1a1208",
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          fontSize: 38,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow:
+            "inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -2px 0 rgba(0,0,0,0.2), 0 4px 14px rgba(0,0,0,0.5), 0 0 0 3px rgba(240,193,74,0.45)",
+          flexShrink: 0,
+        }}
+      >
+        {winner.name[0]?.toUpperCase() ?? "?"}
+      </div>
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.28em",
+            color: "var(--accent, #f0c14a)",
+          }}
+        >
+          <span
+            style={{
+              width: 18,
+              height: 1,
+              background: "var(--accent, #f0c14a)",
+              opacity: 0.7,
+            }}
+          />
+          GAME OVER · WINNER
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 44,
+              fontWeight: 800,
+              color: "#f5ead0",
+              letterSpacing: "-0.025em",
+              lineHeight: 1,
+            }}
+          >
+            {isYouWinner ? `${winner.name} (You)` : winner.name}
+          </div>
+          <CrownIcon size={28} />
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 19,
+              fontWeight: 700,
+              color: "rgba(245,234,208,0.65)",
+              letterSpacing: "-0.01em",
+            }}
+          >
+            wins
+          </span>
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 13,
+            fontStyle: "italic",
+            color: "rgba(245,234,208,0.7)",
+            marginTop: 2,
+          }}
+        >
+          “{quipFor(1, isYouWinner)}”
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          gap: 26,
+          alignItems: "center",
+          paddingLeft: 22,
+          borderLeft: "1px solid rgba(245,234,208,0.08)",
+          alignSelf: "stretch",
+        }}
+      >
+        <StatReadout
+          label="Sets"
+          value={`${completeSets}/3`}
+          mono={false}
+          size="lg"
+          accent="#f5ead0"
+        />
+        <StatReadout
+          label="Bank"
+          value={`$${bankTotal}M`}
+          mono={false}
+          size="lg"
+          accent="#7adb88"
+        />
+      </div>
+
+      <WinnerSeal size={84} />
+    </div>
+  );
+}
+
+// ─── StandingsRow (desktop) ──────────────────────────────────────
+function StandingsRow({
+  player,
+  rank,
+  isYou,
+  expanded,
+  bankTotal,
+  completeSets,
+  settings,
+}: {
+  player: ClientPlayer;
+  rank: number;
+  isYou: boolean;
+  expanded: boolean;
+  bankTotal: number;
+  completeSets: number;
+  settings: GameSettings;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "flex",
+        borderRadius: 12,
+        background: expanded
+          ? "linear-gradient(180deg, rgba(28,22,20,0.84) 0%, rgba(20,12,10,0.92) 100%)"
+          : "rgba(0,0,0,0.32)",
+        border: expanded
+          ? "1px solid rgba(212,168,96,0.32)"
+          : "1px solid rgba(255,255,255,0.05)",
+        boxShadow: expanded
+          ? "inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px rgba(212,168,96,0.10), 0 8px 24px -8px rgba(0,0,0,0.55)"
+          : "inset 0 1px 0 rgba(255,255,255,0.04)",
+        overflow: "hidden",
+        opacity: expanded ? 1 : 0.92,
+      }}
+    >
+      <RankRibbon rank={rank} height={expanded ? 134 : 120} />
+
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: "14px 18px 14px 20px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            flexWrap: "wrap",
+          }}
+        >
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              background:
+                "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 55%, #000) 100%)",
+              color: "#1a1208",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow:
+                "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)",
+              flexShrink: 0,
+            }}
+          >
+            {player.name[0]?.toUpperCase() ?? "?"}
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+            <span
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 20,
+                fontWeight: 700,
+                color: "#f5ead0",
+                letterSpacing: "-0.015em",
+              }}
+            >
+              {player.name}
+            </span>
+            {isYou && (
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  color: "var(--accent, #f0c14a)",
+                }}
+              >
+                (YOU)
+              </span>
+            )}
+            {rank === 1 && <CrownIcon size={18} />}
+          </div>
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: 18,
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.18em",
+                  color: "rgba(245,234,208,0.5)",
+                }}
+              >
+                SETS
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color:
+                    rank === 1 ? "var(--accent, #f0c14a)" : "#f5ead0",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1,
+                }}
+              >
+                {completeSets}
+                <span style={{ opacity: 0.4, fontWeight: 600 }}>/3</span>
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.18em",
+                  color: "rgba(245,234,208,0.5)",
+                }}
+              >
+                BANK
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: 22,
+                  fontWeight: 800,
+                  color: "#7adb88",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1,
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                ${bankTotal}M
+              </span>
+            </div>
+            <div
+              style={{
+                maxWidth: 260,
+                padding: "6px 12px",
+                borderRadius: 999,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                fontFamily: "var(--font-ui)",
+                fontSize: 11.5,
+                fontStyle: "italic",
+                color: isYou ? "#f5ead0" : "rgba(245,234,208,0.65)",
+              }}
+            >
+              “{quipFor(rank, isYou)}”
+            </div>
+          </div>
+        </div>
+
+        {expanded && player.properties.length > 0 ? (
+          <div
+            style={{
+              marginTop: 4,
+              paddingTop: 12,
+              borderTop: "1px dashed rgba(245,234,208,0.10)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.22em",
+                color: "rgba(245,234,208,0.55)",
+                marginBottom: 8,
+              }}
+            >
+              FINAL TABLEAU · {completeSets} COMPLETE
+            </div>
+            <div style={{ overflowX: "auto" }} className="scrollbar-hide">
+              <PropertySetsRow
+                align="flex-start"
+                sets={player.properties}
+                bank={player.bank.map((c) => c.value)}
+                useSocialistTheme={settings.useSocialistTheme}
+              />
+            </div>
+          </div>
+        ) : (
+          <CompactPropertyStrip
+            sets={player.properties}
+            bank={player.bank.map((c) => c.value)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Mobile standings card ───────────────────────────────────────
+function MobileStandingsCard({
+  player,
+  rank,
+  isYou,
+  expanded,
+  bankTotal,
+  completeSets,
+  settings,
+}: {
+  player: ClientPlayer;
+  rank: number;
+  isYou: boolean;
+  expanded: boolean;
+  bankTotal: number;
+  completeSets: number;
+  settings: GameSettings;
+}) {
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: 12,
+        background: expanded
+          ? "linear-gradient(180deg, rgba(28,22,20,0.86) 0%, rgba(20,12,10,0.94) 100%)"
+          : "rgba(0,0,0,0.32)",
+        border: expanded
+          ? "1px solid rgba(212,168,96,0.32)"
+          : "1px solid rgba(255,255,255,0.05)",
+        boxShadow: expanded
+          ? "0 0 0 1px rgba(212,168,96,0.10), 0 6px 16px -6px rgba(0,0,0,0.55)"
+          : "inset 0 1px 0 rgba(255,255,255,0.04)",
+        overflow: "hidden",
+        display: "flex",
+      }}
+    >
+      <RankRibbon rank={rank} height={expanded ? 132 : 64} />
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: expanded ? "10px 12px 12px" : "8px 12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: expanded ? 8 : 4,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              background:
+                "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 55%, #000) 100%)",
+              color: "#1a1208",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+              flexShrink: 0,
+            }}
+          >
+            {player.name[0]?.toUpperCase() ?? "?"}
+          </div>
+          <span
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 14,
+              fontWeight: 700,
+              color: "#f5ead0",
+              letterSpacing: "-0.01em",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {player.name}
+          </span>
+          {isYou && (
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.14em",
+                color: "var(--accent, #f0c14a)",
+              }}
+            >
+              YOU
+            </span>
+          )}
+          {rank === 1 && <CrownIcon size={14} />}
+          <div
+            style={{
+              marginLeft: "auto",
+              display: "flex",
+              gap: 8,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            <span
+              style={{
+                color:
+                  rank === 1 ? "var(--accent, #f0c14a)" : "#f5ead0",
+                fontWeight: 700,
+              }}
+            >
+              {completeSets}/3
+            </span>
+            <span style={{ color: "#7adb88", fontWeight: 700 }}>
+              ${bankTotal}M
+            </span>
+          </div>
+        </div>
+        {expanded && player.properties.length > 0 ? (
+          <>
+            <div
+              style={{
+                paddingTop: 6,
+                borderTop: "1px dashed rgba(245,234,208,0.10)",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 8,
+                  letterSpacing: "0.22em",
+                  color: "rgba(245,234,208,0.55)",
+                }}
+              >
+                FINAL TABLEAU
+              </div>
+            </div>
+            <div
+              style={{ overflowX: "auto", overflowY: "hidden" }}
+              className="scrollbar-hide"
+            >
+              <PropertySetsRow
+                align="flex-start"
+                sets={player.properties}
+                bank={player.bank.map((c) => c.value)}
+                compact
+                useSocialistTheme={settings.useSocialistTheme}
+              />
+            </div>
+          </>
+        ) : (
+          <CompactPropertyStrip
+            sets={player.properties}
+            bank={player.bank.map((c) => c.value)}
+            dense
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ──────────────────────────────────────────────
 export function EndGameSummary({
   players,
   winnerId,
   currentPlayerId,
   settings,
-  sessionStats,
   onRematch,
   onGoHome,
 }: EndGameSummaryProps) {
   const { theme } = useGameStore();
   const themeData = getTheme(theme);
-  const winner = players.find((p) => p.id === winnerId);
-  const youWon = winner?.id === currentPlayerId;
+  const layout = useLayout();
+  const isCompact = layout === "compact";
+
+  const winner = players.find((p) => p.id === winnerId) ?? players[0];
   const sortedPlayers = [...players].sort((a, b) => {
     if (a.id === winnerId) return -1;
     if (b.id === winnerId) return 1;
@@ -50,416 +1052,300 @@ export function EndGameSummary({
     return bValue - aValue;
   });
 
+  const winnerBank = winner.bank.reduce((s, c) => s + c.value, 0);
+  const winnerSets = winner.properties.filter(isSetComplete).length;
+  const isYouWinner = winner.id === currentPlayerId;
+
   return (
     <div
       className={`min-h-screen ${themeData.feltClass} felt-surface overflow-y-auto`}
+      style={{ position: "relative" }}
     >
+      <ConfettiLayer count={isCompact ? 36 : 70} seed={11} />
       <div
-        className="container mx-auto px-4 max-w-5xl relative z-10"
-        style={{ paddingTop: 64, paddingBottom: 64 }}
+        style={{
+          position: "relative",
+          zIndex: 6,
+          padding: isCompact ? "14px" : "30px 36px",
+          display: "flex",
+          flexDirection: "column",
+          gap: isCompact ? 12 : 14,
+          maxWidth: 1280,
+          margin: "0 auto",
+        }}
       >
-        {/* Winner card — center stage */}
-        <motion.div
-          initial={{ scale: 0.6, opacity: 0, y: 24 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          transition={{
-            type: "spring",
-            stiffness: 200,
-            damping: 22,
-          }}
-          style={{
-            margin: "0 auto 48px",
-            maxWidth: 520,
-            padding: "32px 28px 28px",
-            borderRadius: 22,
-            background:
-              "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
-            border: "1px solid rgba(245,234,208,0.12)",
-            boxShadow:
-              "0 32px 80px -16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)",
-            textAlign: "center",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
-          {/* Soft gold glow at the top */}
-          <div
+        {/* Hero plaque + actions */}
+        {isCompact ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 22 }}
             style={{
-              position: "absolute",
-              top: -120,
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 320,
-              height: 240,
+              padding: "14px",
+              borderRadius: 14,
               background:
-                "radial-gradient(closest-side, var(--accent, #f0c14a) 0%, transparent 70%)",
-              opacity: 0.18,
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.24em",
-              textTransform: "uppercase",
-              color: "var(--accent, #f0c14a)",
-              marginBottom: 8,
+                "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+              border: "1px solid rgba(212,168,96,0.28)",
+              boxShadow:
+                "0 0 60px -16px rgba(240,193,74,0.4), 0 12px 24px -8px rgba(0,0,0,0.5)",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
             }}
           >
-            {youWon ? "Victory" : "Game Over"}
-          </div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 56,
-              fontWeight: 800,
-              letterSpacing: "-0.025em",
-              lineHeight: 1.05,
-              color: "#f5ead0",
-              margin: 0,
-            }}
-          >
-            {youWon ? "You Win!" : `${winner?.name} Wins!`}
-          </h1>
-          <p
-            style={{
-              fontSize: 14,
-              color: "rgba(245,234,208,0.65)",
-              marginTop: 10,
-              marginBottom: 24,
-            }}
-          >
-            {settings?.useSocialistTheme
-              ? `${winner?.name ?? "Someone"} achieved 3 collective sets`
-              : `${winner?.name ?? "Someone"} collected 3 complete property sets`}
-          </p>
-
-          {sessionStats && (
             <div
               style={{
+                width: 56,
+                height: 56,
+                borderRadius: "50%",
+                background:
+                  "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 55%, #000) 100%)",
+                color: "#1a1208",
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: 26,
                 display: "flex",
-                gap: 32,
+                alignItems: "center",
                 justifyContent: "center",
-                marginBottom: 24,
-                paddingTop: 16,
-                paddingBottom: 16,
-                borderTop: "1px solid rgba(255,255,255,0.06)",
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                boxShadow:
+                  "inset 0 2px 0 rgba(255,255,255,0.4), 0 0 0 2px rgba(240,193,74,0.45)",
+                flexShrink: 0,
               }}
             >
-              {[
-                { label: "Wins", value: sessionStats.wins },
-                { label: "Losses", value: sessionStats.losses },
-                { label: "Streak", value: sessionStats.streak },
-              ].map((stat) => (
-                <div key={stat.label} style={{ textAlign: "center" }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 32,
-                      fontWeight: 800,
-                      color: "#f5ead0",
-                      lineHeight: 1,
-                      fontVariantNumeric: "tabular-nums",
-                    }}
-                  >
-                    {stat.value}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 9,
-                      letterSpacing: "0.2em",
-                      textTransform: "uppercase",
-                      color: "rgba(245,234,208,0.5)",
-                      marginTop: 4,
-                    }}
-                  >
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
+              {winner.name[0]?.toUpperCase() ?? "?"}
             </div>
-          )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.24em",
+                  color: "var(--accent, #f0c14a)",
+                  marginBottom: 2,
+                }}
+              >
+                GAME OVER · WINNER
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 22,
+                    fontWeight: 800,
+                    color: "#f5ead0",
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1.05,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {isYouWinner ? `${winner.name} (You)` : winner.name}
+                </div>
+                <CrownIcon size={18} />
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 12,
+                  marginTop: 5,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                }}
+              >
+                <span
+                  style={{ color: "var(--accent, #f0c14a)", fontWeight: 700 }}
+                >
+                  {winnerSets}/3 sets
+                </span>
+                <span style={{ color: "#7adb88", fontWeight: 700 }}>
+                  ${winnerBank}M
+                </span>
+              </div>
+            </div>
+            <WinnerSeal size={56} />
+          </motion.div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
+              gap: 16,
+              alignItems: "stretch",
+              flexShrink: 0,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            >
+              <HeroPlaque
+                winner={winner}
+                isYouWinner={isYouWinner}
+                bankTotal={winnerBank}
+                completeSets={winnerSets}
+              />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              style={{
+                padding: "18px 18px",
+                borderRadius: 16,
+                background:
+                  "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+                border: "1px solid rgba(245,234,208,0.08)",
+                boxShadow: "var(--sh-panel)",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                minWidth: 244,
+                gap: 14,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  letterSpacing: "0.22em",
+                  color: "rgba(245,234,208,0.55)",
+                }}
+              >
+                NEXT
+              </div>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 8 }}
+              >
+                {onRematch && (
+                  <PrimaryButton onClick={onRematch} fullWidth size="md">
+                    ↻ Rematch
+                  </PrimaryButton>
+                )}
+                {onGoHome && (
+                  <SecondaryButton onClick={onGoHome} fullWidth size="md">
+                    Leave to Lobby
+                  </SecondaryButton>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
 
+        {/* Final Standings ledger */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: isCompact ? 8 : 10,
+          }}
+        >
           <div
             style={{
               display: "flex",
-              gap: 12,
-              justifyContent: "center",
+              alignItems: "baseline",
+              gap: 14,
+              padding: "0 4px",
             }}
           >
-            {onRematch && (
-              <PrimaryButton onClick={onRematch} size="lg">
-                Rematch
-              </PrimaryButton>
-            )}
-            {onGoHome && (
-              <SecondaryButton onClick={onGoHome} size="lg">
-                Leave
-              </SecondaryButton>
-            )}
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.28em",
+                color: "rgba(245,234,208,0.6)",
+              }}
+            >
+              FINAL STANDINGS
+            </div>
+            <div
+              style={{
+                flex: 1,
+                height: 1,
+                background:
+                  "linear-gradient(90deg, rgba(245,234,208,0.18), transparent)",
+              }}
+            />
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.14em",
+                color: "rgba(245,234,208,0.4)",
+              }}
+            >
+              {players.length} PLAYERS
+            </div>
           </div>
-        </motion.div>
 
-        {/* Final standings */}
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            letterSpacing: "0.2em",
-            textTransform: "uppercase",
-            color: "rgba(245,234,208,0.55)",
-            textAlign: "center",
-            marginBottom: 18,
-          }}
-        >
-          Final Standings
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {sortedPlayers.map((player, index) => {
-            const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
-            const propertyTotal = player.properties
-              .flatMap((s) => s.cards)
-              .reduce((sum, c) => sum + c.value, 0);
-            const totalValue = bankTotal + propertyTotal;
+          {sortedPlayers.map((player, i) => {
+            const rank = i + 1;
+            const isYou = player.id === currentPlayerId;
+            const expanded = rank === 1;
+            const bankTotal = player.bank.reduce((s, c) => s + c.value, 0);
             const completeSets = player.properties.filter(isSetComplete)
               .length;
-            const isWinner = player.id === winnerId;
-
             return (
               <motion.div
                 key={player.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.08 * index + 0.2 }}
-                style={{
-                  borderRadius: 16,
-                  padding: "20px 24px 16px",
-                  background:
-                    "linear-gradient(180deg, rgba(28,22,20,0.78) 0%, rgba(16,10,8,0.86) 100%)",
-                  border: isWinner
-                    ? "1px solid color-mix(in oklab, var(--accent, #f0c14a) 60%, transparent)"
-                    : "1px solid rgba(245,234,208,0.08)",
-                  boxShadow: isWinner
-                    ? "0 0 0 1px color-mix(in oklab, var(--accent, #f0c14a) 30%, transparent), 0 12px 28px -10px rgba(0,0,0,0.6)"
-                    : "0 8px 20px -8px rgba(0,0,0,0.55)",
-                }}
+                transition={{ delay: 0.08 * i + 0.2 }}
               >
-                {/* Player header row */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    marginBottom: 14,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: "rgba(245,234,208,0.32)",
-                      minWidth: 36,
-                      letterSpacing: "-0.02em",
-                    }}
-                  >
-                    #{index + 1}
-                  </div>
-                  <div
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 999,
-                      background: isWinner
-                        ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 60%, #000) 100%)"
-                        : "linear-gradient(180deg, #5a5340, #3a342a)",
-                      color: "#1a1208",
-                      fontFamily: "var(--font-display)",
-                      fontWeight: 800,
-                      fontSize: 18,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.4)",
-                    }}
-                  >
-                    {player.name[0]?.toUpperCase() ?? "?"}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "baseline",
-                        gap: 8,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: "var(--font-display)",
-                          fontWeight: 700,
-                          fontSize: 18,
-                          color: "#f5ead0",
-                          letterSpacing: "-0.01em",
-                        }}
-                      >
-                        {player.name}
-                      </span>
-                      {player.id === currentPlayerId && (
-                        <span
-                          style={{
-                            fontFamily: "var(--font-mono)",
-                            fontSize: 10,
-                            letterSpacing: "0.14em",
-                            color: "rgba(245,234,208,0.55)",
-                          }}
-                        >
-                          (YOU)
-                        </span>
-                      )}
-                      {isWinner && (
-                        <span style={{ fontSize: 18 }}>👑</span>
-                      )}
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 14,
-                        marginTop: 4,
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 11,
-                        fontVariantNumeric: "tabular-nums",
-                      }}
-                    >
-                      <span style={{ color: "#7adb88" }}>${totalValue}M total</span>
-                      <span style={{ color: "var(--accent, #f0c14a)" }}>
-                        {completeSets}/3 sets
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Property sets */}
-                {player.properties.length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 9,
-                        letterSpacing: "0.18em",
-                        textTransform: "uppercase",
-                        color: "rgba(245,234,208,0.4)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Properties
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: 8,
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      {player.properties.map((set, i) => (
-                        <PropertySetDisplay
-                          key={`${set.color}-${i}`}
-                          set={set}
-                          isYou={false}
-                          isCurrentTurn={false}
-                          useSocialistTheme={settings?.useSocialistTheme}
-                          cardWidth={76}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                {isCompact ? (
+                  <MobileStandingsCard
+                    player={player}
+                    rank={rank}
+                    isYou={isYou}
+                    expanded={expanded}
+                    bankTotal={bankTotal}
+                    completeSets={completeSets}
+                    settings={settings}
+                  />
+                ) : (
+                  <StandingsRow
+                    player={player}
+                    rank={rank}
+                    isYou={isYou}
+                    expanded={expanded}
+                    bankTotal={bankTotal}
+                    completeSets={completeSets}
+                    settings={settings}
+                  />
                 )}
-
-                {/* Bank + hand */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 16,
-                  }}
-                >
-                  {player.bank.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 9,
-                          letterSpacing: "0.18em",
-                          textTransform: "uppercase",
-                          color: "rgba(245,234,208,0.4)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Bank · ${bankTotal}M
-                      </div>
-                      <div
-                        style={{
-                          padding: 10,
-                          borderRadius: 10,
-                          background: "rgba(0,0,0,0.22)",
-                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-                          display: "inline-block",
-                        }}
-                      >
-                        <FannedCards
-                          cards={[...player.bank].sort(
-                            (a, b) => a.value - b.value,
-                          )}
-                          cardWidth={64}
-                          maxVisible={12}
-                          useSocialistTheme={settings?.useSocialistTheme}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {player.hand && player.hand.length > 0 && (
-                    <div>
-                      <div
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 9,
-                          letterSpacing: "0.18em",
-                          textTransform: "uppercase",
-                          color: "rgba(245,234,208,0.4)",
-                          marginBottom: 8,
-                        }}
-                      >
-                        Hand · {player.hand.length} cards
-                      </div>
-                      <div
-                        style={{
-                          padding: 10,
-                          borderRadius: 10,
-                          background: "rgba(0,0,0,0.22)",
-                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-                          display: "inline-block",
-                        }}
-                      >
-                        <FannedCards
-                          cards={player.hand}
-                          cardWidth={64}
-                          maxVisible={12}
-                          useSocialistTheme={settings?.useSocialistTheme}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </motion.div>
             );
           })}
         </div>
+
+        {/* Mobile sticky action bar */}
+        {isCompact && (
+          <div
+            style={{
+              position: "sticky",
+              bottom: 0,
+              padding: "14px 0 8px",
+              background:
+                "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.65) 60%, rgba(0,0,0,0.85) 100%)",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            {onRematch && (
+              <PrimaryButton onClick={onRematch} fullWidth size="md">
+                ↻ Rematch
+              </PrimaryButton>
+            )}
+            {onGoHome && (
+              <SecondaryButton onClick={onGoHome} fullWidth size="md">
+                Leave to Lobby
+              </SecondaryButton>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

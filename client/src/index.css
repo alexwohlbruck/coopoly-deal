@@ -378,6 +378,19 @@ a img,
   animation: shake 0.3s ease-in-out;
 }
 
+/* Confetti drift — used on the end-game screen */
+@keyframes confetti-drift {
+  0% {
+    transform: translateY(-6px) rotate(var(--r0, 0deg));
+  }
+  50% {
+    transform: translateY(8px) rotate(calc(var(--r0, 0deg) + 18deg));
+  }
+  100% {
+    transform: translateY(-6px) rotate(var(--r0, 0deg));
+  }
+}
+
 /* Soft pulse for the "your turn" indicator pill — gold halo breathing */
 @keyframes turnPulse {
   0%,

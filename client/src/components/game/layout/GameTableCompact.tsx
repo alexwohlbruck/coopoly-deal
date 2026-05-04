@@ -74,6 +74,7 @@ interface GameTableCompactProps {
   onCardClick: (card: Card) => void;
   onEndTurn: () => void;
   setDraggingCard: (card: Card | null) => void;
+  peekResetSignal?: number | string | null;
 }
 
 export function GameTableCompact({
@@ -92,6 +93,7 @@ export function GameTableCompact({
   onCardClick,
   onEndTurn,
   setDraggingCard,
+  peekResetSignal = null,
 }: GameTableCompactProps) {
   const opponents = useMemo(
     () => gameState.players.filter((p) => p.id !== playerId),
@@ -120,34 +122,7 @@ export function GameTableCompact({
   );
 
   const oppTableRef = useRef<HTMLDivElement | null>(null);
-  const [oppTableWidth, setOppTableWidth] = useState(360);
-  useEffect(() => {
-    const el = oppTableRef.current;
-    if (!el) return;
-    const measure = () => setOppTableWidth(el.getBoundingClientRect().width);
-    measure();
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(measure);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-    return undefined;
-  }, []);
-
   const yourTableRef = useRef<HTMLDivElement | null>(null);
-  const [yourTableWidth, setYourTableWidth] = useState(360);
-  useEffect(() => {
-    const el = yourTableRef.current;
-    if (!el) return;
-    const measure = () => setYourTableWidth(el.getBoundingClientRect().width);
-    measure();
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(measure);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-    return undefined;
-  }, []);
 
   const isMyTurn = gameState.turn?.playerId === playerId;
   const turnPhase = gameState.turn?.phase;
@@ -253,21 +228,23 @@ export function GameTableCompact({
             minHeight: 0,
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            overflow: "auto",
+            justifyContent: "flex-start",
+            overflowX: "auto",
+            overflowY: "hidden",
           }}
           className="scrollbar-hide"
         >
           {activeOpp ? (
-            <PlayerBoard
-              player={activeOpp}
-              isYou={false}
-              isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
-              settings={gameState.settings}
-              draggingCard={draggingCard}
-              compact
-              maxWidth={Math.max(280, oppTableWidth - 8)}
-            />
+            <div style={{ margin: "0 auto", padding: "0 4px" }}>
+              <PlayerBoard
+                player={activeOpp}
+                isYou={false}
+                isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
+                settings={gameState.settings}
+                draggingCard={draggingCard}
+                compact
+              />
+            </div>
           ) : (
             <div
               style={{
@@ -387,35 +364,36 @@ export function GameTableCompact({
             style={{
               flex: 1,
               minHeight: 0,
-              overflow: "auto",
+              overflowX: "auto",
+              overflowY: "hidden",
               display: "flex",
-              alignItems: "flex-end",
-              justifyContent: "center",
+              alignItems: "center",
+              justifyContent: "flex-start",
             }}
             className="scrollbar-hide"
           >
-            <PlayerBoard
-              player={me}
-              isYou
-              isCurrentTurn={isMyTurn}
-              settings={gameState.settings}
-              draggingCard={draggingCard}
-              compact
-              onDropToBank={(cardId) => {
-                const card = me.hand?.find((c) => c.id === cardId);
-                if (card) onPlayToBank(cardId);
-              }}
-              onDropToProperty={(cardId, color) => {
-                const card = me.hand?.find((c) => c.id === cardId);
-                if (card) onPlayToProperty(cardId, color);
-              }}
-              onDropToRainbow={onRainbowDrop}
-              onWildcardClick={onWildcardClick}
-              onCardDragStart={onWildcardDragStart}
-              onCardDragEnd={onWildcardDragEnd}
-              maxWidth={Math.max(280, yourTableWidth - 8)}
-              maxHeight={170}
-            />
+            <div style={{ margin: "0 auto", padding: "0 4px" }}>
+              <PlayerBoard
+                player={me}
+                isYou
+                isCurrentTurn={isMyTurn}
+                settings={gameState.settings}
+                draggingCard={draggingCard}
+                compact
+                onDropToBank={(cardId) => {
+                  const card = me.hand?.find((c) => c.id === cardId);
+                  if (card) onPlayToBank(cardId);
+                }}
+                onDropToProperty={(cardId, color) => {
+                  const card = me.hand?.find((c) => c.id === cardId);
+                  if (card) onPlayToProperty(cardId, color);
+                }}
+                onDropToRainbow={onRainbowDrop}
+                onWildcardClick={onWildcardClick}
+                onCardDragStart={onWildcardDragStart}
+                onCardDragEnd={onWildcardDragEnd}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -443,6 +421,7 @@ export function GameTableCompact({
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={gameState.settings.useSocialistTheme}
             fanMode="drag"
+            peekResetSignal={peekResetSignal}
           />
         </div>
       )}

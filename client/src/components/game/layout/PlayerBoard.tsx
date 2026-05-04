@@ -30,10 +30,9 @@ interface PlayerBoardProps {
   onCardDragEnd?: () => void;
   /** When true, sets render at the compact (smaller) scale. */
   compact?: boolean;
-  /** Available width for the property/bank row. */
-  maxWidth?: number;
-  /** Cap height; row will multi-row + scroll inside if it overflows. */
-  maxHeight?: number | null;
+  /** When true, allow the row to wrap to multiple lines if it overflows.
+   *  Defaults to false (single row, parent scrolls horizontally). */
+  wrap?: boolean;
 }
 
 export function PlayerBoard({
@@ -49,8 +48,7 @@ export function PlayerBoard({
   onCardDragStart,
   onCardDragEnd,
   compact = false,
-  maxWidth = 800,
-  maxHeight = null,
+  wrap = false,
 }: PlayerBoardProps) {
   const [dragOverColor, setDragOverColor] = useState<PropertyColor | null>(
     null,
@@ -119,40 +117,33 @@ export function PlayerBoard({
       draggingCard != null);
 
   return (
-    <div style={{ width: "100%" }}>
-      <div
-        onDragOver={isDraggingMoney ? handleBankDragOver : undefined}
-        onDragLeave={isDraggingMoney ? handleBankDragLeave : undefined}
-        onDrop={isDraggingMoney ? handleBankDrop : undefined}
-        style={{
-          width: "100%",
-          borderRadius: 8,
-          padding: 0,
-          boxShadow: isDragOverBank
-            ? "0 0 0 2px #7adb88"
-            : undefined,
-          transition: "box-shadow var(--d-quick) var(--ease-out-soft)",
-        }}
-      >
-        <PropertySetsRow
-          sets={player.properties}
-          bank={bankValues}
-          maxWidth={maxWidth}
-          maxHeight={maxHeight}
-          align="center"
-          compact={compact}
-          isYou={isYou}
-          isCurrentTurn={isCurrentTurn}
-          useSocialistTheme={settings.useSocialistTheme}
-          onSetDragOver={handleSetDragOver}
-          onSetDragLeave={handleSetDragLeave}
-          onSetDrop={handleSetDrop}
-          onWildcardClick={onWildcardClick}
-          onCardDragStart={onCardDragStart}
-          onCardDragEnd={onCardDragEnd}
-          dragOverColor={dragOverColor}
-        />
-      </div>
+    <div
+      onDragOver={isDraggingMoney ? handleBankDragOver : undefined}
+      onDragLeave={isDraggingMoney ? handleBankDragLeave : undefined}
+      onDrop={isDraggingMoney ? handleBankDrop : undefined}
+      style={{
+        borderRadius: 8,
+        boxShadow: isDragOverBank ? "0 0 0 2px #7adb88" : undefined,
+        transition: "box-shadow var(--d-quick) var(--ease-out-soft)",
+      }}
+    >
+      <PropertySetsRow
+        sets={player.properties}
+        bank={bankValues}
+        align="center"
+        compact={compact}
+        wrap={wrap}
+        isYou={isYou}
+        isCurrentTurn={isCurrentTurn}
+        useSocialistTheme={settings.useSocialistTheme}
+        onSetDragOver={handleSetDragOver}
+        onSetDragLeave={handleSetDragLeave}
+        onSetDrop={handleSetDrop}
+        onWildcardClick={onWildcardClick}
+        onCardDragStart={onCardDragStart}
+        onCardDragEnd={onCardDragEnd}
+        dragOverColor={dragOverColor}
+      />
     </div>
   );
 }

@@ -439,11 +439,21 @@ export interface PropertySetsRowProps {
   dragOverColor?: PropertyColor | null;
 }
 
+export interface PropertySetsRowExtraProps {
+  /** When true, allow the row to wrap to multiple lines if it overflows.
+   *  When false (default), keep one row — the parent should provide
+   *  overflow-x: auto if it can't fit. The design's compact mockup uses
+   *  horizontal scroll; the desktop variant lets it wrap. */
+  wrap?: boolean;
+}
+
 export function PropertySetsRow({
   sets = [],
   bank,
-  maxWidth = 720,
-  maxHeight = null,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for back-compat
+  maxWidth: _maxWidth,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for back-compat
+  maxHeight: _maxHeight,
   align = "flex-start",
   compact = false,
   isYou = false,
@@ -456,7 +466,8 @@ export function PropertySetsRow({
   onCardDragStart,
   onCardDragEnd,
   dragOverColor,
-}: PropertySetsRowProps) {
+  wrap = false,
+}: PropertySetsRowProps & PropertySetsRowExtraProps) {
   const hasBank = Array.isArray(bank) && bank.length > 0;
   const n = sets.length + (hasBank ? 1 : 0);
 
@@ -480,64 +491,28 @@ export function PropertySetsRow({
     );
   }
 
-  // Base cell geometry at scale=1.0
-  const baseWidth = 100;
-  const baseHeight = compact ? 220 : 260;
-  const MIN_SCALE = compact ? 0.42 : 0.5;
-  const MAX_SCALE = compact ? 0.78 : 1.0;
-  const minGap = 3;
-  const maxGap = 14;
-
-  // Find the layout (rows+scale+gap) that fits all sets at the largest legible scale.
-  let best: { rows: number; cols: number; scale: number; gap: number } | null = null;
-  for (let rows = 1; rows <= 3; rows++) {
-    const cols = Math.ceil(n / rows);
-    for (const gap of [maxGap, 10, 8, 6, 4, minGap]) {
-      const fitScale = (maxWidth - (cols - 1) * gap) / (cols * baseWidth);
-      if (fitScale < MIN_SCALE) continue;
-      const scale = Math.min(MAX_SCALE, fitScale);
-      const totalH = rows * baseHeight * scale + (rows - 1) * gap;
-      if (maxHeight && totalH > maxHeight) continue;
-      if (
-        !best ||
-        rows < best.rows ||
-        (rows === best.rows && scale > best.scale)
-      ) {
-        best = { rows, cols, scale, gap };
-      }
-    }
-    if (best && best.rows === rows) break;
-  }
-  if (!best) {
-    const scale = MIN_SCALE;
-    const gap = minGap;
-    const cols = Math.max(
-      1,
-      Math.floor((maxWidth + gap) / (baseWidth * scale + gap)),
-    );
-    const rows = Math.ceil(n / cols);
-    best = { rows, cols, scale, gap };
-  }
-
-  const { cols, scale, gap } = best;
-  const cellW = baseWidth * scale;
-  const cellH = baseHeight * scale;
-  // Card width passed to PropertySetDisplay. Held at the lg/compact base
-  // (88 / 76) so cards render at full natural size; the outer wrapper's
-  // CSS scale transform is what shrinks the stack to fit. Otherwise we'd
-  // be scaling twice (once via cardWidth, once via transform) and stacks
-  // would render at scale².
+  // Fixed cell dimensions (no scale-to-fit shrinking — cards stay readable).
+  // Card width passed to PropertySetDisplay (88 lg / 76 compact); cell width
+  // matches with a small gutter for the progress badge.
   const cardWidth = compact ? 76 : 88;
+  const cellW = cardWidth + 12;
+  const gap = compact ? 6 : 10;
 
   return (
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${cols}, ${cellW}px)`,
-        gridAutoRows: `${cellH}px`,
+        display: "flex",
+        flexWrap: wrap ? "wrap" : "nowrap",
         gap,
-        justifyContent: align === "center" ? "center" : "start",
-        width: "100%",
+        justifyContent: align === "center" ? "center" : "flex-start",
+        // When not wrapping, this element is laid out at its content width
+        // and the parent should give it `overflow-x: auto` if it overflows.
+        // We set width:auto + minWidth:max-content so flex children stay at
+        // their intrinsic size instead of being squeezed.
+        width: wrap ? "100%" : "max-content",
+        minWidth: wrap ? undefined : "max-content",
+        alignItems: "flex-start",
+        paddingTop: 4,
       }}
     >
       {hasBank && (
@@ -545,22 +520,12 @@ export function PropertySetsRow({
           key="__bank"
           style={{
             width: cellW,
-            height: cellH,
             display: "flex",
-            alignItems: "flex-end",
             justifyContent: "center",
-            overflow: "visible",
+            flexShrink: 0,
           }}
         >
-          <div
-            style={{
-              width: baseWidth,
-              transform: `scale(${scale})`,
-              transformOrigin: "bottom center",
-            }}
-          >
-            <BankStack cards={bank!} compact={compact} />
-          </div>
+          <BankStack cards={bank!} compact={compact} />
         </div>
       )}
       {sets.map((s, i) => (
@@ -568,35 +533,25 @@ export function PropertySetsRow({
           key={`${s.color}-${i}`}
           style={{
             width: cellW,
-            height: cellH,
             display: "flex",
-            alignItems: "flex-end",
             justifyContent: "center",
-            overflow: "visible",
+            flexShrink: 0,
           }}
           onDragOver={(e) => onSetDragOver?.(s.color, e)}
           onDragLeave={(e) => onSetDragLeave?.(s.color, e)}
           onDrop={(e) => onSetDrop?.(s.color, e)}
         >
-          <div
-            style={{
-              width: baseWidth,
-              transform: `scale(${scale})`,
-              transformOrigin: "bottom center",
-            }}
-          >
-            <PropertySetDisplay
-              set={s}
-              isYou={isYou}
-              isCurrentTurn={isCurrentTurn}
-              isDragOver={dragOverColor === s.color}
-              useSocialistTheme={useSocialistTheme}
-              onWildcardClick={onWildcardClick}
-              onDragStart={onCardDragStart}
-              onDragEnd={onCardDragEnd}
-              cardWidth={cardWidth}
-            />
-          </div>
+          <PropertySetDisplay
+            set={s}
+            isYou={isYou}
+            isCurrentTurn={isCurrentTurn}
+            isDragOver={dragOverColor === s.color}
+            useSocialistTheme={useSocialistTheme}
+            onWildcardClick={onWildcardClick}
+            onDragStart={onCardDragStart}
+            onDragEnd={onCardDragEnd}
+            cardWidth={cardWidth}
+          />
         </div>
       ))}
     </div>

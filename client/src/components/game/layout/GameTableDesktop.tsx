@@ -456,33 +456,18 @@ function ActiveOpponentBoardWrapper({
   gameState,
   draggingCard,
 }: ActiveOpponentBoardWrapperProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [width, setWidth] = useState(900);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const measure = () => setWidth(el.getBoundingClientRect().width);
-    measure();
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(measure);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
-
   return (
     <div
-      ref={containerRef}
       style={{
         flex: 1,
         minHeight: 0,
-        overflow: "auto",
+        // Horizontal scroll if the player has more sets than fit; vertical
+        // hidden so the row stays one line.
+        overflowX: "auto",
+        overflowY: "hidden",
         display: "flex",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: "flex-start",
       }}
       className="scrollbar-hide"
     >
@@ -494,7 +479,13 @@ function ActiveOpponentBoardWrapper({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 0.9, 0.32, 1] }}
-          style={{ width: "100%" }}
+          style={{
+            margin: "0 auto",
+            // Let the inner row push its own width — center if narrower,
+            // scroll if wider (parent has overflow-x: auto).
+            display: "inline-flex",
+            padding: "0 8px",
+          }}
         >
           <PlayerBoard
             player={activeOpp}
@@ -502,8 +493,6 @@ function ActiveOpponentBoardWrapper({
             isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
             settings={gameState.settings}
             draggingCard={draggingCard}
-            maxWidth={Math.max(280, width - 16)}
-            maxHeight={300}
           />
         </motion.div>
       ) : (
@@ -514,6 +503,7 @@ function ActiveOpponentBoardWrapper({
             color: "rgba(245,234,208,0.4)",
             letterSpacing: "0.18em",
             padding: 36,
+            margin: "auto",
           }}
         >
           no opponents
@@ -559,21 +549,6 @@ function YourTableGrid({
   bottomBar,
 }: YourTableGridProps) {
   const setsColRef = useRef<HTMLDivElement | null>(null);
-  const [setsColWidth, setSetsColWidth] = useState(600);
-
-  useEffect(() => {
-    const el = setsColRef.current;
-    if (!el) return;
-    const measure = () => setSetsColWidth(el.getBoundingClientRect().width);
-    measure();
-    if (typeof ResizeObserver !== "undefined") {
-      const ro = new ResizeObserver(measure);
-      ro.observe(el);
-      return () => ro.disconnect();
-    }
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, []);
 
   return (
     <div
@@ -594,9 +569,14 @@ function YourTableGrid({
         style={{
           minWidth: 0,
           maxHeight: 320,
-          overflowY: "auto",
-          overflowX: "hidden",
+          // Scroll horizontally if the row overflows; let it wrap to two
+          // rows on very tall platters (we keep wrap=false for now since
+          // the platter is ~280px tall).
+          overflowX: "auto",
+          overflowY: "hidden",
           alignSelf: "stretch",
+          display: "flex",
+          alignItems: "center",
         }}
         className="scrollbar-hide"
       >
@@ -618,8 +598,6 @@ function YourTableGrid({
           onWildcardClick={onWildcardClick}
           onCardDragStart={onWildcardDragStart}
           onCardDragEnd={onWildcardDragEnd}
-          maxWidth={Math.max(280, setsColWidth - 4)}
-          maxHeight={310}
         />
       </div>
       <div

@@ -228,6 +228,9 @@ interface HoverFanHandProps {
   cardHeight?: number;
   /** Initial peek (0-indexed) for screenshots / non-pointer devices. */
   peekedDefault?: number | null;
+  /** When this prop changes, the hand un-peeks. Wire it to a counter that
+   *  ticks whenever a card is played, a dialog opens, etc. */
+  resetSignal?: number | string | null;
 }
 
 /**
@@ -246,11 +249,17 @@ export function HoverFanHand({
   cardWidth = 116,
   cardHeight = 174,
   peekedDefault = null,
+  resetSignal = null,
 }: HoverFanHandProps) {
   const n = items.length;
   const mid = (n - 1) / 2;
   const railRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<number | null>(peekedDefault);
+
+  useEffect(() => {
+    setHovered(peekedDefault);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: only react to resetSignal
+  }, [resetSignal]);
   const [railW, setRailW] = useState(700);
 
   const fanHeight = cardHeight + 44;
@@ -390,6 +399,10 @@ interface DragPeekHandProps {
   selectedId?: string | null;
   cardWidth?: number;
   cardHeight?: number;
+  /** When this prop changes, the hand un-peeks. Wire it to a counter that
+   *  ticks whenever a card is played, a dialog opens, etc. so the lifted
+   *  card returns to its slot. */
+  resetSignal?: number | string | null;
 }
 
 export function DragPeekHand({
@@ -398,11 +411,19 @@ export function DragPeekHand({
   selectedId = null,
   cardWidth = 96,
   cardHeight = 144,
+  resetSignal = null,
 }: DragPeekHandProps) {
   const n = items.length;
   const mid = (n - 1) / 2;
   const railRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<number | null>(peekedIdx);
+
+  // Clear peek state when resetSignal changes (parent triggers it on play /
+  // dialog open).
+  useEffect(() => {
+    setHovered(peekedIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: only react to resetSignal
+  }, [resetSignal]);
   const [railW, setRailW] = useState(360);
   const sideMargin = 8;
 

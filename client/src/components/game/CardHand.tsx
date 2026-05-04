@@ -22,6 +22,9 @@ interface CardHandProps {
   /** When set, render the hand as an arc fan (desktop) or drag-peek
    * rail (mobile) per the design's hover-to-peek pattern. */
   fanMode?: "hover" | "drag" | null;
+  /** Tick this to clear the peek state — useful when a card is played
+   *  or a dialog opens. */
+  peekResetSignal?: number | string | null;
 }
 
 export function CardHand({
@@ -36,6 +39,7 @@ export function CardHand({
   onDragEnd,
   useSocialistTheme = false,
   fanMode = null,
+  peekResetSignal = null,
 }: CardHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -84,6 +88,7 @@ export function CardHand({
             selectedId={selectedCardId}
             cardWidth={cardWidth}
             cardHeight={cardHeight}
+            resetSignal={peekResetSignal}
           />
         ) : (
           <DragPeekHand
@@ -91,6 +96,7 @@ export function CardHand({
             selectedId={selectedCardId}
             cardWidth={cardWidth}
             cardHeight={cardHeight}
+            resetSignal={peekResetSignal}
           />
         )}
       </div>

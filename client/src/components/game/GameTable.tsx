@@ -361,6 +361,23 @@ export function GameTable({
     );
   }
 
+  // Hand peek reset signal — encodes "an event happened that should clear
+  // any current peek state on the hand". Bumps when:
+  //   - a dialog opens (CardActionDialog, ActionPrompt, WildcardFlip,
+  //     RainbowGroup, Settings, DevTools)
+  //   - the hand size changes (a card just got played or drawn)
+  // Encoding all signals as one string keeps the prop stable when nothing
+  // is happening so the hand doesn't re-mount.
+  const peekResetSignal = [
+    selectedCard?.id ?? "",
+    pendingAction?.type ?? "",
+    wildcardFlipData ? "wf" : "",
+    rainbowDropData ? "rd" : "",
+    showSettings ? "s" : "",
+    showDevTools ? "d" : "",
+    me?.hand?.length ?? 0,
+  ].join("|");
+
   // Bottom bar (turn pill + end turn + hand) — shared across both layouts.
   const bottomBar = me ? (
     <div ref={turnControlsRef}>
@@ -378,6 +395,7 @@ export function GameTable({
         onPlayToBank={onPlayToBank}
         setDraggingCard={setDraggingCard}
         hideRedundantChrome={layoutMode === "table"}
+        peekResetSignal={peekResetSignal}
       />
     </div>
   ) : null;
@@ -446,6 +464,7 @@ export function GameTable({
             onCardClick={handleCardClick}
             onEndTurn={handleEndTurn}
             setDraggingCard={setDraggingCard}
+            peekResetSignal={peekResetSignal}
           />
           {gameState.turn && gameState.turn.rentMultiplier > 1 && (
             <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
