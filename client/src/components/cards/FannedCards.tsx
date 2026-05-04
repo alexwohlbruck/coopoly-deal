@@ -466,7 +466,14 @@ export function DragPeekHand({
       onMouseMove={onMove}
       onMouseLeave={() => setHovered(peekedIdx)}
       onTouchMove={onMove}
-      onTouchEnd={() => setHovered(peekedIdx)}
+      // ─── On touch release: keep the peek sticky ───
+      // Touch users drag a finger across the rail to peek; if we cleared
+      // the peek on touch end, the player would have to either tap
+      // immediately (hard to time on a fanned arc) or scrub back to the
+      // card they wanted. Leaving `hovered` set means the peeked card
+      // stays raised + readable, and the very next tap on it lands the
+      // play. A different card pulls peek to it; the rail's onTouchMove
+      // also continues to update peek as the finger moves.
     >
       <div style={{ position: "relative", height: railHeight, width: "100%" }}>
         {items.map((item, i) => {
