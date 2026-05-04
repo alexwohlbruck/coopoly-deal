@@ -101,29 +101,19 @@ export function GameTable({
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const { play } = useSoundManager();
   const { theme, setToast } = useGameStore();
-  const colors = getTheme(theme);
+  const themeData = getTheme(theme);
   const { t } = useI18n();
   const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [playerAreaHeight, setPlayerAreaHeight] = useState<number | undefined>(
-    undefined,
-  );
   const headerRef = useRef<HTMLDivElement>(null);
   const turnControlsRef = useRef<HTMLDivElement>(null);
   const cardHandRef = useRef<HTMLDivElement>(null);
 
   const me = gameState.players.find((p) => p.id === playerId);
 
-  // Calculate available height for player areas
+  // Recalculate layout on window resize
   useEffect(() => {
     const calculateHeight = () => {
-      const windowHeight = window.innerHeight;
-      const headerHeight = headerRef.current?.offsetHeight || 0;
-      const controlsHeight = turnControlsRef.current?.offsetHeight || 0;
-      const handHeight = cardHandRef.current?.offsetHeight || 0;
-
-      const availableHeight =
-        windowHeight - headerHeight - controlsHeight - handHeight - 32;
-      setPlayerAreaHeight(Math.max(200, availableHeight));
+      // Trigger re-render on resize
     };
 
     calculateHeight();
@@ -372,7 +362,7 @@ export function GameTable({
 
   return (
     <div
-      className={`h-screen ${colors.tableBackground} felt-texture flex flex-col overflow-hidden touch-pan-x`}
+      className={`h-screen ${themeData.feltClass} felt-surface flex flex-col overflow-hidden touch-pan-x`}
       style={{ overscrollBehavior: "none" }}
     >
       {/* Top bar */}
@@ -429,7 +419,6 @@ export function GameTable({
         <PlayerCarousel
           gameState={gameState}
           playerId={playerId}
-          playerAreaHeight={playerAreaHeight}
           draggingCard={draggingCard}
           onPlayToBank={onPlayToBank}
           onPlayToProperty={onPlayToProperty}
@@ -451,20 +440,22 @@ export function GameTable({
 
       {/* Turn bar and hand */}
       {me && (
-        <PlayerTurnBar
-          gameState={gameState}
-          playerId={playerId}
-          playerRefs={playerRefs}
-          cardHandRef={cardHandRef}
-          needsDiscard={needsDiscard ?? false}
-          timeLeft={timeLeft}
-          selectedCard={selectedCard}
-          shakingCardId={shakingCardId}
-          onEndTurn={handleEndTurn}
-          onCardClick={handleCardClick}
-          onPlayToBank={onPlayToBank}
-          setDraggingCard={setDraggingCard}
-        />
+        <div ref={turnControlsRef}>
+          <PlayerTurnBar
+            gameState={gameState}
+            playerId={playerId}
+            playerRefs={playerRefs}
+            cardHandRef={cardHandRef}
+            needsDiscard={needsDiscard ?? false}
+            timeLeft={timeLeft}
+            selectedCard={selectedCard}
+            shakingCardId={shakingCardId}
+            onEndTurn={handleEndTurn}
+            onCardClick={handleCardClick}
+            onPlayToBank={onPlayToBank}
+            setDraggingCard={setDraggingCard}
+          />
+        </div>
       )}
 
       {/* Card action dialog - only show if card is still in hand */}

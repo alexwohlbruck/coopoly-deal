@@ -1,30 +1,299 @@
 @import "tailwindcss";
 
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+
+/* Tailwind theme tokens (kept for property-color utility classes) */
 @theme {
-  --color-brown: #8b4513;
-  --color-light-blue: #87ceeb;
-  --color-pink: #ff69b4;
-  --color-orange: #ff8c00;
-  --color-red: #dc2626;
-  --color-yellow: #eab308;
-  --color-green: #16a34a;
-  --color-dark-blue: #1e3a8a;
-  --color-railroad: #1f2937;
-  --color-utility: #6b7280;
+  --color-brown: #6a4a31;
+  --color-light-blue: #6fb7d4;
+  --color-pink: #d96aa1;
+  --color-orange: #e08840;
+  --color-red: #c83a3a;
+  --color-yellow: #e6b73c;
+  --color-green: #2f8f5e;
+  --color-dark-blue: #1c3a6e;
+  --color-railroad: #1a1a1a;
+  --color-utility: #4a3a78;
 
   --color-table-green: #1a5c2e;
   --color-table-dark: #14472a;
-  --color-card-bg: #fffef5;
+  --color-card-bg: #fbf6e9;
 }
+
+/* ============================================================
+   Co-Opoly Deal — design tokens
+   Felt themes are built from 3 surface tokens each:
+     --felt: the table cloth
+     --frame: the leather/wood inner border
+     --accent: highlight/active color (player turn ring, CTAs)
+   Plus computed darkening for vignette + thread color.
+   ============================================================ */
+
+:root {
+  /* Type */
+  --font-display: "Bricolage Grotesque", "Inter Tight", system-ui, sans-serif;
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  --t-display-xl: 56px;
+  --t-display-l: 36px;
+  --t-display-m: 26px;
+  --t-display-s: 20px;
+  --t-body: 14px;
+  --t-body-sm: 12px;
+  --t-caption: 11px;
+  --t-mono: 13px;
+
+  /* Spacing scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Radii */
+  --r-card: 8px;
+  --r-card-lg: 12px;
+  --r-chip: 999px;
+  --r-panel: 14px;
+  --r-button: 10px;
+
+  /* Shadows — sticker vs. object */
+  --sh-sticker: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --sh-object: 0 1px 0 rgba(0, 0, 0, 0.35), 0 8px 14px -4px rgba(0, 0, 0, 0.45);
+  --sh-lifted: 0 2px 0 rgba(0, 0, 0, 0.4), 0 22px 32px -10px rgba(0, 0, 0, 0.55);
+  --sh-pressed: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-panel:
+    0 24px 60px -12px rgba(0, 0, 0, 0.55),
+    0 2px 0 rgba(255, 255, 255, 0.04) inset;
+  --sh-inner-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+
+  /* Card chrome (the actual card object) */
+  --card-paper: #fbf6e9;
+  --card-paper-2: #f3ecd8;
+  --card-ink: #1c1a14;
+  --card-ink-soft: #5a5340;
+  --card-back-1: #b22b2b;
+  --card-back-2: #7a1818;
+
+  /* Property color bands — distinct hues, all readable on cream */
+  --p-brown: #6a4a31;
+  --p-skyblue: #6fb7d4;
+  --p-pink: #d96aa1;
+  --p-orange: #e08840;
+  --p-red: #c83a3a;
+  --p-yellow: #e6b73c;
+  --p-green: #2f8f5e;
+  --p-blue: #2d5fa8;
+  --p-darkblue: #1c3a6e;
+  --p-railroad: #1a1a1a;
+  --p-utility: #4a3a78;
+
+  /* Money denominations */
+  --m-1: #b8b8b8;
+  --m-2: #d6c378;
+  --m-3: #6db26a;
+  --m-4: #6c9bd2;
+  --m-5: #b67a4a;
+  --m-10: #a25c2c;
+
+  /* Action card hue */
+  --a-action: #1a1a1a;
+  --a-rent: #2a2a2a;
+
+  /* Animation */
+  --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-snap: cubic-bezier(0.18, 0.89, 0.32, 1.18);
+  --ease-in-soft: cubic-bezier(0.55, 0.05, 0.67, 0.19);
+  --d-instant: 80ms;
+  --d-quick: 160ms;
+  --d-base: 240ms;
+  --d-emphatic: 420ms;
+  --d-deal: 620ms;
+}
+
+/* ============================================================
+   Felt themes — set on the GameTable root
+   ============================================================ */
+
+.felt-emerald {
+  --felt: #1c4634;
+  --felt-2: #0e2a1f;
+  --frame: #2a1810;
+  --frame-2: #1a0e08;
+  --accent: #f0c14a;
+}
+.felt-teal {
+  --felt: #0e5a6e;
+  --felt-2: #042830;
+  --frame: #1a0f0a;
+  --frame-2: #0c0805;
+  --accent: #5ee0d8;
+}
+.felt-burgundy {
+  --felt: #6a1e2a;
+  --felt-2: #320d12;
+  --frame: #1a0a05;
+  --frame-2: #0a0402;
+  --accent: #ffb070;
+}
+.felt-midnight {
+  --felt: #1a2c5a;
+  --felt-2: #0a1530;
+  --frame: #14100a;
+  --frame-2: #08060a;
+  --accent: #ffc14a;
+}
+.felt-forest {
+  --felt: #1f4a28;
+  --felt-2: #0a2010;
+  --frame: #1f1408;
+  --frame-2: #0e0904;
+  --accent: #c8f078;
+}
+.felt-amber {
+  --felt: #7a4818;
+  --felt-2: #361e06;
+  --frame: #1a0e04;
+  --frame-2: #0c0602;
+  --accent: #ffe080;
+}
+.felt-slate {
+  --felt: #2c3540;
+  --felt-2: #131820;
+  --frame: #0e0c0a;
+  --frame-2: #050404;
+  --accent: #88d4ff;
+}
+.felt-plum {
+  --felt: #4a1a58;
+  --felt-2: #200a28;
+  --frame: #16080e;
+  --frame-2: #08040a;
+  --accent: #ff7ae0;
+}
+.felt-indigo {
+  --felt: #2624a8;
+  --felt-2: #0e0c40;
+  --frame: #100a14;
+  --frame-2: #06040a;
+  --accent: #b8a8ff;
+}
+.felt-graphite {
+  --felt: #2a2a2c;
+  --felt-2: #131314;
+  --frame: #0a0a0a;
+  --frame-2: #050505;
+  --accent: #f0c14a;
+}
+
+/* Felt surface — vignette + grain + leather frame */
+.felt-surface {
+  position: relative;
+  background: radial-gradient(
+    120% 90% at 50% 30%,
+    var(--felt) 0%,
+    var(--felt-2) 75%,
+    var(--felt-2) 100%
+  );
+  isolation: isolate;
+  overflow: hidden;
+}
+.felt-surface::before {
+  /* fine fabric noise */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.55'/></svg>");
+  mix-blend-mode: overlay;
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 1;
+}
+.felt-surface::after {
+  /* edge vignette spotlight */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    120% 80% at 50% 35%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+.felt-surface > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Inner leather/wood frame (sits inside felt) */
+.felt-frame {
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--frame) 80%, #2a1a10) 0%,
+    var(--frame) 50%,
+    var(--frame-2) 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 200, 130, 0.08),
+    inset 0 1px 0 rgba(255, 220, 170, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  z-index: 3;
+}
+.felt-frame::before {
+  /* leather grain */
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='8'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.45'/></svg>");
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+}
+
+/* ============================================================
+   Generic helpers
+   ============================================================ */
+
+.paper-grain {
+  position: relative;
+}
+.paper-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='2' seed='3'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Base + legacy
+   ============================================================ */
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    sans-serif;
+  font-family: var(--font-ui);
+  color: #1c1a14;
   /* Safe area insets for iOS/Android */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
@@ -79,45 +348,15 @@ a img,
   pointer-events: auto;
 }
 
-/* Felt texture pattern for game table */
+/* Legacy felt-texture class — superseded by .felt-surface; kept for transition */
 .felt-texture {
   position: relative;
 }
 
-.felt-texture::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: 
-    repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 4px,
-      rgba(0, 0, 0, 0.04) 4px,
-      rgba(0, 0, 0, 0.04) 8px
-    ),
-    repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 4px,
-      rgba(0, 0, 0, 0.04) 4px,
-      rgba(0, 0, 0, 0.04) 8px
-    ),
-    repeating-linear-gradient(
-      45deg,
-      transparent,
-      transparent 6px,
-      rgba(255, 255, 255, 0.03) 6px,
-      rgba(255, 255, 255, 0.03) 12px
-    );
-  opacity: 0.7;
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* Shake animation for invalid card plays */
 @keyframes shake {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0);
   }
   25% {

@@ -3,7 +3,6 @@ import { TurnPhase, isPlayerWaitingForAction } from "../../types/game";
 import { CardBack } from "../cards/GameCard";
 import { CardHand } from "./CardHand";
 import { useI18n } from "../../i18n";
-import { getTheme } from "../../theme/colors";
 import { useGameStore } from "../../hooks/useGameStore";
 import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
@@ -38,8 +37,6 @@ export function PlayerTurnBar({
   setDraggingCard,
 }: PlayerTurnBarProps) {
   const { t } = useI18n();
-  const { theme } = useGameStore();
-  const colors = getTheme(theme);
 
   const me = gameState.players.find((p) => p.id === playerId);
   const allPlayers = gameState.players;
@@ -54,10 +51,10 @@ export function PlayerTurnBar({
   if (!me) return null;
 
   return (
-    <div className="z-10 border-t border-white/10 bg-black/20 max-h-[50vh] flex flex-col shrink-0 relative">
+    <div className="z-10 border-t border-white/10 bg-black/20 flex flex-col shrink-0 relative">
       {/* Player indicators */}
-      <div className="absolute left-1/2 -translate-x-1/2 -top-4 z-20">
-        <div className="flex gap-2 px-4 py-1.5 bg-gray-900/90 backdrop-blur-md rounded-full border border-white/10 shadow-lg">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-3 z-20">
+        <div className="flex gap-1.5 px-3 py-1 bg-gray-900/90 backdrop-blur-md rounded-full border border-white/10 shadow-lg">
           {allPlayers.map((player, idx) => {
             const isCurrentTurn = gameState.turn?.playerId === player.id;
             const isMe = player.id === playerId;
@@ -77,7 +74,7 @@ export function PlayerTurnBar({
                   }
                 }}
                 className={`
-                  relative px-3 py-1 rounded-full text-xs font-bold transition-all duration-300 flex items-center gap-1
+                  relative px-2 py-0.5 rounded-full text-[10px] font-bold transition-all duration-300 flex items-center gap-0.5
                   ${
                     isCurrentTurn
                       ? "bg-yellow-400 text-black scale-110 shadow-md"
@@ -95,7 +92,7 @@ export function PlayerTurnBar({
                       ease: "linear",
                     }}
                   >
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-2.5 h-2.5" />
                   </motion.div>
                 )}
                 {player.name.split(" ")[0]}
@@ -107,30 +104,30 @@ export function PlayerTurnBar({
       </div>
 
       {/* Combined turn info bar with deck/discard */}
-      <div className="flex items-center justify-between px-4 py-3 shrink-0 mt-2">
+      <div className="flex items-center justify-between px-3 py-1.5 shrink-0 mt-1">
         {/* Deck/Discard - left side */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 scale-75 origin-left">
           <div className="relative">
             <CardBack
-              small={true}
+              width={64}
               useSocialistTheme={gameState.settings.useSocialistTheme}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-white text-sm font-bold drop-shadow-lg">
+              <span className="text-white text-xs font-bold drop-shadow-lg">
                 {gameState.deckCount}
               </span>
             </div>
           </div>
           <div className="relative">
             <CardBack
-              small={true}
+              width={64}
               useSocialistTheme={gameState.settings.useSocialistTheme}
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-gray-200 text-[8px] font-bold drop-shadow">
+              <span className="text-gray-200 text-[7px] font-bold drop-shadow">
                 Discard
               </span>
-              <span className="text-white text-sm font-bold drop-shadow-lg">
+              <span className="text-white text-xs font-bold drop-shadow-lg">
                 {gameState.discardPile.length}
               </span>
             </div>
@@ -140,9 +137,9 @@ export function PlayerTurnBar({
         {/* Turn info - center */}
         <div className="text-center flex-1">
           {needsDiscard && gameState.settings.maxHandSize !== 999 ? (
-            <div className="inline-flex bg-red-500/20 border border-red-500/50 rounded-lg px-4 py-1.5 shadow-lg backdrop-blur-sm animate-pulse">
-              <p className="text-red-200 text-sm font-semibold text-center flex items-center gap-2">
-                <span className="text-lg">⚠️</span>
+            <div className="inline-flex bg-red-500/20 border border-red-500/50 rounded px-2 py-1 shadow-lg backdrop-blur-sm animate-pulse">
+              <p className="text-red-200 text-xs font-semibold text-center flex items-center gap-1">
+                <span className="text-sm">⚠️</span>
                 Must discard{" "}
                 {(me?.hand?.length ?? 0) - gameState.settings.maxHandSize} card
                 {(me?.hand?.length ?? 0) - gameState.settings.maxHandSize > 1
@@ -153,36 +150,36 @@ export function PlayerTurnBar({
             </div>
           ) : isMyTurn ? (
             <div>
-              <div className="flex items-center justify-center gap-2">
-                <p className="text-yellow-400 font-bold text-sm">Your Turn</p>
+              <div className="flex items-center justify-center gap-1.5">
+                <p className="text-yellow-400 font-bold text-xs">Your Turn</p>
                 {timeLeft !== null && (
                   <span
-                    className={`text-xs font-mono px-1.5 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
+                    className={`text-[10px] font-mono px-1 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
                   >
                     {timeLeft}s
                   </span>
                 )}
               </div>
-              <p className="text-gray-400 text-xs">
+              <p className="text-gray-400 text-[10px]">
                 {cardsPlayed}/3 cards played
               </p>
             </div>
           ) : (
             <div>
-              <div className="flex items-center justify-center gap-2">
-                <p className="text-gray-300 text-sm">
+              <div className="flex items-center justify-center gap-1.5">
+                <p className="text-gray-300 text-xs">
                   {currentTurnPlayer?.name}'s{" "}
                   {gameState.settings?.useSocialistTheme ? "shift" : "turn"}
                 </p>
                 {timeLeft !== null && (
                   <span
-                    className={`text-xs font-mono px-1.5 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
+                    className={`text-[10px] font-mono px-1 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
                   >
                     {timeLeft}s
                   </span>
                 )}
               </div>
-              <p className="text-gray-500 text-xs">
+              <p className="text-gray-500 text-[10px]">
                 {turnPhase === TurnPhase.ActionPending
                   ? "Waiting for responses..."
                   : "Playing..."}
@@ -196,7 +193,17 @@ export function PlayerTurnBar({
           <button
             onClick={needsDiscard ? undefined : onEndTurn}
             disabled={needsDiscard}
-            className={`relative overflow-hidden px-4 py-1.5 ${needsDiscard ? "bg-gray-600 cursor-not-allowed" : `${colors.primary} ${colors.primaryHover}`} text-white font-semibold rounded transition-colors text-sm shrink-0`}
+            className={`relative overflow-hidden px-3 py-1 ${needsDiscard ? "bg-gray-600 cursor-not-allowed text-white" : "text-[#1a1208] hover:brightness-110"} font-semibold rounded transition-colors text-xs shrink-0`}
+            style={
+              needsDiscard
+                ? undefined
+                : {
+                    background:
+                      "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 70%, #000) 100%)",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.18)",
+                  }
+            }
           >
             {timeLeft !== null && totalTime > 0 && !needsDiscard && (
               <div
@@ -213,16 +220,13 @@ export function PlayerTurnBar({
 
         {/* Spacer when no button to maintain layout */}
         {(!isMyTurn || turnPhase === TurnPhase.ActionPending) && (
-          <div className="shrink-0" style={{ width: "90px" }}></div>
+          <div className="shrink-0" style={{ width: "70px" }}></div>
         )}
       </div>
 
       {/* My hand */}
-      <div
-        ref={cardHandRef}
-        className="border-t border-white/10 overflow-y-auto flex-1"
-      >
-        <div className="px-4 py-8">
+      <div ref={cardHandRef} className="border-t border-white/10 overflow-y-auto max-h-[40vh]">
+        <div className="px-3 py-4">
           <CardHand
             cards={me.hand ?? []}
             onCardClick={onCardClick}
