@@ -378,6 +378,26 @@ a img,
   animation: shake 0.3s ease-in-out;
 }
 
+/* Soft pulse for the "your turn" indicator pill — gold halo breathing */
+@keyframes turnPulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 0 1px color-mix(in oklab, var(--accent, #f0c14a) 35%, transparent),
+      0 0 0 0 color-mix(in oklab, var(--accent, #f0c14a) 0%, transparent);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 0 1px color-mix(in oklab, var(--accent, #f0c14a) 55%, transparent),
+      0 0 0 6px color-mix(in oklab, var(--accent, #f0c14a) 14%, transparent);
+  }
+}
+.turn-pill-pulse {
+  animation: turnPulse 2.4s ease-in-out infinite;
+}
+
 /* Slide up animation for bottom sheet dialogs */
 @keyframes slideUp {
   from {

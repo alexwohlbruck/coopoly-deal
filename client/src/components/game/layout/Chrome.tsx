@@ -419,8 +419,10 @@ export function TurnPill({ status = "your", label, sub }: TurnPillProps) {
     },
   };
   const c = colors[status];
+  const isYour = status === "your";
   return (
     <div
+      className={isYour ? "turn-pill-pulse" : undefined}
       style={{
         display: "inline-flex",
         flexDirection: "column",
@@ -428,7 +430,9 @@ export function TurnPill({ status = "your", label, sub }: TurnPillProps) {
         padding: "6px 18px",
         borderRadius: 999,
         background: c.bg,
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
+        boxShadow: isYour
+          ? "inset 0 1px 0 rgba(255,255,255,0.05), 0 0 0 1px color-mix(in oklab, var(--accent, #f0c14a) 35%, transparent)"
+          : "inset 0 1px 0 rgba(255,255,255,0.05)",
       }}
     >
       <div

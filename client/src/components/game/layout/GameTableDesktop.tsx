@@ -4,6 +4,7 @@
 // center-right, and "you" pin to the bottom in a gold platter.
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import type {
   ClientGameState,
   Card,
@@ -486,15 +487,25 @@ function ActiveOpponentBoardWrapper({
       className="scrollbar-hide"
     >
       {activeOpp ? (
-        <PlayerBoard
-          player={activeOpp}
-          isYou={false}
-          isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
-          settings={gameState.settings}
-          draggingCard={draggingCard}
-          maxWidth={Math.max(280, width - 16)}
-          maxHeight={300}
-        />
+        // Keyed motion wrapper so the table fades+slides when the active
+        // opponent switches (rail < / > or auto-follow on turn change).
+        <motion.div
+          key={activeOpp.id}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 0.9, 0.32, 1] }}
+          style={{ width: "100%" }}
+        >
+          <PlayerBoard
+            player={activeOpp}
+            isYou={false}
+            isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
+            settings={gameState.settings}
+            draggingCard={draggingCard}
+            maxWidth={Math.max(280, width - 16)}
+            maxHeight={300}
+          />
+        </motion.div>
       ) : (
         <div
           style={{
