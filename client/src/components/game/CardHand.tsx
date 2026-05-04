@@ -30,7 +30,6 @@ export function CardHand({
 }: CardHandProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const [isMobile, setIsMobile] = useState(false);
 
   const handleDragStart = (e: React.DragEvent, card: Card) => {
     e.dataTransfer.effectAllowed = "move";
@@ -43,57 +42,66 @@ export function CardHand({
     onDragEnd?.();
   };
 
-  // Detect mobile screen size
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640); // Tailwind's sm breakpoint
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const CARD_WIDTH = isMobile ? 96 : 128; // w-24 vs w-32
-  const CARD_HEIGHT = isMobile ? 144 : 192; // h-36 vs h-48
+  const CARD_WIDTH = 96; // w-24
+  const CARD_HEIGHT = 144; // h-36
   const GAP = 8;
 
-  // Calculate layout: distribute cards across rows
+  // Calculate layout: distribute cards across rows based on screen size
   const numCards = cards.length;
   let rowDistribution: number[] = [];
 
+  // Get container width to determine breakpoint
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateWidth = () => {
+      setContainerWidth(containerRef.current!.offsetWidth);
+    };
+    
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
+
   if (numCards === 0) {
     rowDistribution = [];
-  } else if (isMobile) {
-    // Mobile-specific layout for better readability
-    if (numCards <= 4) {
-      rowDistribution = [numCards]; // Single row
-    } else if (numCards === 5) {
-      rowDistribution = [2, 3]; // 2 on top, 3 on bottom
-    } else if (numCards === 6) {
-      rowDistribution = [3, 3]; // Two rows of 3
-    } else if (numCards <= 12) {
-      // 7-12 cards: distribute across 2 rows
-      const perRow = Math.ceil(numCards / 2);
-      rowDistribution = [perRow, numCards - perRow];
-    } else {
-      // 13+ cards: use 3 rows for better readability
-      const perRow = Math.ceil(numCards / 3);
-      const remainder = numCards % 3;
-      if (remainder === 0) {
-        rowDistribution = [perRow, perRow, perRow];
-      } else if (remainder === 1) {
-        rowDistribution = [perRow, perRow, perRow - 1];
-      } else {
-        rowDistribution = [perRow, perRow, perRow - 1];
-      }
-    }
   } else {
-    // Desktop layout: up to 2 rows, but allow more cards per row
-    if (numCards <= 8) {
-      rowDistribution = [numCards]; // Single row up to 8 cards
+    // Determine max cards per row based on container width
+    // Breakpoints: mobile (<640px), tablet (640-1024px), desktop (1024-1536px), large (1536px+)
+    let maxCardsPerRow: number;
+    
+    if (containerWidth < 640) {
+      // Mobile: conservative layout
+      maxCardsPerRow = 4;
+    } else if (containerWidth < 1024) {
+      // Tablet: 6-7 cards per row
+      maxCardsPerRow = 7;
+    } else if (containerWidth < 1536) {
+      // Desktop: 8-10 cards per row
+      maxCardsPerRow = 10;
     } else {
-      const perRow = Math.ceil(numCards / 2);
-      rowDistribution = [perRow, numCards - perRow];
+      // Large screens: 12+ cards per row
+      maxCardsPerRow = 12;
+    }
+
+    // Distribute cards across rows (max 2 rows)
+    const MAX_ROWS = 2;
+    
+    if (numCards <= maxCardsPerRow) {
+      rowDistribution = [numCards]; // Single row
+    } else {
+      // Calculate optimal row distribution with max 2 rows
+      const numRows = Math.min(MAX_ROWS, Math.ceil(numCards / maxCardsPerRow));
+      const basePerRow = Math.floor(numCards / numRows);
+      const remainder = numCards % numRows;
+      
+      rowDistribution = [];
+      for (let i = 0; i < numRows; i++) {
+        // Distribute remainder cards to first rows for better balance
+        rowDistribution.push(basePerRow + (i < remainder ? 1 : 0));
+      }
     }
   }
 
@@ -101,24 +109,24 @@ export function CardHand({
 
   // Calculate scale to fit all cards
   useEffect(() => {
-    if (!containerRef.current || numCards === 0) return;
+    if (!containerRef.current || numCards === 0 || maxCardsInRow === 0) return;
 
     const updateScale = () => {
-      const containerWidth = containerRef.current!.offsetWidth;
+      const currentWidth = containerRef.current!.offsetWidth;
 
       // Calculate required width for the widest row at full scale
       const requiredWidth =
         maxCardsInRow * CARD_WIDTH + (maxCardsInRow - 1) * GAP;
 
       // Calculate scale needed to fit
-      const newScale = Math.min(1, containerWidth / requiredWidth);
+      const newScale = Math.min(1, currentWidth / requiredWidth);
       setScale(newScale);
     };
 
     updateScale();
     window.addEventListener("resize", updateScale);
     return () => window.removeEventListener("resize", updateScale);
-  }, [numCards, maxCardsInRow, CARD_WIDTH]);
+  }, [numCards, maxCardsInRow, containerWidth]);
 
   const scaledCardWidth = CARD_WIDTH * scale;
   const scaledCardHeight = CARD_HEIGHT * scale;
@@ -126,7 +134,7 @@ export function CardHand({
 
   return (
     <div
-      className="relative w-full flex flex-col items-center"
+      className="relative w-full flex flex-col items-center overflow-y-auto max-h-[40vh]"
       ref={containerRef}
     >
       <div

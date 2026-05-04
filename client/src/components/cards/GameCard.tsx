@@ -14,12 +14,12 @@ interface GameCardProps {
   card: Card;
   onClick?: () => void;
   selected?: boolean;
-  small?: boolean;
   disabled?: boolean;
   orientation?: "top" | "bottom"; // For two-color wildcards, which color is on top
   disableHover?: boolean; // Disable hover animation when card is scaled
   scale?: number; // Scale factor (0-1) to shrink the card
   useSocialistTheme?: boolean;
+  width?: number; // Target width in pixels (default 96)
 }
 
 const ACTION_COLORS: Partial<Record<CardType, string>> = {
@@ -442,10 +442,12 @@ function RentCardContent({
 
 function renderCardContent(
   card: Card,
-  small?: boolean,
+  width: number,
   orientation?: "top" | "bottom",
   useSocialistTheme?: boolean,
 ) {
+  const small = width < 80; // Dynamic sizing based on width
+  
   switch (card.type) {
     case CardType.Property:
       return (
@@ -490,15 +492,15 @@ export function GameCard({
   card,
   onClick,
   selected,
-  small,
   disabled,
   orientation,
   disableHover,
   scale = 1,
   useSocialistTheme = false,
+  width = 96,
 }: GameCardProps) {
-  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
-  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
+  const cardWidth = width * scale;
+  const cardHeight = width * 1.5 * scale; // 2:3 aspect ratio
 
   return (
     <motion.div
@@ -510,12 +512,10 @@ export function GameCard({
       whileTap={onClick && !disabled ? { scale: 0.95 } : undefined}
       onClick={disabled ? undefined : onClick}
       style={{
-        transform: `scale(${scale})`,
-        transformOrigin: "center center",
+        width: `${cardWidth}px`,
+        height: `${cardHeight}px`,
       }}
-      className={`
-        ${w} ${h} ${onClick && !disabled ? "cursor-pointer" : ""}
-      `}
+      className={`${onClick && !disabled ? "cursor-pointer" : ""}`}
     >
       <div
         style={{
@@ -529,25 +529,32 @@ export function GameCard({
           select-none shrink-0
         `}
       >
-        {renderCardContent(card, small, orientation, useSocialistTheme)}
+        {renderCardContent(card, width, orientation, useSocialistTheme)}
       </div>
     </motion.div>
   );
 }
 
 export function CardBack({
-  small,
+  scale = 1,
   useSocialistTheme = false,
+  width = 96,
 }: {
-  small?: boolean;
+  scale?: number;
   useSocialistTheme?: boolean;
+  width?: number;
 }) {
-  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
-  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
+  const cardWidth = width * scale;
+  const cardHeight = width * 1.5 * scale;
+  const small = width < 80;
 
   return (
     <div
-      className={`${w} ${h} rounded-lg shadow-lg bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center border-2 border-red-600 select-none shrink-0`}
+      style={{
+        width: `${cardWidth}px`,
+        height: `${cardHeight}px`,
+      }}
+      className="rounded-lg shadow-lg bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center border-2 border-red-600 select-none shrink-0"
     >
       <div className="w-[80%] h-[80%] rounded border-2 border-red-400/30 flex flex-col items-center justify-center gap-2">
         {useSocialistTheme ? (

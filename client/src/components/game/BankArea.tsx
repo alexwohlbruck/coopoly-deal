@@ -55,7 +55,7 @@ export function BankArea({
         {bankCards.length > 0 ? (
           <FannedCards
             cards={[...bankCards].sort((a, b) => a.value - b.value)}
-            small={true}
+            cardWidth={64}
             maxVisible={12}
             useSocialistTheme={useSocialistTheme}
           />
@@ -84,7 +84,7 @@ export function BankArea({
         <div className="flex items-center">
           <FannedCards
             cards={handBackCards}
-            small={true}
+            cardWidth={64}
             showBacks={showHandBacks}
             maxVisible={12}
             useSocialistTheme={useSocialistTheme}

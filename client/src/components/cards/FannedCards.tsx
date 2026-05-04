@@ -1,25 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard, CardBack } from "./GameCard";
 
 interface FannedCardsProps {
   cards: Card[];
-  small?: boolean;
-  showBacks?: boolean; // Show card backs instead of actual cards
-  maxVisible?: number; // Max cards to show before stacking
+  cardWidth?: number; // Target card width (will scale down if needed)
+  showBacks?: boolean;
+  maxVisible?: number;
   onCardClick?: (card: Card) => void;
   onDragStart?: (e: React.DragEvent, card: Card) => void;
   onDragEnd?: () => void;
   draggable?: (card: Card) => boolean;
-  orientation?: "top" | "bottom"; // For wildcards (applied to all cards)
-  getCardOrientation?: (card: Card) => "top" | "bottom" | undefined; // Per-card orientation function
+  orientation?: "top" | "bottom";
+  getCardOrientation?: (card: Card) => "top" | "bottom" | undefined;
   useSocialistTheme?: boolean;
 }
 
 export function FannedCards({
   cards,
-  small = true,
+  cardWidth: targetCardWidth = 96, // Default target width
   showBacks = false,
   maxVisible = 10,
   onCardClick,
@@ -30,44 +30,57 @@ export function FannedCards({
   getCardOrientation,
   useSocialistTheme = false,
 }: FannedCardsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [collapseTimeout, setCollapseTimeout] = useState<number | null>(null);
-
-  // Detect mobile on mount
-  useState(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 640 || "ontouchstart" in window);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  });
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const cardCount = cards.length;
   const visibleCount = Math.min(cardCount, maxVisible);
 
-  // Calculate horizontal spread - tighter when collapsed, full card width when expanded
-  const cardWidth = small ? (isMobile ? 64 : 96) : isMobile ? 96 : 128;
-  const cardHeight = small ? (isMobile ? 96 : 144) : isMobile ? 144 : 192;
-  const collapsedSpread = small ? 8 : 12;
-  const expandedSpread = cardWidth + 4; // Full card width + small gap
-  const spread = isHovered || isExpanded ? expandedSpread : collapsedSpread;
+  // Detect touch device
+  useEffect(() => {
+    setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+  }, []);
+
+  // Card dimensions (aspect ratio 2:3)
+  const CARD_WIDTH = targetCardWidth;
+  const CARD_HEIGHT = targetCardWidth * 1.5;
+  const COLLAPSED_SPREAD = targetCardWidth * 0.125; // 12.5% of card width
+  const EXPANDED_SPREAD = CARD_WIDTH + 4;
+  const spread = isHovered || isExpanded ? EXPANDED_SPREAD : COLLAPSED_SPREAD;
+
+  // Calculate scale to fit container
+  useEffect(() => {
+    if (!containerRef.current || visibleCount === 0) return;
+
+    const updateScale = () => {
+      const containerWidth = containerRef.current!.offsetWidth;
+      const requiredWidth = CARD_WIDTH + (visibleCount - 1) * COLLAPSED_SPREAD;
+      const newScale = Math.min(1, containerWidth / requiredWidth);
+      setScale(newScale);
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [visibleCount, CARD_WIDTH, COLLAPSED_SPREAD]);
+
+  const scaledCardWidth = CARD_WIDTH * scale;
+  const scaledCardHeight = CARD_HEIGHT * scale;
+  const scaledSpread = spread * scale;
 
   // Handle tap to expand on mobile
   const handleTap = () => {
-    if (!isMobile) return;
-
+    if (!isTouchDevice) return;
+    
     if (isExpanded) {
-      // Already expanded, allow card click
       return;
     }
 
-    // First tap: expand
     setIsExpanded(true);
-
-    // Auto-collapse after 3 seconds
     if (collapseTimeout) {
       window.clearTimeout(collapseTimeout);
     }
@@ -78,48 +91,45 @@ export function FannedCards({
   };
 
   const handleCardClick = (card: Card) => {
-    if (isMobile && !isExpanded) {
-      // First tap on mobile: expand instead of clicking
+    if (isTouchDevice && !isExpanded) {
       handleTap();
       return;
     }
-    // Second tap or desktop: trigger click
     if (onCardClick) {
       onCardClick(card);
     }
   };
 
   const getTransform = (index: number) => {
-    // Calculate offset from center
-    const totalWidth = (visibleCount - 1) * spread;
+    const totalWidth = (visibleCount - 1) * scaledSpread;
     const centerOffset = -totalWidth / 2;
-    const x = centerOffset + index * spread;
+    const x = centerOffset + index * scaledSpread;
 
     return {
       x,
       y: 0,
       rotate: 0,
       scale: 1,
-      zIndex: isHovered ? 100 + index : index, // Elevated z-index when expanded
+      zIndex: isHovered || isExpanded ? 100 + index : index,
     };
   };
 
   if (cardCount === 0) return null;
 
-  // Use collapsed spread for container width (only expand on hover)
-  const containerWidth = cardWidth + (visibleCount - 1) * collapsedSpread;
+  const containerWidth = scaledCardWidth + (visibleCount - 1) * (COLLAPSED_SPREAD * scale);
 
   return (
     <div
-      className="relative flex items-center justify-center"
+      ref={containerRef}
+      className="relative flex items-center justify-center w-full"
       style={{
-        width: `${containerWidth}px`,
-        height: `${cardHeight}px`,
-        zIndex: isHovered || isExpanded ? 100 : "auto", // Elevate entire container on hover/expand
+        minWidth: `${containerWidth}px`,
+        height: `${scaledCardHeight}px`,
+        zIndex: isHovered || isExpanded ? 100 : "auto",
       }}
-      onMouseEnter={() => !isMobile && setIsHovered(true)}
-      onMouseLeave={() => !isMobile && setIsHovered(false)}
-      onClick={isMobile ? handleTap : undefined}
+      onMouseEnter={() => !isTouchDevice && setIsHovered(true)}
+      onMouseLeave={() => !isTouchDevice && setIsHovered(false)}
+      onClick={handleTap}
     >
       {cards.slice(0, maxVisible).map((card, index) => {
         const isDraggable = draggable ? draggable(card) : false;
@@ -145,28 +155,28 @@ export function FannedCards({
               transformOrigin: "center center",
               left: "50%",
               top: "50%",
-              marginLeft: `${-cardWidth / 2}px`,
-              marginTop: `${-cardHeight / 2}px`,
+              marginLeft: `${-scaledCardWidth / 2}px`,
+              marginTop: `${-scaledCardHeight / 2}px`,
             }}
           >
             {showBacks ? (
-              <CardBack small={small} useSocialistTheme={useSocialistTheme} />
+              <CardBack scale={scale} useSocialistTheme={useSocialistTheme} width={CARD_WIDTH} />
             ) : (
               <GameCard
                 card={card}
-                small={small}
                 onClick={onCardClick ? () => handleCardClick(card) : undefined}
                 orientation={
                   getCardOrientation ? getCardOrientation(card) : orientation
                 }
+                scale={scale}
                 useSocialistTheme={useSocialistTheme}
+                width={CARD_WIDTH}
               />
             )}
           </motion.div>
         );
       })}
 
-      {/* Show count if more cards than maxVisible */}
       {cardCount > maxVisible && (
         <div className="absolute -bottom-2 -right-2 bg-gray-800 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white z-50">
           +{cardCount - maxVisible}

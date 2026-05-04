@@ -78,6 +78,16 @@ export function WildcardFlipDialog({
       <div className="grid grid-cols-2 gap-3">
         {availableColors.map((color) => {
           if (color === PC.Unassigned) {
+            // Rainbow gradient matching the wildcard property colors
+            const wildcardColors = Object.values(PROPERTY_COLOR_HEX);
+            const gradientStops = wildcardColors
+              .map((c, i, arr) => {
+                const startPct = (i / arr.length) * 100;
+                const endPct = ((i + 1) / arr.length) * 100;
+                return `${c} ${startPct}%, ${c} ${endPct}%`;
+              })
+              .join(", ");
+
             return (
               <button
                 key={color}
@@ -87,19 +97,20 @@ export function WildcardFlipDialog({
                 }}
                 disabled={color === currentColor}
                 className={`
-                  col-span-2 px-4 py-3 rounded-xl font-semibold text-white transition-all border-2 border-white/20 shadow-sm
-                  ${color === currentColor ? "opacity-50 cursor-not-allowed ring-2 ring-yellow-400" : "hover:scale-105 hover:shadow-lg"}
+                  col-span-2 px-4 py-3 rounded-xl font-bold text-white transition-all border-2 border-white/30 shadow-lg relative overflow-hidden
+                  ${color === currentColor ? "opacity-50 cursor-not-allowed ring-2 ring-yellow-400" : "hover:scale-105 hover:shadow-xl"}
                 `}
                 style={{
-                  background:
-                    "linear-gradient(to right, #8B4513, #87CEEB, #FF69B4, #FFA500, #FF0000, #FFFF00, #008000, #00008B, #000000, #A0D6B4)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                  background: `linear-gradient(90deg, ${gradientStops})`,
+                  textShadow: "0 2px 4px rgba(0,0,0,0.8)",
                 }}
               >
-                I'll decide later
-                {color === currentColor && (
-                  <span className="block text-xs mt-1">(Current)</span>
-                )}
+                <span className="relative z-10">
+                  I'll decide later
+                  {color === currentColor && (
+                    <span className="block text-xs mt-1 font-normal">(Current)</span>
+                  )}
+                </span>
               </button>
             );
           }

@@ -2,10 +2,8 @@ import {
   CardType,
   PropertyColor,
   PROPERTY_COLOR_HEX,
-  isSetComplete,
   SET_SIZE,
   calculateRent,
-  getPropertyColorLabel,
 } from "../../types/game";
 import type { PropertySet, Card } from "../../types/game";
 import { FannedCards } from "../cards/FannedCards";
@@ -22,6 +20,7 @@ interface PropertySetDisplayProps {
   onDragStart?: (e: React.DragEvent, card: Card) => void;
   onDragEnd?: () => void;
   useSocialistTheme?: boolean;
+  cardWidth?: number; // Target card width for responsive sizing
 }
 
 export function PropertySetDisplay({
@@ -36,8 +35,8 @@ export function PropertySetDisplay({
   onDragStart,
   onDragEnd,
   useSocialistTheme = false,
+  cardWidth = 96,
 }: PropertySetDisplayProps) {
-  const complete = isSetComplete(set);
   const color = PROPERTY_COLOR_HEX[set.color];
 
   const allCards = [
@@ -65,7 +64,7 @@ export function PropertySetDisplay({
 
   return (
     <div
-      className={`flex flex-col items-center gap-0.5 shrink-0 relative transition-all ${
+      className={`flex flex-col items-center shrink-0 relative transition-all ${
         isDragOver ? "ring-4 ring-green-400 bg-green-400/10 rounded-lg p-1" : ""
       }`}
       data-property-drop-zone={set.color}
@@ -73,27 +72,27 @@ export function PropertySetDisplay({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
+      {/* Compact info badge at top */}
       {set.color !== PropertyColor.Unassigned && (
         <div
-          className={`px-2 py-0.5 rounded text-center flex items-center gap-2 ${complete ? "ring-1 ring-yellow-400" : ""}`}
+          className={`mb-1 px-2 py-0.5 rounded-full text-center flex items-center gap-1 shadow-md border border-white/20`}
           style={{ backgroundColor: color }}
         >
-          <p className="text-white font-bold text-[9px] sm:text-[10px]">
-            {getPropertyColorLabel(set.color, useSocialistTheme)}{" "}
+          <span className="text-white font-bold text-[9px]">
             {set.cards.length}/{SET_SIZE[set.color]}
-          </p>
+          </span>
           {rent > 0 && (
-            <span className="text-white bg-black/30 px-1 rounded text-[8px] sm:text-[9px] font-mono">
+            <span className="text-white bg-black/30 px-1 rounded-full text-[8px] font-mono">
               ${rent}M
             </span>
           )}
         </div>
       )}
-
+      
       {/* Use FannedCards for hover expansion with wildcard click support */}
       <FannedCards
         cards={allCards}
-        small={true}
+        cardWidth={cardWidth}
         maxVisible={8}
         getCardOrientation={getCardOrientation}
         useSocialistTheme={useSocialistTheme}

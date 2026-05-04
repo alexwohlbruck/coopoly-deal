@@ -757,7 +757,7 @@ export function CardActionDialog({
                 <GameCard
                   key={c.id}
                   card={c}
-                  small
+                  width={64}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectTargetCard(c.id)}
                 />
@@ -779,7 +779,7 @@ export function CardActionDialog({
                 <GameCard
                   key={c.id}
                   card={c}
-                  small
+                  width={64}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectMyCard(c.id)}
                 />
@@ -881,7 +881,7 @@ export function CardActionDialog({
                   <GameCard
                     key={c.id}
                     card={c}
-                    small
+                    width={64}
                     selected={isSelected}
                     useSocialistTheme={settings.useSocialistTheme}
                     onClick={() => {
