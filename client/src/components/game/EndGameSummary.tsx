@@ -5,6 +5,7 @@ import { PropertySetDisplay } from "./PropertySetDisplay";
 import { FannedCards } from "../cards/FannedCards";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
+import { PrimaryButton, SecondaryButton } from "../ui/Button";
 
 interface EndGameSummaryProps {
   players: ClientPlayer[];
@@ -33,6 +34,7 @@ export function EndGameSummary({
   const { theme } = useGameStore();
   const themeData = getTheme(theme);
   const winner = players.find((p) => p.id === winnerId);
+  const youWon = winner?.id === currentPlayerId;
   const sortedPlayers = [...players].sort((a, b) => {
     if (a.id === winnerId) return -1;
     if (b.id === winnerId) return 1;
@@ -50,123 +52,293 @@ export function EndGameSummary({
 
   return (
     <div
-      className={`min-h-screen ${themeData.feltClass} felt-surface overflow-y-auto py-8`}
+      className={`min-h-screen ${themeData.feltClass} felt-surface overflow-y-auto`}
     >
-      <div className="container mx-auto px-4 max-w-7xl relative z-10">
-        {/* Winner announcement */}
+      <div
+        className="container mx-auto px-4 max-w-5xl relative z-10"
+        style={{ paddingTop: 64, paddingBottom: 64 }}
+      >
+        {/* Winner card — center stage */}
         <motion.div
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="text-center mb-8"
+          initial={{ scale: 0.6, opacity: 0, y: 24 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          transition={{
+            type: "spring",
+            stiffness: 200,
+            damping: 22,
+          }}
+          style={{
+            margin: "0 auto 48px",
+            maxWidth: 520,
+            padding: "32px 28px 28px",
+            borderRadius: 22,
+            background:
+              "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+            border: "1px solid rgba(245,234,208,0.12)",
+            boxShadow:
+              "0 32px 80px -16px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.05)",
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden",
+          }}
         >
-          <h1 className="text-5xl font-black text-white mb-3">
-            {winner?.id === currentPlayerId
-              ? "You Win!"
-              : `${winner?.name} Wins!`}
+          {/* Soft gold glow at the top */}
+          <div
+            style={{
+              position: "absolute",
+              top: -120,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 320,
+              height: 240,
+              background:
+                "radial-gradient(closest-side, var(--accent, #f0c14a) 0%, transparent 70%)",
+              opacity: 0.18,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.24em",
+              textTransform: "uppercase",
+              color: "var(--accent, #f0c14a)",
+              marginBottom: 8,
+            }}
+          >
+            {youWon ? "Victory" : "Game Over"}
+          </div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 56,
+              fontWeight: 800,
+              letterSpacing: "-0.025em",
+              lineHeight: 1.05,
+              color: "#f5ead0",
+              margin: 0,
+            }}
+          >
+            {youWon ? "You Win!" : `${winner?.name} Wins!`}
           </h1>
-          <p className="text-gray-400 text-lg mb-6">
-            {winner?.name} collected 3 complete property sets
+          <p
+            style={{
+              fontSize: 14,
+              color: "rgba(245,234,208,0.65)",
+              marginTop: 10,
+              marginBottom: 24,
+            }}
+          >
+            {settings?.useSocialistTheme
+              ? `${winner?.name ?? "Someone"} achieved 3 collective sets`
+              : `${winner?.name ?? "Someone"} collected 3 complete property sets`}
           </p>
 
           {sessionStats && (
-            <div className="flex gap-8 justify-center mb-6">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-white">
-                  {sessionStats.wins}
-                </p>
-                <p className="text-gray-400 text-sm">Wins</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-white">
-                  {sessionStats.losses}
-                </p>
-                <p className="text-gray-400 text-sm">Losses</p>
-              </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-white">
-                  {sessionStats.streak}
-                </p>
-                <p className="text-gray-400 text-sm">Streak</p>
-              </div>
+            <div
+              style={{
+                display: "flex",
+                gap: 32,
+                justifyContent: "center",
+                marginBottom: 24,
+                paddingTop: 16,
+                paddingBottom: 16,
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+              }}
+            >
+              {[
+                { label: "Wins", value: sessionStats.wins },
+                { label: "Losses", value: sessionStats.losses },
+                { label: "Streak", value: sessionStats.streak },
+              ].map((stat) => (
+                <div key={stat.label} style={{ textAlign: "center" }}>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 32,
+                      fontWeight: 800,
+                      color: "#f5ead0",
+                      lineHeight: 1,
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {stat.value}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 9,
+                      letterSpacing: "0.2em",
+                      textTransform: "uppercase",
+                      color: "rgba(245,234,208,0.5)",
+                      marginTop: 4,
+                    }}
+                  >
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-4 justify-center">
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              justifyContent: "center",
+            }}
+          >
             {onRematch && (
-              <button
-                onClick={onRematch}
-                className="px-8 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg transition-colors shadow-lg text-lg"
-              >
+              <PrimaryButton onClick={onRematch} size="lg">
                 Rematch
-              </button>
+              </PrimaryButton>
             )}
             {onGoHome && (
-              <button
-                onClick={onGoHome}
-                className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-lg transition-colors shadow-lg text-lg"
-              >
+              <SecondaryButton onClick={onGoHome} size="lg">
                 Leave
-              </button>
+              </SecondaryButton>
             )}
           </div>
         </motion.div>
 
         {/* Final standings */}
-        <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-white text-center mb-4">
-            Final Standings
-          </h2>
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.2em",
+            textTransform: "uppercase",
+            color: "rgba(245,234,208,0.55)",
+            textAlign: "center",
+            marginBottom: 18,
+          }}
+        >
+          Final Standings
+        </div>
 
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {sortedPlayers.map((player, index) => {
             const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
             const propertyTotal = player.properties
               .flatMap((s) => s.cards)
               .reduce((sum, c) => sum + c.value, 0);
             const totalValue = bankTotal + propertyTotal;
-            const completeSets = player.properties.filter(isSetComplete).length;
+            const completeSets = player.properties.filter(isSetComplete)
+              .length;
             const isWinner = player.id === winnerId;
 
             return (
               <motion.div
                 key={player.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className={`bg-white/5 rounded-xl p-6 border-2 ${
-                  isWinner ? "border-yellow-500/60 bg-yellow-500/5" : "border-white/10"
-                }`}
+                transition={{ delay: 0.08 * index + 0.2 }}
+                style={{
+                  borderRadius: 16,
+                  padding: "20px 24px 16px",
+                  background:
+                    "linear-gradient(180deg, rgba(28,22,20,0.78) 0%, rgba(16,10,8,0.86) 100%)",
+                  border: isWinner
+                    ? "1px solid color-mix(in oklab, var(--accent, #f0c14a) 60%, transparent)"
+                    : "1px solid rgba(245,234,208,0.08)",
+                  boxShadow: isWinner
+                    ? "0 0 0 1px color-mix(in oklab, var(--accent, #f0c14a) 30%, transparent), 0 12px 28px -10px rgba(0,0,0,0.6)"
+                    : "0 8px 20px -8px rgba(0,0,0,0.55)",
+                }}
               >
-                {/* Player header */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="text-3xl font-black text-white/40">
+                {/* Player header row */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 28,
+                      fontWeight: 800,
+                      color: "rgba(245,234,208,0.32)",
+                      minWidth: 36,
+                      letterSpacing: "-0.02em",
+                    }}
+                  >
                     #{index + 1}
                   </div>
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
-                      isWinner ? "bg-yellow-500" : "bg-slate-600"
-                    }`}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 999,
+                      background: isWinner
+                        ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 60%, #000) 100%)"
+                        : "linear-gradient(180deg, #5a5340, #3a342a)",
+                      color: "#1a1208",
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 800,
+                      fontSize: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.4)",
+                    }}
                   >
-                    {player.name[0]?.toUpperCase()}
+                    {player.name[0]?.toUpperCase() ?? "?"}
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-white font-bold text-xl">
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          fontWeight: 700,
+                          fontSize: 18,
+                          color: "#f5ead0",
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
                         {player.name}
                       </span>
                       {player.id === currentPlayerId && (
-                        <span className="text-gray-400 text-sm">(you)</span>
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.14em",
+                            color: "rgba(245,234,208,0.55)",
+                          }}
+                        >
+                          (YOU)
+                        </span>
                       )}
                       {isWinner && (
-                        <span className="text-2xl">👑</span>
+                        <span style={{ fontSize: 18 }}>👑</span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-emerald-400 font-mono text-sm">
-                        ${totalValue}M total
-                      </span>
-                      <span className="text-yellow-400 text-sm font-semibold">
-                        {completeSets}/3 complete sets
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 14,
+                        marginTop: 4,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      <span style={{ color: "#7adb88" }}>${totalValue}M total</span>
+                      <span style={{ color: "var(--accent, #f0c14a)" }}>
+                        {completeSets}/3 sets
                       </span>
                     </div>
                   </div>
@@ -174,11 +346,27 @@ export function EndGameSummary({
 
                 {/* Property sets */}
                 {player.properties.length > 0 && (
-                  <div className="mb-4">
-                    <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">
+                  <div style={{ marginBottom: 12 }}>
+                    <div
+                      style={{
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 9,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        color: "rgba(245,234,208,0.4)",
+                        marginBottom: 8,
+                      }}
+                    >
                       Properties
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        alignItems: "flex-start",
+                      }}
+                    >
                       {player.properties.map((set, i) => (
                         <PropertySetDisplay
                           key={`${set.color}-${i}`}
@@ -186,24 +374,48 @@ export function EndGameSummary({
                           isYou={false}
                           isCurrentTurn={false}
                           useSocialistTheme={settings?.useSocialistTheme}
-                          cardWidth={80}
+                          cardWidth={76}
                         />
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Bank and Hand side by side */}
-                <div className="flex gap-4 flex-wrap">
-                  {/* Bank */}
+                {/* Bank + hand */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 16,
+                  }}
+                >
                   {player.bank.length > 0 && (
                     <div>
-                      <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">
-                        Bank (${bankTotal}M)
-                      </h3>
-                      <div className="bg-white/5 rounded-lg p-3 inline-block">
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 9,
+                          letterSpacing: "0.18em",
+                          textTransform: "uppercase",
+                          color: "rgba(245,234,208,0.4)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Bank · ${bankTotal}M
+                      </div>
+                      <div
+                        style={{
+                          padding: 10,
+                          borderRadius: 10,
+                          background: "rgba(0,0,0,0.22)",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                          display: "inline-block",
+                        }}
+                      >
                         <FannedCards
-                          cards={[...player.bank].sort((a, b) => a.value - b.value)}
+                          cards={[...player.bank].sort(
+                            (a, b) => a.value - b.value,
+                          )}
                           cardWidth={64}
                           maxVisible={12}
                           useSocialistTheme={settings?.useSocialistTheme}
@@ -211,14 +423,29 @@ export function EndGameSummary({
                       </div>
                     </div>
                   )}
-
-                  {/* Hand */}
                   {player.hand && player.hand.length > 0 && (
                     <div>
-                      <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wide mb-2">
-                        Hand ({player.hand.length} cards)
-                      </h3>
-                      <div className="bg-white/5 rounded-lg p-3 inline-block">
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 9,
+                          letterSpacing: "0.18em",
+                          textTransform: "uppercase",
+                          color: "rgba(245,234,208,0.4)",
+                          marginBottom: 8,
+                        }}
+                      >
+                        Hand · {player.hand.length} cards
+                      </div>
+                      <div
+                        style={{
+                          padding: 10,
+                          borderRadius: 10,
+                          background: "rgba(0,0,0,0.22)",
+                          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                          display: "inline-block",
+                        }}
+                      >
                         <FannedCards
                           cards={player.hand}
                           cardWidth={64}

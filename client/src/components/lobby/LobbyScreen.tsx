@@ -9,6 +9,7 @@ import { useSoundSettings } from "../../hooks/useSoundManager";
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
 import { getTheme } from "../../theme/colors";
+import { PrimaryButton, SecondaryButton } from "../ui/Button";
 
 interface LobbyScreenProps {
   onCreateRoom: () => void;
@@ -27,18 +28,19 @@ export function LobbyScreen({
 }: LobbyScreenProps) {
   const { t } = useI18n();
   const { playerName: savedPlayerName, theme } = useGameStore();
-  const [mode, setMode] = useState<"menu" | "join">("menu");
   const [roomCode, setRoomCode] = useState("");
-  const [playerName, setPlayerName] = useState(savedPlayerName || "");
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const themeData = getTheme(theme);
 
+  const canJoin = roomCode.length === 6;
+
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (roomCode.trim() && playerName.trim()) {
-      onJoinRoom(roomCode.trim(), playerName.trim());
+    // Server-side will prompt for name if not set; otherwise reuse stored.
+    if (canJoin) {
+      onJoinRoom(roomCode.trim(), savedPlayerName || "");
     }
   };
 
@@ -46,7 +48,7 @@ export function LobbyScreen({
     <div
       className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
-      {/* Music controls in top right */}
+      {/* Music + settings — top right */}
       {musicControls && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
           <button
@@ -64,7 +66,7 @@ export function LobbyScreen({
         </div>
       )}
 
-      {/* Rules button in top left */}
+      {/* Rules — top left */}
       <button
         onClick={() => setShowRules(true)}
         className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/20"
@@ -88,6 +90,7 @@ export function LobbyScreen({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.32, ease: [0.22, 0.9, 0.32, 1] }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
@@ -133,129 +136,88 @@ export function LobbyScreen({
               "linear-gradient(180deg, rgba(28,22,20,0.85) 0%, rgba(16,10,8,0.92) 100%)",
             border: "1px solid rgba(245,234,208,0.1)",
             borderRadius: 18,
-            padding: 32,
+            padding: 24,
             boxShadow: "var(--sh-panel)",
             backdropFilter: "blur(8px)",
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
           }}
         >
-          {mode === "menu" ? (
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  onCreateRoom();
-                }}
-                style={{
-                  width: "100%",
-                  padding: "14px 18px",
-                  borderRadius: 10,
-                  background:
-                    "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, #000) 100%)",
-                  color: "#1a1208",
-                  border: "none",
-                  fontFamily: "var(--font-display)",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  cursor: "pointer",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 10px -2px rgba(0,0,0,0.5)",
-                }}
-              >
-                {t.lobby.createRoom}
-              </button>
-              <button
-                onClick={() => setMode("join")}
-                style={{
-                  width: "100%",
-                  padding: "14px 18px",
-                  borderRadius: 10,
-                  background:
-                    "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-                  color: "rgba(245,234,208,0.9)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  fontFamily: "var(--font-display)",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  letterSpacing: "0.06em",
-                  cursor: "pointer",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
-                }}
-              >
-                {t.lobby.joinRoom}
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleJoin} className="space-y-4">
-              <button
-                type="button"
-                onClick={() => setMode("menu")}
-                className="text-emerald-300 hover:text-white text-sm transition-colors"
-              >
-                &larr; {t.lobby.back}
-              </button>
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-1">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder={t.lobby.enterName}
-                  maxLength={20}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-emerald-200 text-sm font-medium mb-1">
-                  {t.waiting.roomCode}
-                </label>
-                <input
-                  type="text"
-                  value={roomCode}
-                  onChange={(e) =>
-                    setRoomCode(e.target.value.replace(/\D/g, ""))
-                  }
-                  placeholder={t.lobby.enterCode}
-                  maxLength={6}
-                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-emerald-400 text-center text-2xl tracking-[0.5em] font-mono"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={roomCode.length < 6 || !playerName.trim()}
-                style={{
-                  width: "100%",
-                  padding: "14px 18px",
-                  borderRadius: 10,
-                  background:
-                    roomCode.length < 6 || !playerName.trim()
-                      ? "rgba(255,255,255,0.06)"
-                      : "linear-gradient(180deg, var(--accent) 0%, color-mix(in oklab, var(--accent) 65%, #000) 100%)",
-                  color:
-                    roomCode.length < 6 || !playerName.trim()
-                      ? "rgba(255,255,255,0.35)"
-                      : "#1a1208",
-                  border: "none",
-                  fontFamily: "var(--font-display)",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  letterSpacing: "0.06em",
-                  cursor:
-                    roomCode.length < 6 || !playerName.trim()
-                      ? "not-allowed"
-                      : "pointer",
-                  boxShadow:
-                    roomCode.length < 6 || !playerName.trim()
-                      ? "none"
-                      : "inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 10px -2px rgba(0,0,0,0.5)",
-                }}
-              >
-                {t.lobby.join}
-              </button>
-            </form>
-          )}
+          {/* Create — primary CTA */}
+          <PrimaryButton
+            onClick={onCreateRoom}
+            fullWidth
+            size="lg"
+          >
+            {t.lobby.createRoom}
+          </PrimaryButton>
+
+          {/* Divider */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              letterSpacing: "0.18em",
+              color: "rgba(245,234,208,0.4)",
+              textTransform: "uppercase",
+              padding: "2px 0",
+            }}
+          >
+            <div
+              style={{
+                flex: 1,
+                height: 1,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(245,234,208,0.18), transparent)",
+              }}
+            />
+            <span>or join</span>
+            <div
+              style={{
+                flex: 1,
+                height: 1,
+                background:
+                  "linear-gradient(90deg, transparent, rgba(245,234,208,0.18), transparent)",
+              }}
+            />
+          </div>
+
+          {/* Inline join form: code input + Join button side-by-side */}
+          <form onSubmit={handleJoin} style={{ display: "flex", gap: 8 }}>
+            <input
+              type="text"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="Room code · 6 digits"
+              maxLength={6}
+              inputMode="numeric"
+              style={{
+                flex: 1,
+                padding: "13px 14px",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#f5ead0",
+                fontFamily: "var(--font-mono)",
+                fontSize: 14,
+                letterSpacing: "0.18em",
+                outline: "none",
+                textAlign: "center",
+              }}
+            />
+            <SecondaryButton
+              type="submit"
+              disabled={!canJoin}
+              size="lg"
+              style={{ minWidth: 96 }}
+            >
+              {t.lobby.join}
+            </SecondaryButton>
+          </form>
         </div>
       </motion.div>
     </div>
