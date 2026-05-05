@@ -109,6 +109,7 @@ export interface PendingAction {
   respondedPlayerIds: string[];
   justSayNoChain?: {
     targetPlayerId: string;
+    initiatorTargetId: string;
     depth: number;
   };
   selectedCards?: {
@@ -352,9 +353,10 @@ export function isPlayerWaitingForAction(
   if (pendingAction.justSayNoChain) {
     const shouldRespond =
       pendingAction.justSayNoChain.targetPlayerId !== playerId;
-    const isTarget = pendingAction.targetPlayerIds.includes(playerId);
-    const isSource = pendingAction.sourcePlayerId === playerId;
-    return shouldRespond && (isTarget || isSource);
+    const isChainParticipant =
+      pendingAction.sourcePlayerId === playerId ||
+      playerId === pendingAction.justSayNoChain.initiatorTargetId;
+    return shouldRespond && isChainParticipant;
   }
 
   return (

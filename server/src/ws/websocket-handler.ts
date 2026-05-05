@@ -530,9 +530,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           }
 
           if (botsToRespond.length === 0) {
-            const botTarget = action.targetPlayerIds
-              .map((pid) => game.players.find((p) => p.id === pid))
-              .find((p) => p?.isBot && p.id !== chainTargetId);
+            const initiatorId = action.justSayNoChain.initiatorTargetId;
+            const botTarget = game.players.find(
+              (p) => p.id === initiatorId && p.isBot && p.id !== chainTargetId,
+            );
             if (botTarget) {
               botsToRespond = [botTarget];
             }

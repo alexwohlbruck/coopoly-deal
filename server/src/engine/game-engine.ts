@@ -746,7 +746,11 @@ export class GameEngine {
     state.discardPile.push(jsnCard!);
 
     if (!action.justSayNoChain) {
-      action.justSayNoChain = { targetPlayerId: playerId, depth: 1 };
+      action.justSayNoChain = {
+        targetPlayerId: playerId,
+        initiatorTargetId: playerId,
+        depth: 1,
+      };
     } else {
       action.justSayNoChain.depth++;
       action.justSayNoChain.targetPlayerId = playerId;
@@ -765,6 +769,12 @@ export class GameEngine {
         throw new Error(
           "Waiting for the other player to respond to your Just Say No",
         );
+      }
+      const isChainParticipant =
+        playerId === action.sourcePlayerId ||
+        playerId === action.justSayNoChain.initiatorTargetId;
+      if (!isChainParticipant) {
+        throw new Error("You are not involved in this Just Say No chain");
       }
 
       const depth = action.justSayNoChain.depth;

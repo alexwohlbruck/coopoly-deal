@@ -143,6 +143,7 @@ export interface PendingAction {
   /** For Just Say No chains: tracks which players have active JSN exchanges */
   justSayNoChain?: {
     targetPlayerId: string;
+    initiatorTargetId: string; // the target who first played JSN in this chain
     depth: number; // odd = target said no, even = source countered
   };
   /** For sly deal / force deal / deal breaker — which cards are being targeted */
