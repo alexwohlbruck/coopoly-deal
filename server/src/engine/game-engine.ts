@@ -1129,6 +1129,12 @@ export class GameEngine {
         turn.expiresAt = Date.now() + turn.pausedTimeLeft;
         turn.pausedTimeLeft = null;
       }
+      // If the wildcard assignment was the last thing blocking turn
+      // completion (e.g. user played their 3rd action card which stole
+      // a wildcard), auto-advance now. Without this the turn just sits
+      // there and forces the player to manually click End Turn even
+      // though they've used all their plays.
+      this.tryAutoEndTurn(state);
     }
 
     this.checkWin(state, player);

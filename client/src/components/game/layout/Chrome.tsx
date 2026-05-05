@@ -475,6 +475,11 @@ export interface OpponentSeatPlayer {
   totalSetsNeeded: number;
   money: number;
   handCount: number;
+  /** Whether this player is currently on their turn. Drives the gold
+   *  glow on the chip — was previously tied to "active in carousel",
+   *  which produced an always-on glow on whichever chip you happened
+   *  to be looking at. */
+  isCurrentTurn?: boolean;
 }
 
 interface OpponentSeatProps {
@@ -490,6 +495,12 @@ export function OpponentSeat({
   scale = 1,
   onClick,
 }: OpponentSeatProps) {
+  // Glow ONLY when it's this player's turn. "Selected in the rail"
+  // (isActive) just gets a slightly less dim background; the always-
+  // on color halo on the carousel-active chip was confusing — it
+  // looked like the active chip was on its turn even when it wasn't.
+  const onTurn = !!player.isCurrentTurn;
+  const accent = "var(--accent, #f0c14a)";
   return (
     <button
       onClick={onClick}
@@ -499,17 +510,21 @@ export function OpponentSeat({
         scrollSnapAlign: "center",
         padding: 12 * scale,
         borderRadius: 14,
-        background: isActive
-          ? "linear-gradient(180deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.55) 100%)"
-          : "rgba(0,0,0,0.18)",
+        background: onTurn
+          ? "linear-gradient(180deg, rgba(28,22,20,0.7) 0%, rgba(16,10,8,0.85) 100%)"
+          : isActive
+            ? "rgba(0,0,0,0.32)"
+            : "rgba(0,0,0,0.18)",
         border: "none",
-        boxShadow: isActive
-          ? `inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 1px ${player.color}55, 0 0 16px -4px ${player.color}66`
-          : "inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.04)",
+        boxShadow: onTurn
+          ? `inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 1px ${accent}55, 0 0 18px -4px ${accent}66`
+          : isActive
+            ? "inset 0 1px 0 rgba(255,255,255,0.06), inset 0 0 0 1px rgba(255,255,255,0.08)"
+            : "inset 0 1px 0 rgba(255,255,255,0.04), inset 0 0 0 1px rgba(255,255,255,0.04)",
         cursor: "pointer",
         textAlign: "left",
         color: "#f5ead0",
-        opacity: isActive ? 1 : 0.65,
+        opacity: onTurn ? 1 : isActive ? 0.92 : 0.65,
         transition: "all var(--d-base) var(--ease-out-soft)",
         display: "flex",
         flexDirection: "column",
@@ -565,17 +580,9 @@ export function OpponentSeat({
             · ${player.money}M · {player.handCount}c
           </div>
         </div>
-        {isActive && (
-          <div
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              background: player.color,
-              boxShadow: `0 0 8px ${player.color}`,
-            }}
-          />
-        )}
+        {/* "Live" / online dot removed — it was decorative and read as
+            an online indicator to users; the gold glow on isCurrentTurn
+            is now the only signal here. */}
       </div>
     </button>
   );
@@ -621,11 +628,17 @@ export function OpponentRail({
         style={{
           display: "flex",
           alignItems: "center",
+          // When chips fit, center them. When they overflow, browser
+          // ignores justifyContent and aligns to start so the rail is
+          // still scrollable from the first chip.
+          justifyContent: "center",
           gap: compact ? 8 : 18,
           overflowX: "auto",
           scrollSnapType: "x mandatory",
-          // Big horizontal padding so chips can scroll-snap-center even at the ends.
-          padding: compact ? "4px 60px" : "8px 480px",
+          // Padding sized so first/last chip can still snap-center at
+          // the ends. Smaller on compact since the chip itself is
+          // narrower and the screen is narrower too.
+          padding: compact ? "4px 28px" : "8px 240px",
           height: "100%",
           scrollbarWidth: "none",
         }}

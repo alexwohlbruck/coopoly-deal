@@ -52,6 +52,7 @@ function toSeatPlayer(
   player: ClientPlayer,
   index: number,
   allowDuplicateSets: boolean,
+  currentTurnPlayerId?: string,
 ): OpponentSeatPlayer {
   const money = player.bank.reduce((sum, c) => sum + c.value, 0);
   return {
@@ -63,6 +64,7 @@ function toSeatPlayer(
     totalSetsNeeded: 3,
     money,
     handCount: player.hand?.length ?? 0,
+    isCurrentTurn: !!currentTurnPlayerId && player.id === currentTurnPlayerId,
   };
 }
 
@@ -106,8 +108,11 @@ export function GameTableDesktop({
   );
 
   const seatPlayers: OpponentSeatPlayer[] = useMemo(
-    () => opponents.map((p, i) => toSeatPlayer(p, i, allowDuplicateSets)),
-    [opponents, allowDuplicateSets],
+    () =>
+      opponents.map((p, i) =>
+        toSeatPlayer(p, i, allowDuplicateSets, gameState.turn?.playerId),
+      ),
+    [opponents, allowDuplicateSets, gameState.turn?.playerId],
   );
 
   const deckCount = gameState.deckCount ?? 0;

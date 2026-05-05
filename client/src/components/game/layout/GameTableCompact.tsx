@@ -51,6 +51,7 @@ function toSeatPlayer(
   player: ClientPlayer,
   index: number,
   allowDuplicateSets: boolean,
+  currentTurnPlayerId?: string,
 ): OpponentSeatPlayer {
   const money = player.bank.reduce((sum, c) => sum + c.value, 0);
   return {
@@ -62,6 +63,7 @@ function toSeatPlayer(
     totalSetsNeeded: 3,
     money,
     handCount: player.hand?.length ?? 0,
+    isCurrentTurn: !!currentTurnPlayerId && player.id === currentTurnPlayerId,
   };
 }
 
@@ -126,12 +128,83 @@ export function GameTableCompact({
   );
 
   const seatPlayers: OpponentSeatPlayer[] = useMemo(
-    () => opponents.map((p, i) => toSeatPlayer(p, i, allowDuplicateSets)),
-    [opponents, allowDuplicateSets],
+    () =>
+      opponents.map((p, i) =>
+        toSeatPlayer(p, i, allowDuplicateSets, gameState.turn?.playerId),
+      ),
+    [opponents, allowDuplicateSets, gameState.turn?.playerId],
   );
 
   const oppTableRef = useRef<HTMLDivElement | null>(null);
   const yourTableRef = useRef<HTMLDivElement | null>(null);
+
+  // ─── Two-way sync between opponent-table swipe and the rail ────
+  // Setting `skipNextProgScroll = true` suppresses the next scroll-
+  // into-view fired by the activeOppId-changed effect — we use this
+  // when activeOppId changed BECAUSE of the user's swipe (the page is
+  // already in view; programmatically scrolling again would jitter).
+  const skipNextProgScroll = useRef(false);
+  const userScrollDebounce = useRef<number | null>(null);
+
+  // (1) On scroll: figure out which page is closest to the rail's
+  // horizontal center and update activeOppId. Debounced so we don't
+  // thrash during the gesture.
+  useEffect(() => {
+    const el = oppTableRef.current;
+    if (!el || opponents.length <= 1) return;
+    const onScroll = () => {
+      if (userScrollDebounce.current != null) {
+        window.clearTimeout(userScrollDebounce.current);
+      }
+      userScrollDebounce.current = window.setTimeout(() => {
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        let closestId: string | null = null;
+        let closestDist = Infinity;
+        for (const child of Array.from(el.children) as HTMLElement[]) {
+          const cid = child.dataset.oppPageId;
+          if (!cid) continue;
+          const cr = child.getBoundingClientRect();
+          const d = Math.abs(cr.left + cr.width / 2 - centerX);
+          if (d < closestDist) {
+            closestDist = d;
+            closestId = cid;
+          }
+        }
+        if (closestId && closestId !== activeOppId) {
+          skipNextProgScroll.current = true;
+          setActiveOppId(closestId);
+        }
+      }, 90);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (userScrollDebounce.current != null) {
+        window.clearTimeout(userScrollDebounce.current);
+      }
+    };
+  }, [activeOppId, opponents.length]);
+
+  // (2) When activeOppId changes from a chip click / auto-follow, scroll
+  // the matching page into view. Skipped if the change came from (1).
+  useEffect(() => {
+    if (skipNextProgScroll.current) {
+      skipNextProgScroll.current = false;
+      return;
+    }
+    const el = oppTableRef.current;
+    if (!el || !activeOppId) return;
+    const target = el.querySelector(
+      `[data-opp-page-id="${activeOppId}"]`,
+    ) as HTMLElement | null;
+    if (!target) return;
+    target.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [activeOppId]);
 
   const isMyTurn = gameState.turn?.playerId === playerId;
   const turnPhase = gameState.turn?.phase;
@@ -218,48 +291,59 @@ export function GameTableCompact({
           >
             {activeOpp ? `${activeOpp.name}'s table` : "no opponent"}
           </div>
-          {activeOppStats && (
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 9,
-                color: "rgba(245,234,208,0.4)",
-              }}
-            >
-              {activeOppStats.complete} sets · {activeOppStats.handCount}c
-            </div>
-          )}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            {activeOppStats && (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 9,
+                  color: "rgba(245,234,208,0.4)",
+                }}
+              >
+                {activeOppStats.complete} sets · {activeOppStats.handCount}c
+              </div>
+            )}
+            {opponents.length > 1 && (
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 8,
+                  color: "rgba(245,234,208,0.3)",
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                }}
+              >
+                ← swipe →
+              </div>
+            )}
+          </div>
         </div>
+        {/* Swipeable carousel of opponent boards. Each opponent is a
+            full-width "page" that snaps. Scroll position is synced
+            two-way with activeOppId — chip clicks scroll here,
+            swipes update the active chip. */}
         <div
           ref={oppTableRef}
           style={{
             flex: 1,
             minHeight: 0,
             display: "flex",
-            alignItems: "center",
-            justifyContent: "flex-start",
-            overflowX: "auto",
+            overflowX: opponents.length > 1 ? "auto" : "hidden",
             overflowY: "hidden",
-            // Inner padding so card drop shadows + selection rings
-            // don't get sliced off at the overflow boundary.
-            padding: "8px 4px",
+            scrollSnapType: opponents.length > 1 ? "x mandatory" : "none",
           }}
           className="scrollbar-hide"
         >
-          {activeOpp ? (
-            <div style={{ margin: "0 auto" }}>
-              <PlayerBoard
-                player={activeOpp}
-                isYou={false}
-                isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
-                settings={gameState.settings}
-                draggingCard={draggingCard}
-                compact
-              />
-            </div>
-          ) : (
+          {opponents.length === 0 ? (
             <div
               style={{
+                margin: "auto",
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
                 letterSpacing: "0.18em",
@@ -268,6 +352,37 @@ export function GameTableCompact({
             >
               no opponents
             </div>
+          ) : (
+            opponents.map((opp) => (
+              <div
+                key={opp.id}
+                data-opp-page-id={opp.id}
+                style={{
+                  flex: "0 0 100%",
+                  width: "100%",
+                  scrollSnapAlign: "center",
+                  scrollSnapStop: "always",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  overflowX: "auto",
+                  overflowY: "hidden",
+                  padding: "8px 4px",
+                }}
+                className="scrollbar-hide"
+              >
+                <div style={{ margin: "0 auto" }}>
+                  <PlayerBoard
+                    player={opp}
+                    isYou={false}
+                    isCurrentTurn={gameState.turn?.playerId === opp.id}
+                    settings={gameState.settings}
+                    draggingCard={draggingCard}
+                    compact
+                  />
+                </div>
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -438,7 +553,23 @@ export function GameTableCompact({
             disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
             needsDiscard={needsDiscard}
             onDragToBank={(card) => onPlayToBank(card.id)}
-            onDropToProperty={(card, color) => onPlayToProperty(card.id, color)}
+            onDropToProperty={(card, color) => {
+              // Only properties / property wildcards can be played to
+              // a property set. Reject other types client-side so we
+              // never dispatch a doomed-to-fail server play that has
+              // historically left the hand desync'd ("not in hand"
+              // error on the next try). Toast a clear hint instead.
+              if (
+                card.type !== CardType.Property &&
+                card.type !== CardType.PropertyWildcard
+              ) {
+                setToast(
+                  "Only property cards can be placed on a property set.",
+                );
+                return;
+              }
+              onPlayToProperty(card.id, color);
+            }}
             onCreateNewSet={(card) => {
               // Wildcards / rainbow cards have no inherent single
               // color — defer to the existing tap-to-play dialog
