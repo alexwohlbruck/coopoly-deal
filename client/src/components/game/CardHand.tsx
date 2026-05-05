@@ -21,6 +21,10 @@ interface CardHandProps {
    *  property-set drop zone in DragPeekHand. Mirrors the desktop
    *  HTML5 drop-on-property-set pipeline. */
   onDropToProperty?: (card: Card, color: PropertyColor) => void;
+  /** Touch-only: fired when the user drops a card on the "new set"
+   *  drop zone — caller decides whether the spawn is allowed (e.g.
+   *  refuse + toast if there's already an incomplete same-color set). */
+  onCreateNewSet?: (card: Card) => void;
   onDragStart?: (card: Card) => void;
   onDragEnd?: () => void;
   useSocialistTheme?: boolean;
@@ -41,6 +45,7 @@ export function CardHand({
   needsDiscard,
   onDragToBank,
   onDropToProperty,
+  onCreateNewSet,
   onDragStart,
   onDragEnd,
   useSocialistTheme = false,
@@ -97,6 +102,8 @@ export function CardHand({
         onDragToBank?.(card);
       } else if (spec.kind === "set") {
         onDropToProperty?.(card, spec.color as PropertyColor);
+      } else if (spec.kind === "new-set") {
+        onCreateNewSet?.(card);
       }
     };
 

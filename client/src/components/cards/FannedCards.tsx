@@ -399,7 +399,8 @@ export function HoverFanHand({
 /** Spec parsed from the [data-touch-drop] attribute on a drop zone. */
 export type TouchDropSpec =
   | { kind: "bank" }
-  | { kind: "set"; color: string };
+  | { kind: "set"; color: string }
+  | { kind: "new-set" };
 
 /** Find the topmost [data-touch-drop] ancestor at the given page point.
  *  Uses elementsFromPoint (plural) and walks the entire z-stack so we
@@ -427,6 +428,7 @@ function findDropZoneAt(
       const raw = el.getAttribute?.("data-touch-drop");
       if (raw) {
         if (raw === "bank") return { el, spec: { kind: "bank" } };
+        if (raw === "new-set") return { el, spec: { kind: "new-set" } };
         if (raw.startsWith("set:")) {
           return { el, spec: { kind: "set", color: raw.slice(4) } };
         }
@@ -780,7 +782,7 @@ export function DragPeekHand({
           pointerEvents: "none",
         }}
       >
-        tap to play · drag to peek · drag onto board to play there
+        tap or drag card to play · drag to peek
       </div>
     </div>
   );

@@ -475,7 +475,11 @@ export function PropertySetsRow({
   touchDropEnabled = false,
 }: PropertySetsRowProps & PropertySetsRowExtraProps) {
   const hasBank = Array.isArray(bank) && bank.length > 0;
-  const n = sets.length + (hasBank ? 1 : 0);
+  // Show the bank cell whenever the player can interact with this board
+  // (their own table) — even when empty — so it can serve as a touch
+  // drop target with an empty-state placeholder.
+  const showBankCell = hasBank || touchDropEnabled;
+  const n = sets.length + (showBankCell ? 1 : 0) + (touchDropEnabled ? 1 : 0);
 
   if (n === 0) {
     return (
@@ -521,12 +525,13 @@ export function PropertySetsRow({
         paddingTop: 4,
       }}
     >
-      {hasBank && (
+      {showBankCell && (
         <div
           key="__bank"
           // Touch-drag drop target: the DragPeekHand handler walks up the DOM
           // from elementFromPoint looking for [data-touch-drop]. When enabled,
-          // dropping here plays the card to the bank.
+          // dropping here plays the card to the bank. Rendered even when
+          // empty so the player can drop the very first money/action card.
           data-touch-drop={touchDropEnabled ? "bank" : undefined}
           style={{
             width: cellW,
@@ -535,7 +540,7 @@ export function PropertySetsRow({
             flexShrink: 0,
           }}
         >
-          <BankStack cards={bank!} compact={compact} />
+          <BankStack cards={bank ?? []} compact={compact} />
         </div>
       )}
       {sets.map((s, i) => (
@@ -565,6 +570,83 @@ export function PropertySetsRow({
           />
         </div>
       ))}
+      {touchDropEnabled && (
+        <div
+          key="__new-set"
+          data-touch-drop="new-set"
+          style={{
+            width: cellW,
+            display: "flex",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <NewSetPlaceholder cardWidth={cardWidth} compact={compact} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// NewSetPlaceholder — empty cell at the end of the property row that
+// serves as a touch drop target for "create a new set with this
+// card". Visually a dashed-border card slot with a + icon.
+// ────────────────────────────────────────────────────────────────────
+function NewSetPlaceholder({
+  cardWidth,
+  compact,
+}: {
+  cardWidth: number;
+  compact: boolean;
+}) {
+  const cardH = compact ? 106 : 124;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+        padding: "6px 8px 4px",
+        borderRadius: 10,
+        background: "rgba(0,0,0,0.04)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+      }}
+    >
+      <div
+        style={{
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "rgba(0,0,0,0.3)",
+          color: "rgba(255,255,255,0.55)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 9.5,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        }}
+      >
+        + NEW
+      </div>
+      <div
+        style={{
+          width: cardWidth,
+          height: cardH,
+          borderRadius: 6,
+          border: "1px dashed rgba(255,255,255,0.2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "var(--font-display)",
+          fontSize: 28,
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.35)",
+          letterSpacing: "0.04em",
+        }}
+      >
+        +
+      </div>
     </div>
   );
 }

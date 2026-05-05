@@ -15,7 +15,14 @@ import type {
   PropertyColor,
   ClientPlayer,
 } from "../../../types/game";
-import { TurnPhase } from "../../../types/game";
+import {
+  TurnPhase,
+  CardType,
+  isSetComplete,
+  PropertyColor as PropertyColorEnum,
+  getPropertyColorLabel,
+} from "../../../types/game";
+import { useGameStore } from "../../../hooks/useGameStore";
 import {
   OpponentRail,
   TurnPill,
@@ -101,6 +108,8 @@ export function GameTableCompact({
   );
   const me = gameState.players.find((p) => p.id === playerId);
   const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
+  const setToast = useGameStore((s) => s.setToast);
+  const useSocialistTheme = !!gameState.settings.useSocialistTheme;
 
   const turnOwnerId = gameState.turn?.playerId;
   const turnOwnerIsOpponent = turnOwnerId && turnOwnerId !== playerId;
@@ -430,6 +439,33 @@ export function GameTableCompact({
             needsDiscard={needsDiscard}
             onDragToBank={(card) => onPlayToBank(card.id)}
             onDropToProperty={(card, color) => onPlayToProperty(card.id, color)}
+            onCreateNewSet={(card) => {
+              // Only single-color property cards can spawn a new set via
+              // touch drop. Wildcards / 2-color cards need the dialog
+              // flow to assign a color first.
+              if (card.type !== CardType.Property) {
+                setToast(
+                  "Tap the card to assign a color first.",
+                );
+                return;
+              }
+              const color = card.colors?.[0];
+              if (!color || color === PropertyColorEnum.Unassigned) return;
+              // Block creating a new set if there's already an
+              // INCOMPLETE same-color set on the table — the user almost
+              // certainly meant to add to the existing one.
+              const existing = me?.properties.find(
+                (s) => s.color === color && !isSetComplete(s),
+              );
+              if (existing) {
+                const label = getPropertyColorLabel(color, useSocialistTheme);
+                setToast(
+                  `You already have an incomplete ${label} set — drop on it to add the card.`,
+                );
+                return;
+              }
+              onPlayToProperty(card.id, color);
+            }}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={gameState.settings.useSocialistTheme}
