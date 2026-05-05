@@ -1544,6 +1544,7 @@ describe("GameEngine", () => {
       expect(chain).toBeDefined();
       expect(chain!.depth).toBe(1);
       expect(chain!.targetPlayerId).toBe(target.id);
+      expect(chain!.initiatorTargetId).toBe(target.id);
     });
 
     it("counter-JSN increases depth", () => {
@@ -2131,6 +2132,154 @@ describe("GameEngine", () => {
       // PassGo goes to discard → reshuffle → draw 1 (the passGo itself). Second draw finds nothing.
       // Net: lost passGo from hand (-1), drew it back (+1) = same size
       expect(player.hand).toHaveLength(handBefore);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Multi-target rent + Just Say No (issue #1)
+  // -------------------------------------------------------------------------
+  describe("Multi-target rent with Just Say No", () => {
+    function setupMultiTargetRent() {
+      const { state, engine } = startTestGame(3);
+      const playerA = currentPlayer(state);
+      const playerB = state.players.find((p) => p.id !== playerA.id)!;
+      const playerC = state.players.find(
+        (p) => p.id !== playerA.id && p.id !== playerB.id,
+      )!;
+
+      playerA.hand = [];
+      playerB.hand = [];
+      playerC.hand = [];
+
+      // Give player A a brown property so rent has value
+      const prop: Card = {
+        id: "brown_prop",
+        type: CardType.Property,
+        value: 1,
+        colors: [PropertyColor.Brown],
+      };
+      playerA.properties.push({
+        color: PropertyColor.Brown,
+        cards: [prop],
+        house: null,
+        hotel: null,
+      });
+
+      // Give B and C money to pay with
+      const moneyB = givePlayerCard(playerB, makeMoney(3));
+      playerB.bank.push({ ...moneyB, id: "bank_b" });
+      playerB.hand = playerB.hand.filter((c) => c.id !== moneyB.id);
+
+      const moneyC = givePlayerCard(playerC, makeMoney(3));
+      playerC.bank.push({ ...moneyC, id: "bank_c" });
+      playerC.hand = playerC.hand.filter((c) => c.id !== moneyC.id);
+
+      // Play rent dual on brown (targets all opponents)
+      const rent = givePlayerCard(
+        playerA,
+        makeRentDual(PropertyColor.Brown, PropertyColor.LightBlue),
+      );
+      engine.playActionCard(state, playerA.id, {
+        action: "rentDual",
+        cardId: rent.id,
+        color: PropertyColor.Brown,
+      });
+
+      return { state, engine, playerA, playerB, playerC };
+    }
+
+    it("JSN chain tracks initiatorTargetId", () => {
+      const { state, engine, playerB } = setupMultiTargetRent();
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      const chain = state.turn!.pendingAction!.justSayNoChain;
+      expect(chain).toBeDefined();
+      expect(chain!.initiatorTargetId).toBe(playerB.id);
+      expect(chain!.targetPlayerId).toBe(playerB.id);
+    });
+
+    it("initiatorTargetId persists after source counter-JSN", () => {
+      const { state, engine, playerA, playerB } = setupMultiTargetRent();
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      givePlayerCard(playerA, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerA.id);
+
+      const chain = state.turn!.pendingAction!.justSayNoChain;
+      expect(chain!.initiatorTargetId).toBe(playerB.id);
+      expect(chain!.targetPlayerId).toBe(playerA.id);
+      expect(chain!.depth).toBe(2);
+    });
+
+    it("player who already paid cannot accept during JSN chain", () => {
+      const { state, engine, playerB, playerC } = setupMultiTargetRent();
+
+      // C pays rent first
+      engine.respondPayWithCards(state, playerC.id, ["bank_c"]);
+      expect(state.turn!.pendingAction!.respondedPlayerIds).toContain(
+        playerC.id,
+      );
+
+      // B plays JSN
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      // C tries to accept the JSN chain — should be rejected
+      expect(() => engine.respondAcceptAction(state, playerC.id)).toThrow(
+        "You are not involved in this Just Say No chain",
+      );
+    });
+
+    it("uninvolved target cannot accept during JSN chain", () => {
+      const { state, engine, playerB, playerC } = setupMultiTargetRent();
+
+      // B plays JSN (C has NOT responded yet)
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      // C tries to accept the JSN chain — should be rejected
+      expect(() => engine.respondAcceptAction(state, playerC.id)).toThrow(
+        "You are not involved in this Just Say No chain",
+      );
+    });
+
+    it("source can accept JSN and game continues for remaining targets", () => {
+      const { state, engine, playerA, playerB, playerC } =
+        setupMultiTargetRent();
+
+      // C pays rent
+      engine.respondPayWithCards(state, playerC.id, ["bank_c"]);
+
+      // B plays JSN
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      // A accepts the JSN → B is marked responded (blocked)
+      engine.respondAcceptAction(state, playerA.id);
+
+      // JSN chain should be cleared
+      expect(state.turn!.pendingAction).toBeNull();
+    });
+
+    it("full scenario: C pays, B plays JSN, A accepts — game resolves", () => {
+      const { state, engine, playerA, playerB, playerC } =
+        setupMultiTargetRent();
+
+      // C pays first
+      engine.respondPayWithCards(state, playerC.id, ["bank_c"]);
+
+      // B plays JSN
+      givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
+      engine.respondJustSayNo(state, playerB.id);
+
+      // A accepts the block
+      engine.respondAcceptAction(state, playerA.id);
+
+      // Action fully resolved — both B (blocked) and C (paid) are done
+      expect(state.turn!.pendingAction).toBeNull();
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
     });
   });
 });

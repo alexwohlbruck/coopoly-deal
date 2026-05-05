@@ -194,11 +194,10 @@ export class BotPlayer {
       // The bot needs to respond if they're not the one who just played JSN
       if (action.justSayNoChain.targetPlayerId === botPlayerId) return;
 
-      // Bot is involved if they're either the source or a target of the original action
-      const isInvolved =
+      const isChainParticipant =
         action.sourcePlayerId === botPlayerId ||
-        action.targetPlayerIds.includes(botPlayerId);
-      if (!isInvolved) return;
+        botPlayerId === action.justSayNoChain.initiatorTargetId;
+      if (!isChainParticipant) return;
 
       // Check if bot has JSN to counter
       const hasJSN = player.hand.some((c) => c.type === CardType.JustSayNo);

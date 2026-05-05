@@ -61,8 +61,9 @@ export function ActionPrompt({
   const isJSNChain = action.justSayNoChain;
   if (isJSNChain) {
     const shouldRespond = isJSNChain.targetPlayerId !== playerId;
-    const isInvolved = isTarget || isSource;
-    if (!shouldRespond || !isInvolved) {
+    const isChainParticipant =
+      isSource || playerId === isJSNChain.initiatorTargetId;
+    if (!shouldRespond || !isChainParticipant) {
       return null;
     }
   } else {
