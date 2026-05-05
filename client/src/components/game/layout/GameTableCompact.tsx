@@ -440,13 +440,13 @@ export function GameTableCompact({
             onDragToBank={(card) => onPlayToBank(card.id)}
             onDropToProperty={(card, color) => onPlayToProperty(card.id, color)}
             onCreateNewSet={(card) => {
-              // Only single-color property cards can spawn a new set via
-              // touch drop. Wildcards / 2-color cards need the dialog
-              // flow to assign a color first.
+              // Wildcards / rainbow cards have no inherent single
+              // color — defer to the existing tap-to-play dialog
+              // (CardActionDialog) which lets the player pick. From
+              // there they can choose to create a new set or assign
+              // to an existing one.
               if (card.type !== CardType.Property) {
-                setToast(
-                  "Tap the card to assign a color first.",
-                );
+                onCardClick(card);
                 return;
               }
               const color = card.colors?.[0];

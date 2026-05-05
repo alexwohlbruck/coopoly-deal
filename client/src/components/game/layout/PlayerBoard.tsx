@@ -144,6 +144,9 @@ export function PlayerBoard({
         onCardDragEnd={onCardDragEnd}
         dragOverColor={dragOverColor}
         touchDropEnabled={canDropProp || canDropBank}
+        // Show the "+ NEW" drop slot only while a drag is in flight
+        // so it doesn't clutter the row at rest.
+        isDragInProgress={!!draggingCard}
       />
     </div>
   );

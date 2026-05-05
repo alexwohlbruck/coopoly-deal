@@ -5,6 +5,7 @@
 //   PropertySetsRow — responsive grid of PropertySetDisplay stacks, with bank as first cell
 
 import type { ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PropertySetDisplay } from "../PropertySetDisplay";
 import { CardBack } from "../../cards/GameCard";
 import type { Card, PropertySet, PropertyColor } from "../../../types/game";
@@ -450,6 +451,10 @@ export interface PropertySetsRowExtraProps {
    *  elementFromPoint. Should match the same `canDrop*` gates used by
    *  the desktop HTML5 drop handlers (i.e. isYou && isCurrentTurn). */
   touchDropEnabled?: boolean;
+  /** When true, render the "+ NEW" drop slot at the end of the row.
+   *  Wrapped in an AnimatePresence so it fades in/out as the parent
+   *  (player board) toggles this in response to drag start/end. */
+  isDragInProgress?: boolean;
 }
 
 export function PropertySetsRow({
@@ -473,6 +478,7 @@ export function PropertySetsRow({
   dragOverColor,
   wrap = false,
   touchDropEnabled = false,
+  isDragInProgress = false,
 }: PropertySetsRowProps & PropertySetsRowExtraProps) {
   const hasBank = Array.isArray(bank) && bank.length > 0;
   // Show the bank cell whenever the player can interact with this board
@@ -570,20 +576,26 @@ export function PropertySetsRow({
           />
         </div>
       ))}
-      {touchDropEnabled && (
-        <div
-          key="__new-set"
-          data-touch-drop="new-set"
-          style={{
-            width: cellW,
-            display: "flex",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <NewSetPlaceholder cardWidth={cardWidth} compact={compact} />
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {touchDropEnabled && isDragInProgress && (
+          <motion.div
+            key="__new-set"
+            data-touch-drop="new-set"
+            initial={{ opacity: 0, width: 0, marginLeft: -gap }}
+            animate={{ opacity: 1, width: cellW, marginLeft: 0 }}
+            exit={{ opacity: 0, width: 0, marginLeft: -gap }}
+            transition={{ duration: 0.18, ease: [0.22, 0.9, 0.32, 1] }}
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden",
+            }}
+          >
+            <NewSetPlaceholder cardWidth={cardWidth} compact={compact} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
