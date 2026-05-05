@@ -306,8 +306,8 @@ export function GameSettingsPanel({
                 },
                 {
                   key: "useSocialistTheme" as const,
-                  label: "Commune Mode",
-                  hint: "Reframe the deal: comrades, levies, and expropriation in place of players, rent, and theft.",
+                  label: "Dialectical Lens",
+                  hint: "Read the deal through Marxist dialectics — comrades, levies, and expropriation in place of players, rent, and theft.",
                 },
               ].map(({ key, label, hint }) => (
                 <div

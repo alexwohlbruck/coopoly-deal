@@ -326,7 +326,7 @@ export function GameRulesModal({
                 title={
                   useSocialistTheme
                     ? "Switch back to standard wording"
-                    : "Read these rules in Commune Mode"
+                    : "View through the Dialectical Lens"
                 }
               >
                 <span
@@ -360,7 +360,7 @@ export function GameRulesModal({
                     }}
                   />
                 </span>
-                Commune Mode
+                Dialectical Lens
               </button>
             </div>
             <button
