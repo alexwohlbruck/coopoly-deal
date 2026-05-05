@@ -8,6 +8,8 @@ import { GameSettingsPanel } from "./GameSettingsPanel";
 import { type GameSettings } from "../../types/game";
 
 import { useI18n } from "../../i18n";
+import { useGameStore } from "../../hooks/useGameStore";
+import { getTheme } from "../../theme/colors";
 
 interface WaitingRoomProps {
   gameState: ClientGameState;
@@ -33,12 +35,16 @@ export function WaitingRoom({
   musicControls,
 }: WaitingRoomProps) {
   const { t } = useI18n();
+  const { theme } = useGameStore();
+  const themeData = getTheme(theme);
   const [showRules, setShowRules] = useState(false);
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-900 via-green-800 to-emerald-950 flex items-center justify-center p-4">
+    <div
+      className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+    >
       {/* Music controls in top right */}
       {musicControls && (
         <div className="fixed top-4 right-4 z-50">

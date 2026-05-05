@@ -14,6 +14,7 @@ import { type GameSettings } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import { calculateRent } from "../../utils/rent-calculator";
 import { BottomSheet } from "../common/BottomSheet";
+import { PrimaryButton } from "../ui/Button";
 
 interface CardActionDialogProps {
   card: Card;
@@ -593,23 +594,25 @@ export function CardActionDialog({
 
   const footerButtons =
     step === "choose" ? (
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {canPlayToProperty && (
-          <button
+          <PrimaryButton
             onClick={handlePlayToProperty}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg transition-colors"
+            fullWidth
+            size="lg"
           >
             Play as Property
-          </button>
+          </PrimaryButton>
         )}
         {isActionCard && !canPlayToProperty && (
-          <button
+          <PrimaryButton
             onClick={handlePlayAction}
             disabled={!canUseAction}
-            className={`w-full py-3 ${canUseAction ? "bg-purple-600 hover:bg-purple-500" : "bg-gray-600 cursor-not-allowed"} text-white font-semibold rounded-lg transition-colors`}
+            fullWidth
+            size="lg"
           >
             {settings.useSocialistTheme ? "Use Directive" : "Use Action"}
-          </button>
+          </PrimaryButton>
         )}
       </div>
     ) : null;
@@ -674,8 +677,26 @@ export function CardActionDialog({
                       handleSelectColor(color);
                     }
                   }}
-                  className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center"
-                  style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
+                  className="rounded-lg flex flex-col items-center justify-center transition-transform hover:-translate-y-0.5"
+                  style={{
+                    padding: "10px 12px",
+                    background: `linear-gradient(180deg, ${PROPERTY_COLOR_HEX[color]} 0%, color-mix(in oklab, ${PROPERTY_COLOR_HEX[color]} 78%, #000) 100%)`,
+                    color:
+                      color === PC.Yellow ||
+                      color === PC.LightBlue ||
+                      color === PC.Utility
+                        ? "#1c1a14"
+                        : "#fff",
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    boxShadow:
+                      "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 8px -2px rgba(0,0,0,0.4)",
+                    cursor: "pointer",
+                  }}
                 >
                   <span>
                     {getPropertyColorLabel(color, settings.useSocialistTheme)}
@@ -704,13 +725,49 @@ export function CardActionDialog({
                     onPlayToProperty(activeCard.id, PC.Unassigned);
                     onClose();
                   }}
-                  className="py-2 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 flex flex-col items-center justify-center col-span-2 border-2 border-white/20 shadow-sm"
+                  className="rounded-lg flex flex-col items-center justify-center col-span-2 transition-transform hover:-translate-y-0.5"
                   style={{
+                    padding: "10px 12px",
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    color: "#f5ead0",
                     background:
-                      "linear-gradient(to right, #8B4513, #87CEEB, #FF69B4, #FFA500, #FF0000, #FFFF00, #008000, #00008B, #000000, #A0D6B4)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                      "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+                    cursor: "pointer",
+                    position: "relative",
+                    overflow: "hidden",
                   }}
                 >
+                  {/* Thin rainbow stripe at the top to signal "any color" */}
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 3,
+                      display: "flex",
+                    }}
+                  >
+                    {[
+                      "var(--p-brown)",
+                      "var(--p-skyblue)",
+                      "var(--p-pink)",
+                      "var(--p-orange)",
+                      "var(--p-red)",
+                      "var(--p-yellow)",
+                      "var(--p-green)",
+                      "var(--p-darkblue)",
+                      "var(--p-railroad)",
+                    ].map((c, i) => (
+                      <span key={i} style={{ flex: 1, background: c }} />
+                    ))}
+                  </span>
                   I'll decide later
                 </button>
               )}
@@ -757,7 +814,7 @@ export function CardActionDialog({
                 <GameCard
                   key={c.id}
                   card={c}
-                  small
+                  width={96}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectTargetCard(c.id)}
                 />
@@ -779,7 +836,7 @@ export function CardActionDialog({
                 <GameCard
                   key={c.id}
                   card={c}
-                  small
+                  width={96}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectMyCard(c.id)}
                 />
@@ -881,7 +938,7 @@ export function CardActionDialog({
                   <GameCard
                     key={c.id}
                     card={c}
-                    small
+                    width={96}
                     selected={isSelected}
                     useSocialistTheme={settings.useSocialistTheme}
                     onClick={() => {

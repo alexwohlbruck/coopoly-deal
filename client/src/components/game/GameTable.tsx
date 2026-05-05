@@ -5,9 +5,7 @@ import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
 import { useTurnTimer } from "../../hooks/useTurnTimer";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
-import { useI18n } from "../../i18n";
 import { validateActionCard } from "../../utils/card-validation";
-import { PlayerCarousel } from "./PlayerCarousel";
 import { PlayerTurnBar } from "./PlayerTurnBar";
 import { CardActionDialog } from "./CardActionDialog";
 import { ActionPrompt } from "./ActionPrompt";
@@ -17,7 +15,10 @@ import { RainbowGroupDialog } from "./RainbowGroupDialog";
 import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
-import { Settings } from "lucide-react";
+import { TopBar } from "./layout/Chrome";
+import { GameTableDesktop } from "./layout/GameTableDesktop";
+import { GameTableCompact } from "./layout/GameTableCompact";
+import { useLayout } from "../../hooks/useLayout";
 
 interface GameTableProps {
   gameState: ClientGameState;
@@ -101,29 +102,19 @@ export function GameTable({
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const { play } = useSoundManager();
   const { theme, setToast } = useGameStore();
-  const colors = getTheme(theme);
-  const { t } = useI18n();
+  const themeData = getTheme(theme);
+  const layoutMode = useLayout();
   const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const [playerAreaHeight, setPlayerAreaHeight] = useState<number | undefined>(
-    undefined,
-  );
   const headerRef = useRef<HTMLDivElement>(null);
   const turnControlsRef = useRef<HTMLDivElement>(null);
   const cardHandRef = useRef<HTMLDivElement>(null);
 
   const me = gameState.players.find((p) => p.id === playerId);
 
-  // Calculate available height for player areas
+  // Recalculate layout on window resize
   useEffect(() => {
     const calculateHeight = () => {
-      const windowHeight = window.innerHeight;
-      const headerHeight = headerRef.current?.offsetHeight || 0;
-      const controlsHeight = turnControlsRef.current?.offsetHeight || 0;
-      const handHeight = cardHandRef.current?.offsetHeight || 0;
-
-      const availableHeight =
-        windowHeight - headerHeight - controlsHeight - handHeight - 32;
-      setPlayerAreaHeight(Math.max(200, availableHeight));
+      // Trigger re-render on resize
     };
 
     calculateHeight();
@@ -370,102 +361,122 @@ export function GameTable({
     );
   }
 
+  // Hand peek reset signal — encodes "an event happened that should clear
+  // any current peek state on the hand". Bumps when:
+  //   - a dialog opens (CardActionDialog, ActionPrompt, WildcardFlip,
+  //     RainbowGroup, Settings, DevTools)
+  //   - the hand size changes (a card just got played or drawn)
+  // Encoding all signals as one string keeps the prop stable when nothing
+  // is happening so the hand doesn't re-mount.
+  const peekResetSignal = [
+    selectedCard?.id ?? "",
+    pendingAction?.type ?? "",
+    wildcardFlipData ? "wf" : "",
+    rainbowDropData ? "rd" : "",
+    showSettings ? "s" : "",
+    showDevTools ? "d" : "",
+    me?.hand?.length ?? 0,
+  ].join("|");
+
+  // Bottom bar (turn pill + end turn + hand) — shared across both layouts.
+  const bottomBar = me ? (
+    <div ref={turnControlsRef}>
+      <PlayerTurnBar
+        gameState={gameState}
+        playerId={playerId}
+        playerRefs={playerRefs}
+        cardHandRef={cardHandRef}
+        needsDiscard={needsDiscard ?? false}
+        timeLeft={timeLeft}
+        selectedCard={selectedCard}
+        shakingCardId={shakingCardId}
+        onEndTurn={handleEndTurn}
+        onCardClick={handleCardClick}
+        onPlayToBank={onPlayToBank}
+        setDraggingCard={setDraggingCard}
+        hideRedundantChrome={layoutMode === "table"}
+        peekResetSignal={peekResetSignal}
+      />
+    </div>
+  ) : null;
+
   return (
     <div
-      className={`h-screen ${colors.tableBackground} felt-texture flex flex-col overflow-hidden touch-pan-x`}
+      ref={headerRef}
+      className={`h-screen ${themeData.feltClass} felt-surface flex flex-col overflow-hidden touch-pan-x relative`}
       style={{ overscrollBehavior: "none" }}
     >
-      {/* Top bar */}
-      <div
-        ref={headerRef}
-        className="flex items-center justify-between px-4 py-2 bg-black/20 border-b border-white/10"
-      >
-        <div className="flex items-center gap-3">
-          <h1 className="text-white font-black text-lg">Co-Opoly Deal</h1>
-          <span className="text-emerald-400 text-xs font-mono bg-white/10 px-2 py-0.5 rounded">
-            {gameState.id}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          {import.meta.env.MODE === "development" && onDevInjectCard && (
-            <button
-              onClick={() => setShowDevTools(true)}
-              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded text-xs transition-colors"
-            >
-              Dev Tools
-            </button>
-          )}
-          {gameState.phase === GamePhase.Playing &&
-            !hasResigned &&
-            onResign && (
-              <button
-                onClick={onResign}
-                className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white font-semibold rounded text-xs transition-colors"
-              >
-                {t.game.resign}
-              </button>
-            )}
-          {hasResigned && onGoHome && (
-            <button
-              onClick={onGoHome}
-              className="px-3 py-1 bg-purple-700 hover:bg-purple-600 text-white font-semibold rounded text-xs transition-colors"
-            >
-              Leave
-            </button>
-          )}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="text-gray-400 hover:text-white bg-white/10 p-1.5 rounded transition-colors"
-            title="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+      <TopBar
+        roomCode={gameState.id}
+        compact={layoutMode === "compact"}
+        onSettings={() => setShowSettings(true)}
+        onResign={onResign}
+        onLeave={onGoHome}
+        onDevTools={() => setShowDevTools(true)}
+        showResign={
+          gameState.phase === GamePhase.Playing && !hasResigned && !!onResign
+        }
+        showLeave={hasResigned && !!onGoHome}
+        showDevTools={
+          import.meta.env.MODE === "development" && !!onDevInjectCard
+        }
+      />
 
-      {/* Game area */}
-      <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
-        {/* All players area - horizontal carousel with scroll snap */}
-        <PlayerCarousel
+      {/* Game area — branches on layout mode */}
+      {layoutMode === "table" ? (
+        <GameTableDesktop
           gameState={gameState}
           playerId={playerId}
-          playerAreaHeight={playerAreaHeight}
           draggingCard={draggingCard}
           onPlayToBank={onPlayToBank}
           onPlayToProperty={onPlayToProperty}
           onRainbowDrop={(card) => setRainbowDropData({ card })}
           onWildcardClick={handleWildcardClick}
-          playerRefs={playerRefs}
+          onWildcardDragStart={(e, card) => {
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("cardId", card.id);
+            e.dataTransfer.setData("cardData", JSON.stringify(card));
+            setDraggingCard(card);
+          }}
+          onWildcardDragEnd={() => setDraggingCard(null)}
+          bottomBar={bottomBar}
         />
-
-        {/* Rent multiplier indicator */}
-        {gameState.turn && gameState.turn.rentMultiplier > 1 && (
-          <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
-            <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-              🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
-              Doubled! ({gameState.turn.rentMultiplier}x)
+      ) : (
+        <>
+          <GameTableCompact
+            gameState={gameState}
+            playerId={playerId}
+            draggingCard={draggingCard}
+            selectedCard={selectedCard}
+            shakingCardId={shakingCardId}
+            needsDiscard={needsDiscard ?? false}
+            onPlayToBank={onPlayToBank}
+            onPlayToProperty={onPlayToProperty}
+            onRainbowDrop={(card) => setRainbowDropData({ card })}
+            onWildcardClick={handleWildcardClick}
+            onWildcardDragStart={(e, card) => {
+              e.dataTransfer.effectAllowed = "move";
+              e.dataTransfer.setData("cardId", card.id);
+              e.dataTransfer.setData("cardData", JSON.stringify(card));
+              setDraggingCard(card);
+            }}
+            onWildcardDragEnd={() => setDraggingCard(null)}
+            onCardClick={handleCardClick}
+            onEndTurn={handleEndTurn}
+            setDraggingCard={setDraggingCard}
+            peekResetSignal={peekResetSignal}
+          />
+          {gameState.turn && gameState.turn.rentMultiplier > 1 && (
+            <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
+              <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
+                🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
+                Doubled! ({gameState.turn.rentMultiplier}x)
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-
-      {/* Turn bar and hand */}
-      {me && (
-        <PlayerTurnBar
-          gameState={gameState}
-          playerId={playerId}
-          playerRefs={playerRefs}
-          cardHandRef={cardHandRef}
-          needsDiscard={needsDiscard ?? false}
-          timeLeft={timeLeft}
-          selectedCard={selectedCard}
-          shakingCardId={shakingCardId}
-          onEndTurn={handleEndTurn}
-          onCardClick={handleCardClick}
-          onPlayToBank={onPlayToBank}
-          setDraggingCard={setDraggingCard}
-        />
+          )}
+        </>
       )}
+
 
       {/* Card action dialog - only show if card is still in hand */}
       {selectedCard && me && isCardStillInHand && (

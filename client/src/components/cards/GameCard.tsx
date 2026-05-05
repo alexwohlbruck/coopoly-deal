@@ -3,7 +3,7 @@ import {
   type Card,
   CardType,
   getCardTypeLabel,
-  PROPERTY_COLOR_HEX,
+  PropertyColor,
   getPropertyColorLabel,
   getPropertyName,
   RENT_VALUES,
@@ -14,25 +14,74 @@ interface GameCardProps {
   card: Card;
   onClick?: () => void;
   selected?: boolean;
-  small?: boolean;
   disabled?: boolean;
   orientation?: "top" | "bottom"; // For two-color wildcards, which color is on top
   disableHover?: boolean; // Disable hover animation when card is scaled
   scale?: number; // Scale factor (0-1) to shrink the card
   useSocialistTheme?: boolean;
+  width?: number; // Target width in pixels (default 96)
 }
 
-const ACTION_COLORS: Partial<Record<CardType, string>> = {
-  [CardType.PassGo]: "#2563EB",
-  [CardType.SlyDeal]: "#5F8A8B",
-  [CardType.ForceDeal]: "#5F8A8B",
-  [CardType.DealBreaker]: "#6B21A8",
-  [CardType.DebtCollector]: "#16A34A",
-  [CardType.Birthday]: "#16A34A",
-  [CardType.JustSayNo]: "#DC2626",
-  [CardType.DoubleTheRent]: "#D97706",
-  [CardType.House]: "#16A34A",
-  [CardType.Hotel]: "#DC2626",
+/**
+ * CSS variable name for each property color band.
+ * Mirrors :root --p-* tokens in index.css. The design intentionally
+ * routes property colors through CSS vars so a theme/mode swap could
+ * later override them in one place.
+ */
+const PROPERTY_COLOR_VAR: Record<PropertyColor, string> = {
+  [PropertyColor.Brown]: "var(--p-brown)",
+  [PropertyColor.LightBlue]: "var(--p-skyblue)",
+  [PropertyColor.Pink]: "var(--p-pink)",
+  [PropertyColor.Orange]: "var(--p-orange)",
+  [PropertyColor.Red]: "var(--p-red)",
+  [PropertyColor.Yellow]: "var(--p-yellow)",
+  [PropertyColor.Green]: "var(--p-green)",
+  [PropertyColor.DarkBlue]: "var(--p-darkblue)",
+  [PropertyColor.Railroad]: "var(--p-railroad)",
+  [PropertyColor.Utility]: "var(--p-utility)",
+  [PropertyColor.Unassigned]: "#8b5cf6", // visible-only fallback; rainbow card overrides anyway
+};
+
+/**
+ * Foreground (text) color on each property color band, picked for contrast.
+ */
+const PROPERTY_BAND_FG: Record<PropertyColor, string> = {
+  [PropertyColor.Brown]: "#fff",
+  [PropertyColor.LightBlue]: "#0e2230",
+  [PropertyColor.Pink]: "#fff",
+  [PropertyColor.Orange]: "#fff",
+  [PropertyColor.Red]: "#fff",
+  [PropertyColor.Yellow]: "#3a2a08",
+  [PropertyColor.Green]: "#fff",
+  [PropertyColor.DarkBlue]: "#fff",
+  [PropertyColor.Railroad]: "#fff",
+  [PropertyColor.Utility]: "#fff",
+  [PropertyColor.Unassigned]: "#fff",
+};
+
+/**
+ * Action card accent (banner underline + glyph color).
+ */
+const ACTION_ACCENT: Partial<Record<CardType, string>> = {
+  [CardType.PassGo]: "#88d4ff",
+  [CardType.SlyDeal]: "#5ee0d8",
+  [CardType.ForceDeal]: "#5ee0d8",
+  [CardType.DealBreaker]: "#ff7ae0",
+  [CardType.DebtCollector]: "#7adb88",
+  [CardType.Birthday]: "#7adb88",
+  [CardType.JustSayNo]: "#ff8a8a",
+  [CardType.DoubleTheRent]: "#ffb070",
+  [CardType.House]: "#7adb88",
+  [CardType.Hotel]: "#ff7a7a",
+};
+
+const MONEY_BG_VAR: Record<number, string> = {
+  1: "var(--m-1)",
+  2: "var(--m-2)",
+  3: "var(--m-3)",
+  4: "var(--m-4)",
+  5: "var(--m-5)",
+  10: "var(--m-10)",
 };
 
 function getActionSubtitle(
@@ -65,384 +114,614 @@ function getActionSubtitle(
   }
 }
 
-function ValueBadge({
-  value,
+/**
+ * Integrated property color banner: value chip on the left, name on the right,
+ * sharing one row inside a single border. This is the fix for the floating
+ * value-badge that previously overlapped sibling cards in fans.
+ */
+function PropertyBanner({
   color,
-  small,
+  value,
+  name,
+  fontScale = 1,
 }: {
+  color: PropertyColor;
   value: number;
-  color: string;
-  small?: boolean;
+  name: string;
+  fontScale?: number;
 }) {
-  if (value <= 0) return null;
+  const bg = PROPERTY_COLOR_VAR[color];
+  const fg = PROPERTY_BAND_FG[color];
   return (
-    <div className="absolute top-0.5 left-0.5 z-10">
+    <div
+      style={{
+        background: bg,
+        color: fg,
+        padding: `${5 * fontScale}px ${7 * fontScale}px ${4 * fontScale}px`,
+        borderBottom: "1px solid rgba(0,0,0,0.25)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.15)",
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        lineHeight: 1.05,
+      }}
+    >
+      {value > 0 && (
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 10 * fontScale,
+            letterSpacing: "0.02em",
+            padding: "1px 5px",
+            borderRadius: 4,
+            background: "rgba(0,0,0,0.32)",
+            color: "#fff",
+            flexShrink: 0,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          ${value}M
+        </div>
+      )}
       <div
-        className={`${small ? "w-5 h-5 text-[7px]" : "w-7 h-7 text-[9px]"} rounded-full flex items-center justify-center text-white font-black shadow-md border border-white/30`}
-        style={{ backgroundColor: color }}
+        style={{
+          fontFamily: "var(--font-display)",
+          fontWeight: 600,
+          fontSize: 9.5 * fontScale,
+          letterSpacing: "0.01em",
+          textTransform: "uppercase",
+          flex: 1,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
       >
-        ${value}M
+        {name}
       </div>
     </div>
   );
 }
 
+function PropertyBody({
+  color,
+  rents,
+  setSize,
+  fontScale = 1,
+  useSocialistTheme = false,
+}: {
+  color: PropertyColor;
+  rents: number[];
+  setSize: number;
+  fontScale?: number;
+  useSocialistTheme?: boolean;
+}) {
+  return (
+    <div
+      className="paper-grain"
+      style={{
+        flex: 1,
+        padding: `${8 * fontScale}px ${8 * fontScale}px ${6 * fontScale}px`,
+        display: "flex",
+        flexDirection: "column",
+        background:
+          "linear-gradient(180deg, var(--card-paper) 0%, var(--card-paper-2) 100%)",
+      }}
+    >
+      <div
+        style={{
+          fontSize: 8 * fontScale,
+          letterSpacing: "0.18em",
+          color: "var(--card-ink-soft)",
+          marginBottom: 4,
+          textAlign: "center",
+          textTransform: "uppercase",
+          fontWeight: 600,
+        }}
+      >
+        {useSocialistTheme ? "Levy" : "Rent"}
+      </div>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-evenly",
+          fontSize: 9 * fontScale,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {rents.map((rent, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              borderBottom:
+                i < rents.length - 1 ? "1px dotted rgba(0,0,0,0.15)" : "none",
+              padding: "1px 2px",
+            }}
+          >
+            <span style={{ color: "var(--card-ink-soft)" }}>
+              {i + 1}
+              {i + 1 === setSize ? "★" : ""}
+            </span>
+            <span style={{ fontWeight: 600 }}>${rent}M</span>
+          </div>
+        ))}
+      </div>
+      <div
+        style={{
+          marginTop: 5,
+          height: 3,
+          borderRadius: 2,
+          background: PROPERTY_COLOR_VAR[color],
+          boxShadow: "inset 0 1px 0 rgba(0,0,0,0.2)",
+        }}
+      />
+    </div>
+  );
+}
+
+/** Property card body. */
 function PropertyCardContent({
   card,
-  small,
+  fontScale,
   useSocialistTheme = false,
 }: {
   card: Card;
-  small?: boolean;
+  fontScale: number;
   useSocialistTheme?: boolean;
 }) {
-  const color = card.colors?.[0];
-  const bgColor = color ? PROPERTY_COLOR_HEX[color] : "#888";
-  const rents = color ? RENT_VALUES[color] : [];
-  const setSize = color ? SET_SIZE[color] : 0;
-
+  const color = card.colors?.[0] ?? PropertyColor.Brown;
+  const rents = RENT_VALUES[color] ?? [];
+  const setSize = SET_SIZE[color] ?? 0;
+  const name = card.name
+    ? getPropertyName(card.name, useSocialistTheme)
+    : getPropertyColorLabel(color, useSocialistTheme);
   return (
     <>
-      <ValueBadge value={card.value} color={bgColor} small={small} />
-
-      {/* Color banner with property name */}
-      <div
-        className={`${small ? "h-9" : "h-14"} w-full flex items-center justify-center px-2 border-b-2 border-gray-300`}
-        style={{ backgroundColor: bgColor }}
-      >
-        <p
-          className={`text-white font-black text-center leading-tight ${small ? "text-[7px]" : "text-[10px]"} drop-shadow-md`}
-        >
-          {card.name
-            ? getPropertyName(card.name, useSocialistTheme)
-            : color
-              ? getPropertyColorLabel(color, useSocialistTheme)
-              : ""}
-        </p>
-      </div>
-
-      {/* Rent table */}
-      <div
-        className={`flex-1 ${small ? "px-1 py-1" : "px-2 py-1.5"} bg-white flex flex-col`}
-      >
-        <div
-          className={`flex-1 bg-gray-50 rounded ${small ? "px-1 py-0.5" : "px-1.5 py-1"} border border-gray-200 flex flex-col justify-center`}
-        >
-          <p
-            className={`${small ? "text-[5px] mb-0.5" : "text-[7px] mb-1"} text-gray-600 text-center font-bold uppercase tracking-wide`}
-          >
-            {useSocialistTheme ? "Levy" : "Rent"}
-          </p>
-          <div className="space-y-0.5">
-            {rents.map((rent, i) => (
-              <div
-                key={i}
-                className={`flex justify-between items-center ${small ? "text-[6px]" : "text-[8px]"} px-1`}
-              >
-                <span className="text-gray-700 font-semibold">
-                  {i + 1}
-                  {i + 1 === setSize ? " ★" : ""}
-                </span>
-                <span className="font-black text-gray-900">${rent}M</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <PropertyBanner
+        color={color}
+        value={card.value}
+        name={name}
+        fontScale={fontScale}
+      />
+      <PropertyBody
+        color={color}
+        rents={rents}
+        setSize={setSize}
+        fontScale={fontScale}
+        useSocialistTheme={useSocialistTheme}
+      />
     </>
   );
 }
 
+/** 2-color wildcard: top + bottom color bands with a "Wild" badge in the middle. */
 function WildcardPropertyContent({
   card,
-  small,
+  fontScale,
   orientation,
   useSocialistTheme = false,
 }: {
   card: Card;
-  small?: boolean;
+  fontScale: number;
   orientation?: "top" | "bottom";
   useSocialistTheme?: boolean;
 }) {
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
+  const isRainbow = isMulti || colors[0] === PropertyColor.Unassigned;
 
-  // For two-color wildcards, show as top/bottom split like the real card
-  const bannerStyle: React.CSSProperties = isMulti
-    ? {
-        background: `conic-gradient(${Object.values(PROPERTY_COLOR_HEX)
-          .map(
-            (c, i, arr) =>
-              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`,
-          )
-          .join(", ")})`,
-      }
-    : colors.length === 2
-      ? {
-          background: `linear-gradient(to bottom, ${PROPERTY_COLOR_HEX[colors[0]]} 50%, ${PROPERTY_COLOR_HEX[colors[1]]} 50%)`,
-        }
-      : { backgroundColor: "#888" };
-
-  return (
-    <>
-      <ValueBadge value={card.value} color="#555" small={small} />
-
-      {/* Color banner - for two-color, this is the full card background */}
-      {colors.length === 2 ? (
-        <div className="flex-1 w-full relative" style={bannerStyle}>
-          {/* Top color label */}
-          <div className="absolute top-2 left-0 right-0 flex justify-center">
-            <div className="bg-white/90 px-2 py-0.5 rounded shadow">
-              <p
-                className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{
-                  color: PROPERTY_COLOR_HEX[colors[0]],
-                  transform:
-                    orientation === "bottom" ? "rotate(180deg)" : undefined,
-                }}
-              >
-                {getPropertyColorLabel(
-                  colors[0],
-                  useSocialistTheme,
-                ).toUpperCase()}
-              </p>
-            </div>
+  if (isRainbow) {
+    // Rainbow / property wildcard: 9-stripe band top + bottom.
+    const stripes: PropertyColor[] = [
+      PropertyColor.Brown,
+      PropertyColor.LightBlue,
+      PropertyColor.Pink,
+      PropertyColor.Orange,
+      PropertyColor.Red,
+      PropertyColor.Yellow,
+      PropertyColor.Green,
+      PropertyColor.DarkBlue,
+      PropertyColor.Railroad,
+    ];
+    const stripeBand = (reverse = false) => (
+      <div
+        style={{
+          display: "flex",
+          height: 12 * fontScale,
+          boxShadow: reverse
+            ? "inset 0 1px 0 rgba(0,0,0,0.25)"
+            : "inset 0 -1px 0 rgba(0,0,0,0.25)",
+        }}
+      >
+        {(reverse ? [...stripes].reverse() : stripes).map((c, i) => (
+          <div
+            key={i}
+            style={{ flex: 1, background: PROPERTY_COLOR_VAR[c] }}
+          />
+        ))}
+      </div>
+    );
+    return (
+      <>
+        {stripeBand(false)}
+        <div
+          className="paper-grain"
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 6 * fontScale,
+            textAlign: "center",
+            background: "var(--card-paper)",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 11 * fontScale,
+              fontWeight: 800,
+              letterSpacing: "0.03em",
+              lineHeight: 1.05,
+              color: "var(--card-ink)",
+            }}
+          >
+            PROPERTY
+            <br />
+            WILDCARD
           </div>
-
-          {/* Center wildcard indicator */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div
-              className={`${small ? "w-10 h-10" : "w-14 h-14"} rounded-full bg-white border-4 border-gray-300 flex items-center justify-center shadow-lg`}
-            >
-              <p
-                className={`font-black text-gray-700 ${small ? "text-[6px]" : "text-[8px]"} uppercase`}
-              >
-                WILD
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom color label */}
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-            <div className="bg-white/90 px-2 py-0.5 rounded shadow">
-              <p
-                className={`font-black text-center ${small ? "text-[6px]" : "text-[8px]"}`}
-                style={{
-                  color: PROPERTY_COLOR_HEX[colors[1]],
-                  transform:
-                    orientation === "bottom" ? "rotate(180deg)" : undefined,
-                }}
-              >
-                {getPropertyColorLabel(
-                  colors[1],
-                  useSocialistTheme,
-                ).toUpperCase()}
-              </p>
-            </div>
+          <div
+            style={{
+              marginTop: 5,
+              fontSize: 7.5 * fontScale,
+              letterSpacing: "0.18em",
+              color: "var(--card-ink-soft)",
+              textTransform: "uppercase",
+            }}
+          >
+            Any Color
           </div>
         </div>
-      ) : (
-        <>
-          <div
-            className={`${small ? "h-9" : "h-12"} w-full border-b-2 border-gray-300`}
-            style={bannerStyle}
-          />
-          <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
-            <div
-              className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-lg border-gray-300 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center shadow-md`}
-            >
-              <p
-                className={`font-black text-center text-gray-700 ${small ? "text-[5px]" : "text-[8px]"} uppercase leading-tight px-1`}
-              >
-                Property Wild Card
-              </p>
-            </div>
-            {isMulti && (
-              <p
-                className={`${small ? "text-[6px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
-              >
-                Any Color
-              </p>
-            )}
-          </div>
-        </>
-      )}
+        {stripeBand(true)}
+      </>
+    );
+  }
+
+  // 2-color wildcard
+  const c1 = colors[0] ?? PropertyColor.Brown;
+  const c2 = colors[1] ?? PropertyColor.Brown;
+  const top = orientation === "bottom" ? c2 : c1;
+  const bot = orientation === "bottom" ? c1 : c2;
+  const ColorBand = ({ color, position }: { color: PropertyColor; position: "top" | "bottom" }) => (
+    <div
+      style={{
+        background: PROPERTY_COLOR_VAR[color],
+        color: PROPERTY_BAND_FG[color],
+        padding: `${4 * fontScale}px ${7 * fontScale}px`,
+        fontFamily: "var(--font-display)",
+        fontSize: 9 * fontScale,
+        fontWeight: 700,
+        letterSpacing: "0.05em",
+        textTransform: "uppercase",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow:
+          position === "top"
+            ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)"
+            : "inset 0 1px 0 rgba(0,0,0,0.18), inset 0 -1px 0 rgba(255,255,255,0.18)",
+      }}
+    >
+      <span
+        style={{
+          background: "rgba(0,0,0,0.3)",
+          padding: "0 4px",
+          borderRadius: 3,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        ${card.value}M
+      </span>
+      <span>
+        {getPropertyColorLabel(color, useSocialistTheme).toUpperCase()}
+      </span>
+    </div>
+  );
+  return (
+    <>
+      <ColorBand color={top} position="top" />
+      <div
+        className="paper-grain"
+        style={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--card-paper)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 13 * fontScale,
+            fontWeight: 800,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: "var(--card-ink)",
+            textAlign: "center",
+            lineHeight: 1.05,
+          }}
+        >
+          Wild
+          <br />
+          <span
+            style={{
+              fontSize: 7.5 * fontScale,
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              color: "var(--card-ink-soft)",
+            }}
+          >
+            2-color
+          </span>
+        </div>
+      </div>
+      <ColorBand color={bot} position="bottom" />
     </>
   );
 }
 
-function getMoneyCardColors(value: number): {
-  bg: string;
-  border: string;
-  text: string;
-} {
-  switch (value) {
-    case 1:
-      return { bg: "#F59E0B", border: "#D97706", text: "#92400E" }; // Yellow
-    case 2:
-      return { bg: "#FB923C", border: "#F97316", text: "#7C2D12" }; // Salmon
-    case 3:
-      return { bg: "#BEF264", border: "#A3E635", text: "#365314" }; // Faded yellow/green
-    case 4:
-      return { bg: "#7DD3FC", border: "#38BDF8", text: "#0C4A6E" }; // Light blue
-    case 5:
-      return { bg: "#C084FC", border: "#A855F7", text: "#581C87" }; // Purple
-    case 10:
-      return { bg: "#FBBF24", border: "#F59E0B", text: "#78350F" }; // Yellow-orange
-    default:
-      return { bg: "#10B981", border: "#059669", text: "#064E3B" };
-  }
-}
-
-function MoneyCardContent({ card, small }: { card: Card; small?: boolean }) {
-  const colors = getMoneyCardColors(card.value);
-
+/** Money card. */
+function MoneyCardContent({
+  card,
+  fontScale,
+}: {
+  card: Card;
+  fontScale: number;
+}) {
+  const bg = MONEY_BG_VAR[card.value] ?? MONEY_BG_VAR[1];
   return (
     <div
-      className="flex-1 flex flex-col items-center justify-center w-full h-full rounded-b-lg border-t-4"
+      className="paper-grain"
       style={{
-        background: `linear-gradient(to bottom right, ${colors.bg}, ${colors.border})`,
-        borderTopColor: colors.border,
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: `linear-gradient(160deg, ${bg} 0%, color-mix(in oklab, ${bg} 80%, #000) 100%)`,
+        color: "#fff",
       }}
     >
       <div
-        className={`${small ? "w-12 h-12" : "w-16 h-16"} bg-white rounded-full flex items-center justify-center shadow-lg border-2`}
-        style={{ borderColor: colors.border }}
-      >
-        <p
-          className={`font-black ${small ? "text-sm" : "text-xl"}`}
-          style={{ color: colors.text }}
-        >
-          ${card.value}M
-        </p>
-      </div>
-      <p
-        className={`${small ? "text-[6px] mt-1" : "text-[8px] mt-2"} text-white font-bold uppercase tracking-wider drop-shadow`}
+        style={{
+          padding: `${5 * fontScale}px ${8 * fontScale}px`,
+          fontFamily: "var(--font-display)",
+          fontSize: 9.5 * fontScale,
+          fontWeight: 700,
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          borderBottom: "1px solid rgba(0,0,0,0.28)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22)",
+          textShadow: "0 1px 0 rgba(0,0,0,0.2)",
+        }}
       >
         Money
-      </p>
+      </div>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 28 * fontScale,
+            fontWeight: 800,
+            lineHeight: 1,
+            letterSpacing: "-0.02em",
+            textShadow: "0 2px 0 rgba(0,0,0,0.25)",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          ${card.value}M
+        </div>
+      </div>
     </div>
   );
 }
 
+/** Action card (Sly Deal, Pass Go, etc.). */
 function ActionCardContent({
   card,
-  small,
+  fontScale,
   useSocialistTheme = false,
 }: {
   card: Card;
-  small?: boolean;
+  fontScale: number;
   useSocialistTheme?: boolean;
 }) {
-  const color = ACTION_COLORS[card.type] ?? "#6B7280";
+  const accent = ACTION_ACCENT[card.type] ?? "#e8c878";
   const subtitle = getActionSubtitle(card.type, useSocialistTheme);
-
+  const title = getCardTypeLabel(card.type, useSocialistTheme);
   return (
-    <>
-      <ValueBadge value={card.value} color={color} small={small} />
-
-      {/* Colored top banner */}
+    <div
+      className="paper-grain"
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--card-paper)",
+      }}
+    >
       <div
-        className={`${small ? "h-3" : "h-4"} w-full border-b-2 border-gray-300`}
-        style={{ backgroundColor: color }}
-      />
-
-      {/* Card content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
+        style={{
+          background: "linear-gradient(180deg, #2a2a2a 0%, #141414 100%)",
+          color: accent,
+          padding: `${5 * fontScale}px ${8 * fontScale}px ${4 * fontScale}px`,
+          fontFamily: "var(--font-display)",
+          fontSize: 9.5 * fontScale,
+          fontWeight: 700,
+          letterSpacing: "0.18em",
+          textTransform: "uppercase",
+          textAlign: "center",
+          borderBottom: `2px solid ${accent}`,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+        }}
+      >
+        Action
+      </div>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: `${4 * fontScale}px ${6 * fontScale}px`,
+          textAlign: "center",
+          gap: 4,
+        }}
+      >
         <div
-          className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-full flex items-center justify-center shadow-md bg-white`}
-          style={{ borderColor: color }}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 12 * fontScale,
+            fontWeight: 700,
+            lineHeight: 1.05,
+            letterSpacing: "-0.01em",
+            color: "var(--card-ink)",
+          }}
         >
-          <p
-            className={`font-black text-center leading-tight ${small ? "text-[5px]" : "text-[8px]"} uppercase px-1`}
-            style={{ color }}
-          >
-            {getCardTypeLabel(card.type, useSocialistTheme)}
-          </p>
+          {title}
         </div>
         {subtitle && (
-          <p
-            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 8 * fontScale,
+              color: "var(--card-ink-soft)",
+              lineHeight: 1.2,
+            }}
           >
             {subtitle}
-          </p>
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
+/** Rent card (dual-color or wild). */
 function RentCardContent({
   card,
-  small,
+  fontScale,
   useSocialistTheme = false,
 }: {
   card: Card;
-  small?: boolean;
+  fontScale: number;
   useSocialistTheme?: boolean;
 }) {
   const isWild = card.type === CardType.RentWild;
   const colors = card.colors ?? [];
-
-  const circleStyle: React.CSSProperties = isWild
-    ? {
-        background: `conic-gradient(${Object.values(PROPERTY_COLOR_HEX)
-          .map(
-            (c, i, arr) =>
-              `${c} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`,
-          )
-          .join(", ")})`,
-      }
-    : colors.length === 2
-      ? {
-          background: `linear-gradient(135deg, ${PROPERTY_COLOR_HEX[colors[0]]} 50%, ${PROPERTY_COLOR_HEX[colors[1]]} 50%)`,
-        }
-      : { backgroundColor: "#7C3AED" };
-
+  const c1 = colors[0];
+  const c2 = colors[1];
+  const subtitle = isWild
+    ? "Any color"
+    : c1 && c2
+      ? `${getPropertyColorLabel(c1, useSocialistTheme)} / ${getPropertyColorLabel(c2, useSocialistTheme)}`
+      : null;
+  // Use the dual-color stripe across the top as visual signal.
+  const stripeBg = isWild
+    ? `conic-gradient(${[
+        PropertyColor.Brown,
+        PropertyColor.LightBlue,
+        PropertyColor.Pink,
+        PropertyColor.Orange,
+        PropertyColor.Red,
+        PropertyColor.Yellow,
+        PropertyColor.Green,
+        PropertyColor.DarkBlue,
+        PropertyColor.Railroad,
+      ]
+        .map((c, i, arr) => {
+          const v = PROPERTY_COLOR_VAR[c];
+          return `${v} ${(i / arr.length) * 360}deg ${((i + 1) / arr.length) * 360}deg`;
+        })
+        .join(", ")})`
+    : c1 && c2
+      ? `linear-gradient(135deg, ${PROPERTY_COLOR_VAR[c1]} 50%, ${PROPERTY_COLOR_VAR[c2]} 50%)`
+      : "var(--p-railroad)";
   return (
-    <>
-      <ValueBadge value={card.value} color="#555" small={small} />
-
-      {/* Top banner */}
+    <div
+      className="paper-grain"
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--card-paper)",
+      }}
+    >
       <div
-        className={`${small ? "h-3" : "h-4"} w-full bg-gradient-to-b from-gray-700 to-gray-800 border-b-2 border-gray-300`}
+        style={{
+          height: 18 * fontScale,
+          background: stripeBg,
+          borderBottom: "1px solid rgba(0,0,0,0.25)",
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)",
+        }}
       />
-
-      {/* Card content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-2 bg-white">
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: `${4 * fontScale}px ${6 * fontScale}px`,
+          textAlign: "center",
+          gap: 4,
+        }}
+      >
         <div
-          className={`${small ? "w-10 h-10 border-2" : "w-16 h-16 border-4"} rounded-full flex items-center justify-center border-white shadow-lg`}
-          style={circleStyle}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: 14 * fontScale,
+            fontWeight: 800,
+            letterSpacing: "0.06em",
+            color: "var(--card-ink)",
+          }}
         >
-          <p
-            className={`font-black text-white text-center ${small ? "text-[6px]" : "text-sm"} drop-shadow-md`}
-          >
-            {useSocialistTheme ? "LEVY" : "RENT"}
-          </p>
+          {useSocialistTheme ? "LEVY" : "RENT"}
         </div>
-        {!isWild && colors.length === 2 && (
-          <p
-            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
+        {subtitle && (
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 8 * fontScale,
+              color: "var(--card-ink-soft)",
+              lineHeight: 1.2,
+            }}
           >
-            {getPropertyColorLabel(colors[0], useSocialistTheme)} /{" "}
-            {getPropertyColorLabel(colors[1], useSocialistTheme)}
-          </p>
-        )}
-        {isWild && (
-          <p
-            className={`${small ? "text-[5px] mt-1" : "text-[8px] mt-1.5"} text-gray-600 text-center font-semibold`}
-          >
-            Any color
-          </p>
+            {subtitle}
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
 function renderCardContent(
   card: Card,
-  small?: boolean,
+  fontScale: number,
   orientation?: "top" | "bottom",
   useSocialistTheme?: boolean,
 ) {
@@ -451,7 +730,7 @@ function renderCardContent(
       return (
         <PropertyCardContent
           card={card}
-          small={small}
+          fontScale={fontScale}
           useSocialistTheme={useSocialistTheme}
         />
       );
@@ -459,19 +738,19 @@ function renderCardContent(
       return (
         <WildcardPropertyContent
           card={card}
-          small={small}
+          fontScale={fontScale}
           orientation={orientation}
           useSocialistTheme={useSocialistTheme}
         />
       );
     case CardType.Money:
-      return <MoneyCardContent card={card} small={small} />;
+      return <MoneyCardContent card={card} fontScale={fontScale} />;
     case CardType.RentDual:
     case CardType.RentWild:
       return (
         <RentCardContent
           card={card}
-          small={small}
+          fontScale={fontScale}
           useSocialistTheme={useSocialistTheme}
         />
       );
@@ -479,98 +758,189 @@ function renderCardContent(
       return (
         <ActionCardContent
           card={card}
-          small={small}
+          fontScale={fontScale}
           useSocialistTheme={useSocialistTheme}
         />
       );
   }
 }
 
+/**
+ * The redesigned playing card. Two-shadow object styling with paper grain.
+ * Supports all card states via the selected/disabled props:
+ *   - rest:     visible depth, no lift
+ *   - hover:    handled by Framer Motion (whileHover)
+ *   - selected: ring + lift
+ *   - disabled: desat + 55% opacity, no lift (legal-move signal)
+ */
 export function GameCard({
   card,
   onClick,
   selected,
-  small,
   disabled,
   orientation,
   disableHover,
   scale = 1,
   useSocialistTheme = false,
+  width = 96,
 }: GameCardProps) {
-  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
-  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
+  const cardWidth = width * scale;
+  const cardHeight = width * 1.5 * scale; // 2:3 aspect ratio
+  // Scale internal type/padding proportional to card width (96 = baseline).
+  const fontScale = Math.max(0.7, Math.min(1.4, width / 96));
+
+  const interactive = !!onClick && !disabled;
+  const baseShadow = "var(--sh-object), var(--sh-inner-edge)";
+  const liftedShadow = "var(--sh-lifted), var(--sh-inner-edge)";
 
   return (
     <motion.div
       whileHover={
-        onClick && !disabled && !disableHover
-          ? { y: -8, scale: 1.05 }
+        interactive && !disableHover
+          ? { y: -8, rotate: 1, transition: { duration: 0.18 } }
           : undefined
       }
-      whileTap={onClick && !disabled ? { scale: 0.95 } : undefined}
+      whileTap={interactive ? { scale: 0.97 } : undefined}
       onClick={disabled ? undefined : onClick}
       style={{
-        transform: `scale(${scale})`,
-        transformOrigin: "center center",
+        width: `${cardWidth}px`,
+        height: `${cardHeight}px`,
       }}
-      className={`
-        ${w} ${h} ${onClick && !disabled ? "cursor-pointer" : ""}
-      `}
+      className={interactive ? "cursor-pointer" : ""}
     >
       <div
         style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: "var(--r-card)",
+          background: "var(--card-paper)",
+          color: "var(--card-ink)",
+          fontFamily: "var(--font-ui)",
+          position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
           transform: orientation === "bottom" ? "rotate(180deg)" : undefined,
           transformOrigin: "center center",
+          boxShadow: selected
+            ? `0 0 0 3px var(--accent, #f0c14a), ${liftedShadow}`
+            : baseShadow,
+          filter: disabled
+            ? "grayscale(1) brightness(0.55) contrast(0.92)"
+            : undefined,
+          transition:
+            "transform var(--d-base) var(--ease-out-soft), box-shadow var(--d-base) var(--ease-out-soft), filter var(--d-base) var(--ease-out-soft)",
         }}
-        className={`
-          w-full h-full rounded-lg shadow-lg flex flex-col overflow-hidden border border-gray-300 relative bg-[#FFFEF5]
-          ${selected ? "ring-4 ring-yellow-400 ring-offset-2 ring-offset-transparent" : ""}
-          ${disabled ? "opacity-50" : ""}
-          select-none shrink-0
-        `}
+        className="select-none shrink-0"
       >
-        {renderCardContent(card, small, orientation, useSocialistTheme)}
+        {renderCardContent(card, fontScale, orientation, useSocialistTheme)}
       </div>
     </motion.div>
   );
 }
 
+/**
+ * Co-Opoly Deal card back. Two-shadow object with diagonal pattern + branding.
+ */
 export function CardBack({
-  small,
+  scale = 1,
   useSocialistTheme = false,
+  width = 96,
 }: {
-  small?: boolean;
+  scale?: number;
   useSocialistTheme?: boolean;
+  width?: number;
 }) {
-  const w = small ? "w-16 sm:w-24" : "w-24 sm:w-32";
-  const h = small ? "h-24 sm:h-36" : "h-36 sm:h-48";
+  const cardWidth = width * scale;
+  const cardHeight = width * 1.5 * scale;
+  const fontScale = Math.max(0.7, Math.min(1.4, width / 96));
 
   return (
     <div
-      className={`${w} ${h} rounded-lg shadow-lg bg-gradient-to-br from-red-700 to-red-900 flex items-center justify-center border-2 border-red-600 select-none shrink-0`}
+      style={{
+        width: `${cardWidth}px`,
+        height: `${cardHeight}px`,
+        borderRadius: "var(--r-card)",
+        background:
+          "linear-gradient(160deg, var(--card-back-1) 0%, var(--card-back-2) 100%)",
+        color: "#f8e8c4",
+        position: "relative",
+        boxShadow: "var(--sh-object), var(--sh-inner-edge)",
+      }}
+      className="select-none shrink-0"
     >
-      <div className="w-[80%] h-[80%] rounded border-2 border-red-400/30 flex flex-col items-center justify-center gap-2">
+      <div
+        style={{
+          position: "absolute",
+          inset: 6,
+          borderRadius: 5,
+          border: "1px solid rgba(255, 220, 180, 0.18)",
+          boxShadow: "inset 0 0 0 3px rgba(0,0,0,0.18)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundImage:
+            "repeating-linear-gradient(45deg, transparent 0 6px, rgba(0,0,0,0.06) 6px 7px), repeating-linear-gradient(-45deg, transparent 0 6px, rgba(255,255,255,0.04) 6px 7px)",
+        }}
+      >
         {useSocialistTheme ? (
-          <>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
             <svg
-              className={`${small ? "w-6 h-6" : "w-10 h-10"} text-yellow-500/80`}
+              style={{
+                width: 32 * fontScale,
+                height: 32 * fontScale,
+                color: "rgba(248,232,196,0.7)",
+              }}
               viewBox="0 0 24 24"
               fill="currentColor"
             >
               <path d="M12.5,2.5 L14,5 L17,5 L15.5,7.5 L17,10 L14,10 L12.5,12.5 L11,10 L8,10 L9.5,7.5 L8,5 L11,5 L12.5,2.5 Z M6,14 C6,17.31 8.69,20 12,20 C15.31,20 18,17.31 18,14 L16,14 C16,16.21 14.21,18 12,18 C9.79,18 8,16.21 8,14 L6,14 Z M10,14 L14,14 L12,17 L10,14 Z" />
             </svg>
             <span
-              className={`font-black text-yellow-500/80 ${small ? "text-[5px]" : "text-[7px]"} tracking-widest`}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: 7 * fontScale,
+                letterSpacing: "0.3em",
+                color: "rgba(248,232,196,0.8)",
+              }}
             >
               CO-OPOLY
             </span>
-          </>
+          </div>
         ) : (
-          <span
-            className={`font-black text-red-300/50 ${small ? "text-[6px]" : "text-[8px]"}`}
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 11 * fontScale,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: "#f8e8c4",
+              textShadow: "0 1px 0 rgba(0,0,0,0.4)",
+              textAlign: "center",
+              lineHeight: 1.1,
+            }}
           >
-            CO-OPOLY
-          </span>
+            Co-Opoly
+            <br />
+            <span
+              style={{
+                fontSize: 7 * fontScale,
+                letterSpacing: "0.3em",
+                opacity: 0.8,
+              }}
+            >
+              DEAL
+            </span>
+          </div>
         )}
       </div>
     </div>

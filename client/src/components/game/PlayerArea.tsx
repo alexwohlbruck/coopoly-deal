@@ -7,7 +7,7 @@ import { CardType, PropertyColor, isSetComplete } from "../../types/game";
 import { type GameSettings } from "../../types/game";
 import { PropertySetDisplay } from "./PropertySetDisplay";
 import { EmptyPropertyDropZone } from "./EmptyPropertyDropZone";
-import { BankArea } from "./BankArea";
+import { FannedCards } from "../cards/FannedCards";
 
 interface PlayerAreaProps {
   player: ClientPlayer;
@@ -26,7 +26,6 @@ interface PlayerAreaProps {
   onDropToRainbow?: (card: Card) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
   draggingCard?: Card | null;
-  availableHeight?: number;
 }
 
 export function PlayerArea({
@@ -42,7 +41,6 @@ export function PlayerArea({
   onDropToRainbow,
   onWildcardClick,
   draggingCard,
-  availableHeight,
 }: PlayerAreaProps) {
   const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
 
@@ -62,10 +60,9 @@ export function PlayerArea({
       draggingCard.type === CardType.PropertyWildcard);
   const showDropZones = draggingCard && isYou && isCurrentTurn;
   const showEmptyDropZone = isDraggingProperty && isYou && isCurrentTurn;
-  const contentRef = useRef<HTMLDivElement>(null);
+
   const setsContainerRef = useRef<HTMLDivElement>(null);
-  const [contentScale, setContentScale] = useState(1);
-  const [setsLayout, setSetsLayout] = useState<number[]>([]);
+  const [setsLayout, setSetsLayout] = useState<{ rows: number[]; setWidth: number }>({ rows: [], setWidth: 96 });
 
   const handleBankDragOver = (e: React.DragEvent) => {
     if (!isYou || !onDropToBank) return;
@@ -96,38 +93,34 @@ export function PlayerArea({
       return;
     }
 
-    // Validate before allowing drop
     const cardData = e.dataTransfer.getData("cardData");
     if (cardData) {
       try {
         const card = JSON.parse(cardData);
 
-        // Only allow property and wildcard cards
         if (
           card.type !== CardType.Property &&
           card.type !== CardType.PropertyWildcard
         ) {
           e.dataTransfer.dropEffect = "none";
-          return; // Don't allow drop
+          return;
         }
 
-        // Validate color for regular properties
         if (card.type === CardType.Property) {
           const cardColor = card.colors?.[0];
           if (cardColor !== color) {
             e.dataTransfer.dropEffect = "none";
-            return; // Wrong color
+            return;
           }
         }
 
-        // Validate wildcard supports this color
         if (card.type === CardType.PropertyWildcard) {
           if (
             color !== PropertyColor.Unassigned &&
             !card.colors?.includes(color)
           ) {
             e.dataTransfer.dropEffect = "none";
-            return; // Wildcard doesn't support this color
+            return;
           }
         }
       } catch {
@@ -165,19 +158,16 @@ export function PlayerArea({
       try {
         const card = JSON.parse(cardData);
 
-        // Validate card type - only property and wildcard cards can be dropped here
         if (
           card.type !== CardType.Property &&
           card.type !== CardType.PropertyWildcard
         ) {
-          return; // Silently ignore invalid drops
+          return;
         }
 
-        // If dropping a property card onto a set with wildcards, update wildcard colors
         if (card.type === CardType.Property) {
           const cardColor = card.colors?.[0];
 
-          // Check if we're dropping onto a wildcard set (unassigned or different color)
           const targetSet = player.properties.find((s) => s.color === color);
           if (targetSet && cardColor && cardColor !== color) {
             if (color === PropertyColor.Unassigned && onDropToRainbow) {
@@ -185,20 +175,15 @@ export function PlayerArea({
               return;
             }
 
-            // Dropping a property onto a wildcard set - update the set color
-            // Find all wildcards in this set and update them
             const wildcards = targetSet.cards.filter(
               (c) => c.type === CardType.PropertyWildcard,
             );
 
-            // First, play the property card to the correct color
             onDropToProperty(cardId, cardColor);
 
-            // Then, rearrange each wildcard to the new color
             if (onWildcardClick) {
               for (const wildcard of wildcards) {
                 if (wildcard.colors?.includes(cardColor)) {
-                  // Use a timeout to ensure the property is played first
                   setTimeout(() => {
                     onWildcardClick(wildcard, cardColor);
                   }, 100);
@@ -208,25 +193,21 @@ export function PlayerArea({
             return;
           }
 
-          // Normal case - validate color match
           if (cardColor !== color) {
-            return; // Wrong color
+            return;
           }
         }
 
-        // Validate wildcard can be this color
         if (card.type === CardType.PropertyWildcard) {
           if (color === PropertyColor.Unassigned) {
-            // Cannot move a rainbow wildcard to an existing unassigned rainbow slot
             return;
           } else if (!card.colors?.includes(color)) {
-            return; // Wildcard doesn't support this color
+            return;
           }
         }
 
         onDropToProperty(cardId, color);
       } catch {
-        // Invalid card data
         return;
       }
     }
@@ -243,53 +224,68 @@ export function PlayerArea({
         }))
       : [];
 
-  // Calculate dynamic grid layout for property sets (similar to CardHand)
-  // Version: 2026-02-26-v4 - Match FannedCards collapsed width
+  // Calculate responsive layout for property sets
   useEffect(() => {
     if (!setsContainerRef.current || player.properties.length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSetsLayout([]);
+      setSetsLayout({ rows: [], setWidth: 96 });
       return;
     }
 
     const calculateLayout = () => {
       if (!setsContainerRef.current) return;
 
-      const containerWidth = setsContainerRef.current.offsetWidth * 0.98;
+      const containerWidth = setsContainerRef.current.offsetWidth;
       const numSets = player.properties.length;
 
-      // Calculate set width based on FannedCards collapsed size
-      const isMobile = window.innerWidth < 640;
-      const cardWidth = isMobile ? 64 : 96;
-      const collapsedSpread = 8;
+      // Determine target card width based on screen size
+      let targetCardWidth: number;
+      if (containerWidth < 640) {
+        targetCardWidth = 64; // Mobile: smaller cards
+      } else if (containerWidth < 1024) {
+        targetCardWidth = 80; // Tablet
+      } else {
+        targetCardWidth = 96; // Desktop+
+      }
+
+      // Calculate set width (card + collapsed spread for avg 3 cards)
+      const collapsedSpread = targetCardWidth * 0.125;
       const avgCardsPerSet = 3;
-      const SET_WIDTH = cardWidth + (avgCardsPerSet - 1) * collapsedSpread;
-      const GAP = 8;
+      const SET_WIDTH = targetCardWidth + (avgCardsPerSet - 1) * collapsedSpread;
+      const GAP = 6;
 
-      // Calculate how many columns can fit
-      const maxCols = Math.floor((containerWidth + GAP) / (SET_WIDTH + GAP));
+      // Calculate how many sets we can fit per row
+      let maxSetsPerRow: number;
+      if (containerWidth < 640) {
+        maxSetsPerRow = 4; // Mobile minimum
+      } else if (containerWidth < 1024) {
+        maxSetsPerRow = 6;
+      } else if (containerWidth < 1536) {
+        maxSetsPerRow = 8;
+      } else {
+        maxSetsPerRow = 10;
+      }
 
-      // Determine max rows based on number of sets
-      const maxRows = numSets <= 8 ? 2 : 3;
+      // Calculate actual columns based on available space
+      const fittableCols = Math.floor((containerWidth + GAP) / (SET_WIDTH + GAP));
+      const actualCols = Math.min(maxSetsPerRow, Math.max(4, fittableCols));
 
-      // Use maxCols directly, don't limit by even distribution
-      const actualCols = Math.max(4, Math.min(maxCols, numSets));
-
-      // Calculate row distribution - fill rows from left to right
+      // Distribute sets across rows (prefer 1-2 rows)
+      const MAX_ROWS = 3;
       const rows: number[] = [];
-      let remaining = numSets;
-      while (remaining > 0 && rows.length < maxRows) {
-        const inThisRow = Math.min(actualCols, remaining);
-        rows.push(inThisRow);
-        remaining -= inThisRow;
+      
+      if (numSets <= actualCols) {
+        rows.push(numSets);
+      } else {
+        const numRows = Math.min(MAX_ROWS, Math.ceil(numSets / actualCols));
+        const basePerRow = Math.floor(numSets / numRows);
+        const remainder = numSets % numRows;
+        
+        for (let i = 0; i < numRows; i++) {
+          rows.push(basePerRow + (i < remainder ? 1 : 0));
+        }
       }
 
-      // If we still have remaining items, add them to the last row
-      if (remaining > 0 && rows.length > 0) {
-        rows[rows.length - 1] += remaining;
-      }
-
-      setSetsLayout(rows);
+      setSetsLayout({ rows, setWidth: targetCardWidth });
     };
 
     calculateLayout();
@@ -297,55 +293,19 @@ export function PlayerArea({
     return () => window.removeEventListener("resize", calculateLayout);
   }, [player.properties.length]);
 
-  // Scale content to fit within available height
-  useEffect(() => {
-    if (!contentRef.current || !availableHeight) return;
-
-    const updateScale = () => {
-      const contentHeight = contentRef.current!.scrollHeight;
-      const maxHeight = availableHeight * 0.95;
-
-      if (contentHeight > maxHeight) {
-        const newScale = maxHeight / contentHeight;
-        setContentScale(Math.max(0.4, newScale));
-      } else {
-        setContentScale(1);
-      }
-    };
-
-    updateScale();
-    const resizeObserver = new ResizeObserver(updateScale);
-    resizeObserver.observe(contentRef.current);
-
-    return () => resizeObserver.disconnect();
-  }, [
-    availableHeight,
-    player.properties.length,
-    bankCards.length,
-    handBackCards.length,
-  ]);
-
   return (
     <motion.div
       animate={isCurrentTurn ? { scale: 1.02 } : { scale: 1 }}
       style={{
-        maxHeight: availableHeight ? `${availableHeight * 0.95}px` : undefined,
         transformOrigin: "center center",
       }}
       className={`
-        rounded-xl p-3 sm:p-4 relative w-full max-w-4xl mx-auto overflow-hidden flex items-center justify-center
+        rounded-xl p-2 relative w-full max-w-4xl mx-auto
         ${isCurrentTurn ? "bg-white/15 ring-2 ring-yellow-400/60" : "bg-white/5"}
         ${isYou ? "border border-blue-400/40" : "border border-white/10"}
       `}
     >
-      <div
-        ref={contentRef}
-        style={{
-          transform: `scale(${contentScale})`,
-          transformOrigin: "center center",
-        }}
-        className="w-full"
-      >
+      <div className="w-full">
         {/* Waiting indicator */}
         {isWaitingForAction && (
           <motion.div
@@ -362,40 +322,38 @@ export function PlayerArea({
           </motion.div>
         )}
 
-        <div className="flex items-center gap-3 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-base
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm
             ${isCurrentTurn ? "bg-yellow-500" : "bg-emerald-600"}
             ${!player.connected ? "opacity-40" : ""}
           `}
           >
             {player.name[0]?.toUpperCase()}
           </div>
-          <div className="flex-1 min-w-0">
-            <p
-              className={`text-white font-semibold text-base truncate ${!player.connected ? "opacity-40" : ""}`}
+          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+            <span
+              className={`text-white font-semibold text-sm truncate ${!player.connected ? "opacity-40" : ""}`}
             >
               {player.name}
               {isYou && (
-                <span className="text-emerald-400 text-sm ml-1">(you)</span>
+                <span className="text-emerald-400 text-xs ml-1">(you)</span>
               )}
-              <span className="text-emerald-300 text-sm ml-2 font-normal">
-                ${bankTotal}M
-              </span>
-            </p>
-            <div className="flex gap-3 text-xs">
-              <span className="text-yellow-300">{completeSets}/3 sets</span>
-              <span className="text-gray-400">{player.handCount} cards</span>
-            </div>
+            </span>
+            <span className="text-emerald-300 text-xs font-mono">
+              ${bankTotal}M
+            </span>
+            <span className="text-yellow-300 text-xs">{completeSets}/3</span>
+            <span className="text-gray-400 text-xs">{player.handCount} cards</span>
           </div>
         </div>
 
-        {/* Property sets with dynamic grid layout */}
-        <div ref={setsContainerRef} className="w-full mt-2">
-          {player.properties.length > 0 && setsLayout.length > 0 && (
-            <div className="flex flex-col items-center gap-1">
-              {setsLayout.map((setsInRow, rowIndex) => {
-                const startIdx = setsLayout
+        {/* Property sets */}
+        <div ref={setsContainerRef} className="w-full">
+          {player.properties.length > 0 && setsLayout.rows.length > 0 && (
+            <div className="flex flex-col items-center gap-1.5">
+              {setsLayout.rows.map((setsInRow, rowIndex) => {
+                const startIdx = setsLayout.rows
                   .slice(0, rowIndex)
                   .reduce((sum, count) => sum + count, 0);
                 const endIdx = startIdx + setsInRow;
@@ -439,6 +397,7 @@ export function PlayerArea({
                           }
                         }}
                         useSocialistTheme={settings?.useSocialistTheme}
+                        cardWidth={setsLayout.setWidth}
                       />
                     ))}
                   </div>
@@ -447,7 +406,7 @@ export function PlayerArea({
             </div>
           )}
 
-          {/* Empty drop zone for new property sets (only when dragging property) */}
+          {/* Empty drop zone - only show when dragging property */}
           {showEmptyDropZone && onDropToProperty && (
             <EmptyPropertyDropZone
               onDrop={onDropToProperty}
@@ -458,25 +417,62 @@ export function PlayerArea({
           )}
         </div>
 
-        {/* Empty placeholder to maintain alignment when no properties */}
-        {player.properties.length === 0 && (
-          <div className="w-full mt-2 h-[120px]" />
-        )}
+        {/* Bank + hand - smaller stacks, only show when dragging or has cards */}
+        {(bankCards.length > 0 || (!isYou && handBackCards.length > 0) || showDropZones) && (
+          <div className="flex items-start justify-center gap-1.5 mt-1.5">
+            {/* Bank */}
+            {(bankCards.length > 0 || (showDropZones && isYou && onDropToBank)) && (
+              <div
+                className={`flex items-center relative transition-all ${
+                  isDragOverBank
+                    ? "ring-4 ring-blue-400 bg-blue-400/10 rounded-lg p-1"
+                    : showDropZones
+                      ? "ring-2 ring-blue-400/50 ring-dashed rounded-lg p-0.5"
+                      : ""
+                }`}
+                onDragOver={onDropToBank ? handleBankDragOver : undefined}
+                onDragLeave={onDropToBank ? handleBankDragLeave : undefined}
+                onDrop={onDropToBank ? handleBankDrop : undefined}
+              >
+                {bankCards.length > 0 ? (
+                  <FannedCards
+                    cards={[...bankCards].sort((a, b) => a.value - b.value)}
+                    cardWidth={64} // Bank cards - readable but not dominant
+                    maxVisible={10}
+                    useSocialistTheme={settings?.useSocialistTheme}
+                  />
+                ) : (
+                  <div
+                    className={`w-16 h-24 border-2 border-dashed rounded flex items-center justify-center transition-colors ${
+                      showDropZones
+                        ? "border-blue-400 bg-blue-400/10"
+                        : "border-gray-600"
+                    }`}
+                  >
+                    <span
+                      className={`text-xs ${showDropZones ? "text-blue-300" : "text-gray-500"}`}
+                    >
+                      Bank
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
-        {/* Combined bank + hand cards with fanned display - side by side */}
-        <BankArea
-          bankCards={bankCards}
-          handBackCards={handCards.length > 0 ? handCards : handBackCards}
-          showHandBacks={handCards.length === 0}
-          isYou={isYou}
-          showDropZones={!!showDropZones}
-          isDragOverBank={isDragOverBank}
-          onDropToBank={onDropToBank}
-          onBankDragOver={handleBankDragOver}
-          onBankDragLeave={handleBankDragLeave}
-          onBankDrop={handleBankDrop}
-          useSocialistTheme={settings?.useSocialistTheme}
-        />
+            {/* Hand preview for other players only */}
+            {!isYou && handBackCards.length > 0 && (
+              <div className="flex items-center">
+                <FannedCards
+                  cards={handBackCards}
+                  cardWidth={64} // Hand preview - same size as bank
+                  showBacks={handCards.length === 0}
+                  maxVisible={10}
+                  useSocialistTheme={settings?.useSocialistTheme}
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </motion.div>
   );

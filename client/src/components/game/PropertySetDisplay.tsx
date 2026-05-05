@@ -2,13 +2,11 @@ import {
   CardType,
   PropertyColor,
   PROPERTY_COLOR_HEX,
-  isSetComplete,
   SET_SIZE,
-  calculateRent,
-  getPropertyColorLabel,
+  isSetComplete,
 } from "../../types/game";
 import type { PropertySet, Card } from "../../types/game";
-import { FannedCards } from "../cards/FannedCards";
+import { GameCard } from "../cards/GameCard";
 
 interface PropertySetDisplayProps {
   set: PropertySet;
@@ -22,8 +20,16 @@ interface PropertySetDisplayProps {
   onDragStart?: (e: React.DragEvent, card: Card) => void;
   onDragEnd?: () => void;
   useSocialistTheme?: boolean;
+  cardWidth?: number;
+  /** Drop-target visual cue: 'valid' = green ring, 'invalid' = red ring. */
+  dropTarget?: "valid" | "invalid" | null;
 }
 
+/**
+ * A stacked "house" of property cards in one color, mirroring the design's
+ * skeuomorphic stack: cards overlap so each card's color banner peeks out
+ * from underneath the one above it. Progress badge sits on top.
+ */
 export function PropertySetDisplay({
   set,
   onWildcardClick,
@@ -36,17 +42,32 @@ export function PropertySetDisplay({
   onDragStart,
   onDragEnd,
   useSocialistTheme = false,
+  cardWidth = 88,
+  dropTarget = null,
 }: PropertySetDisplayProps) {
-  const complete = isSetComplete(set);
-  const color = PROPERTY_COLOR_HEX[set.color];
-
+  const cardW = cardWidth;
+  // Each card's banner row peeks ~28px above the one below at full size
+  // (or 22px in compact). Houses/hotels stack on top of the property cards.
+  const compact = cardWidth < 88;
+  const overlap = compact ? 22 : 28;
+  const cardH = Math.round(cardW * 1.5);
   const allCards = [
     ...set.cards,
     ...(set.house ? [set.house] : []),
     ...(set.hotel ? [set.hotel] : []),
   ];
+  const complete = isSetComplete(set);
+  const needed = SET_SIZE[set.color] ?? 3;
+  const bandHex =
+    PROPERTY_COLOR_HEX[set.color] ?? PROPERTY_COLOR_HEX[PropertyColor.Brown];
+  const bandFg =
+    set.color === PropertyColor.Yellow ||
+    set.color === PropertyColor.LightBlue
+      ? "#3a2a08"
+      : "#fff";
 
-  // Determine orientation for dual-color wildcards
+  // Determine orientation for dual-color wildcards (so the banner of the
+  // matching color faces up on the stack).
   const getCardOrientation = (card: Card): "top" | "bottom" | undefined => {
     if (
       card.type !== CardType.PropertyWildcard ||
@@ -55,65 +76,152 @@ export function PropertySetDisplay({
     ) {
       return undefined;
     }
-    // If the set color matches the SECOND color in the array, we want that color on bottom
-    // So we return "bottom" to flip the card
-    // If it matches the FIRST color, we want it on top, so return "top"
     return card.colors[1] === set.color ? "bottom" : "top";
   };
 
-  const rent = calculateRent(set);
+  // Drop ring color
+  const dropRing =
+    dropTarget === "valid"
+      ? "#7adb88"
+      : dropTarget === "invalid"
+        ? "#e26a6a"
+        : isDragOver
+          ? "#7adb88"
+          : null;
+
+  const completeShadow =
+    "inset 0 0 0 1px rgba(212,168,96,0.28), inset 0 1px 0 rgba(255,225,170,0.12), 0 0 0 1px rgba(212,168,96,0.12)";
+  const restShadow = "inset 0 0 0 1px rgba(255,255,255,0.04)";
+  const finalShadow = dropRing
+    ? `0 0 0 2px ${dropRing}, inset 0 0 0 1px rgba(255,255,255,0.05)`
+    : complete
+      ? completeShadow
+      : restShadow;
 
   return (
     <div
-      className={`flex flex-col items-center gap-0.5 shrink-0 relative transition-all ${
-        isDragOver ? "ring-4 ring-green-400 bg-green-400/10 rounded-lg p-1" : ""
-      }`}
       data-property-drop-zone={set.color}
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+        padding: "6px 8px 4px",
+        borderRadius: 10,
+        background: complete ? "rgba(0,0,0,0.16)" : "rgba(0,0,0,0.08)",
+        boxShadow: finalShadow,
+        transition: "box-shadow var(--d-quick) var(--ease-out-soft)",
+      }}
     >
+      {/* progress badge */}
       {set.color !== PropertyColor.Unassigned && (
         <div
-          className={`px-2 py-0.5 rounded text-center flex items-center gap-2 ${complete ? "ring-1 ring-yellow-400" : ""}`}
-          style={{ backgroundColor: color }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "2px 8px",
+            borderRadius: 999,
+            background: complete ? bandHex : "rgba(0,0,0,0.4)",
+            color: complete ? bandFg : "rgba(255,255,255,0.85)",
+            fontFamily: "var(--font-mono)",
+            fontSize: 9.5,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            boxShadow: complete
+              ? "inset 0 1px 0 rgba(255,255,255,0.2)"
+              : "inset 0 0 0 1px rgba(255,255,255,0.06)",
+          }}
         >
-          <p className="text-white font-bold text-[9px] sm:text-[10px]">
-            {getPropertyColorLabel(set.color, useSocialistTheme)}{" "}
-            {set.cards.length}/{SET_SIZE[set.color]}
-          </p>
-          {rent > 0 && (
-            <span className="text-white bg-black/30 px-1 rounded text-[8px] sm:text-[9px] font-mono">
-              ${rent}M
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: 2,
+              background: complete ? "rgba(255,255,255,0.7)" : bandHex,
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ lineHeight: 1 }}>
+            {set.cards.length}/{needed}
+          </span>
+          {complete && (
+            <span
+              style={{
+                marginLeft: 2,
+                fontSize: 8,
+                lineHeight: 1,
+                letterSpacing: "0.1em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <span style={{ fontSize: 9 }}>✓</span>
+              <span>SET</span>
             </span>
           )}
         </div>
       )}
 
-      {/* Use FannedCards for hover expansion with wildcard click support */}
-      <FannedCards
-        cards={allCards}
-        small={true}
-        maxVisible={8}
-        getCardOrientation={getCardOrientation}
-        useSocialistTheme={useSocialistTheme}
-        draggable={
-          isYou && isCurrentTurn
-            ? (card) => card.type === CardType.PropertyWildcard
-            : undefined
-        }
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onCardClick={
-          isYou && isCurrentTurn && onWildcardClick
-            ? (card) => {
-                if (card.type === CardType.PropertyWildcard) {
+      {/* Stack of cards (banner of each peeks out above the next) */}
+      <div
+        style={{
+          position: "relative",
+          width: cardW,
+          height: cardH + Math.max(0, allCards.length - 1) * overlap,
+        }}
+      >
+        {allCards.map((card, i) => {
+          const tilt = (i % 2 === 0 ? -1 : 1) * 0.5;
+          const draggable =
+            isYou && isCurrentTurn && card.type === CardType.PropertyWildcard;
+          return (
+            <div
+              key={card.id ?? i}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: i * overlap,
+                transform: `rotate(${tilt}deg)`,
+                cursor:
+                  isYou && isCurrentTurn && card.type === CardType.PropertyWildcard
+                    ? "pointer"
+                    : "default",
+              }}
+              draggable={draggable}
+              onDragStart={(e) => {
+                if (draggable && onDragStart) onDragStart(e, card);
+              }}
+              onDragEnd={() => {
+                if (draggable && onDragEnd) onDragEnd();
+              }}
+              onClick={() => {
+                if (
+                  isYou &&
+                  isCurrentTurn &&
+                  card.type === CardType.PropertyWildcard &&
+                  onWildcardClick
+                ) {
                   onWildcardClick(card, set.color);
                 }
-              }
-            : undefined
-        }
-      />
+              }}
+            >
+              <GameCard
+                card={card}
+                width={cardW}
+                orientation={getCardOrientation(card)}
+                useSocialistTheme={useSocialistTheme}
+                disableHover
+              />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

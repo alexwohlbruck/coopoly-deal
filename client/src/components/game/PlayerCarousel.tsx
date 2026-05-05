@@ -7,7 +7,6 @@ import { isPlayerWaitingForAction } from "../../types/game";
 interface PlayerCarouselProps {
   gameState: ClientGameState;
   playerId: string;
-  playerAreaHeight?: number;
   draggingCard: Card | null;
   onPlayToBank: (cardId: string) => void;
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
@@ -19,7 +18,6 @@ interface PlayerCarouselProps {
 export function PlayerCarousel({
   gameState,
   playerId,
-  playerAreaHeight,
   draggingCard,
   onPlayToBank,
   onPlayToProperty,
@@ -28,6 +26,7 @@ export function PlayerCarousel({
   playerRefs,
 }: PlayerCarouselProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const verticalScrollRef = useRef<HTMLDivElement>(null);
   const allPlayers = gameState.players;
   const me = gameState.players.find((p) => p.id === playerId);
 
@@ -50,6 +49,43 @@ export function PlayerCarousel({
       });
     }
   }, [gameState.turn?.playerId, allPlayers.length, allPlayers, playerRefs]);
+
+  // Scroll to top when player changes (horizontal scroll)
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const verticalScroll = verticalScrollRef.current;
+    if (!container || !verticalScroll) return;
+
+    let lastCenteredPlayer = -1;
+
+    const checkCenteredPlayer = () => {
+      const containerWidth = container.clientWidth;
+      const scrollLeft = container.scrollLeft;
+      const scrollCenter = scrollLeft + containerWidth / 2;
+      let closestDistance = Infinity;
+      let closestIndex = -1;
+
+      playerRefs.current.forEach((playerEl, index) => {
+        if (!playerEl) return;
+        const elementCenter = playerEl.offsetLeft + playerEl.offsetWidth / 2;
+        const distanceToCenter = Math.abs(elementCenter - scrollCenter);
+        
+        if (distanceToCenter < closestDistance) {
+          closestDistance = distanceToCenter;
+          closestIndex = index;
+        }
+      });
+
+      // If centered player changed, scroll to top
+      if (closestIndex !== -1 && closestIndex !== lastCenteredPlayer) {
+        lastCenteredPlayer = closestIndex;
+        verticalScroll.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    container.addEventListener('scroll', checkCenteredPlayer, { passive: true });
+    return () => container.removeEventListener('scroll', checkCenteredPlayer);
+  }, [playerRefs]);
 
   // Update transforms based on scroll position for circular arc effect
   useEffect(() => {
@@ -114,17 +150,20 @@ export function PlayerCarousel({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 relative overflow-hidden">
-      {/* Scroll container - fixed height */}
-      <div className="flex-1 relative overflow-hidden">
+      {/* Vertical scroll wrapper */}
+      <div ref={verticalScrollRef} className="flex-1 overflow-y-auto">
+        {/* Horizontal scroll container with snap */}
         <div
           ref={scrollContainerRef}
-          className="absolute inset-0 flex gap-3 lg:gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide items-center"
+          className="min-h-full flex gap-3 lg:gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide items-start"
           style={{
             scrollbarWidth: "none",
             msOverflowStyle: "none",
-            overflowY: "hidden",
+            WebkitOverflowScrolling: "touch",
             paddingLeft: "calc(50vw - 140px)",
             paddingRight: "calc(50vw - 140px)",
+            paddingTop: "1rem",
+            paddingBottom: "1rem",
           }}
         >
           {allPlayers.map((player, idx) => {
@@ -137,7 +176,7 @@ export function PlayerCarousel({
                 ref={(el) => {
                   playerRefs.current[idx] = el;
                 }}
-                className="snap-center shrink-0 flex items-center justify-center"
+                className="snap-center shrink-0 flex items-start justify-center"
                 style={{
                   width: "90vw",
                   maxWidth: "900px",
@@ -150,7 +189,6 @@ export function PlayerCarousel({
                   isYou={isMe}
                   settings={gameState.settings}
                   isWaitingForAction={isWaiting}
-                  availableHeight={playerAreaHeight}
                   draggingCard={draggingCard}
                   onDropToBank={
                     isMe

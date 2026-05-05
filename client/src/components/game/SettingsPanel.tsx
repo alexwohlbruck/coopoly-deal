@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useI18n, type Locale } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
-import type { ThemeName } from "../../theme/colors";
+import { THEME_IDS, themes, type ThemeName } from "../../theme/colors";
 import { BottomSheet } from "../common/BottomSheet";
 
 interface SettingsPanelProps {
@@ -63,53 +63,25 @@ export function SettingsPanel({
             {t.settings.theme}
           </label>
           <div className="grid grid-cols-5 gap-2">
-            {(
-              [
-                "classic",
-                "ocean",
-                "sunset",
-                "forest",
-                "midnight",
-                "ruby",
-                "arctic",
-                "desert",
-                "neon",
-                "royal",
-              ] as ThemeName[]
-            ).map((themeName) => (
-              <button
-                key={themeName}
-                onClick={() => setTheme(themeName)}
-                className={`h-10 rounded-lg border-2 transition-all ${
-                  theme === themeName
-                    ? "border-white scale-105"
-                    : "border-transparent hover:border-white/30"
-                }`}
-                style={{
-                  background:
-                    themeName === "classic"
-                      ? "#059669"
-                      : themeName === "ocean"
-                        ? "linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)"
-                        : themeName === "sunset"
-                          ? "linear-gradient(135deg, #f97316 0%, #fb923c 100%)"
-                          : themeName === "forest"
-                            ? "linear-gradient(135deg, #15803d 0%, #16a34a 100%)"
-                            : themeName === "midnight"
-                              ? "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)"
-                              : themeName === "ruby"
-                                ? "linear-gradient(135deg, #be123c 0%, #e11d48 100%)"
-                                : themeName === "arctic"
-                                  ? "linear-gradient(135deg, #0e7490 0%, #06b6d4 100%)"
-                                  : themeName === "desert"
-                                    ? "linear-gradient(135deg, #a16207 0%, #ca8a04 100%)"
-                                    : themeName === "neon"
-                                      ? "linear-gradient(135deg, #7c3aed 0%, #a855f7 100%)"
-                                      : "linear-gradient(135deg, #4338ca 0%, #6366f1 100%)",
-                }}
-                title={themeName.charAt(0).toUpperCase() + themeName.slice(1)}
-              />
-            ))}
+            {THEME_IDS.map((themeName: ThemeName) => {
+              const t = themes[themeName];
+              return (
+                <button
+                  key={themeName}
+                  onClick={() => setTheme(themeName)}
+                  className={`h-10 rounded-lg border-2 transition-all ${
+                    theme === themeName
+                      ? "border-white scale-105"
+                      : "border-transparent hover:border-white/30"
+                  }`}
+                  style={{
+                    background: `radial-gradient(120% 90% at 50% 30%, ${t.felt} 0%, ${t.felt2} 100%)`,
+                    boxShadow: `inset 0 0 0 1px ${t.accent}33`,
+                  }}
+                  title={t.name}
+                />
+              );
+            })}
           </div>
         </div>
 

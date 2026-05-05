@@ -50,7 +50,7 @@ export const useGameStore = create<GameStore>()(
         streak: 0,
         gamesPlayed: 0,
       },
-      theme: "classic",
+      theme: "emerald",
       preferredSettings: DEFAULT_GAME_SETTINGS,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),

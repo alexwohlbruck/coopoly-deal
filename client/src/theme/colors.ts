@@ -1,119 +1,149 @@
-export interface ThemeColors {
-  primary: string;
-  primaryHover: string;
-  secondary: string;
-  secondaryHover: string;
-  danger: string;
-  dangerHover: string;
-  tableBackground: string;
-  cardBackground: string;
+/**
+ * Felt themes — each theme is a 3-token surface (felt + frame + accent).
+ * The .felt-{id} class on a root element cascades these as CSS variables
+ * (see index.css). Components consume them via var(--felt), var(--accent),
+ * etc.; or read this object directly for non-CSS use.
+ */
+
+export interface FeltTheme {
+  /** Stable id, also the suffix for the .felt-{id} CSS class. */
+  id: ThemeName;
+  /** Display name. */
+  name: string;
+  /** ClassName to apply to the root element (e.g. "felt-emerald"). */
+  feltClass: `felt-${string}`;
+  /** Top-of-table felt color (radial-gradient inner). */
+  felt: string;
+  /** Vignette/edge felt color (radial-gradient outer). */
+  felt2: string;
+  /** Inner leather/wood frame color. */
+  frame: string;
+  /** Frame shadow color. */
+  frame2: string;
+  /** Accent color — turn ring, primary button, complete-set glow. */
+  accent: string;
 }
 
 export const themes = {
-  classic: {
-    primary: "bg-blue-600",
-    primaryHover: "hover:bg-blue-500",
-    secondary: "bg-purple-600",
-    secondaryHover: "hover:bg-purple-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-950",
-    cardBackground: "bg-emerald-700",
+  emerald: {
+    id: "emerald",
+    name: "Emerald",
+    feltClass: "felt-emerald",
+    felt: "#1c4634",
+    felt2: "#0e2a1f",
+    frame: "#2a1810",
+    frame2: "#1a0e08",
+    accent: "#f0c14a",
   },
-  ocean: {
-    primary: "bg-cyan-600",
-    primaryHover: "hover:bg-cyan-500",
-    secondary: "bg-indigo-600",
-    secondaryHover: "hover:bg-indigo-500",
-    danger: "bg-rose-600",
-    dangerHover: "hover:bg-rose-500",
-    tableBackground: "bg-gradient-to-br from-blue-950 via-cyan-900 to-blue-950",
-    cardBackground: "bg-cyan-700",
+  teal: {
+    id: "teal",
+    name: "Teal",
+    feltClass: "felt-teal",
+    felt: "#0e5a6e",
+    felt2: "#042830",
+    frame: "#1a0f0a",
+    frame2: "#0c0805",
+    accent: "#5ee0d8",
   },
-  sunset: {
-    primary: "bg-orange-600",
-    primaryHover: "hover:bg-orange-500",
-    secondary: "bg-pink-600",
-    secondaryHover: "hover:bg-pink-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-purple-950 via-pink-900 to-orange-950",
-    cardBackground: "bg-orange-700",
-  },
-  forest: {
-    primary: "bg-emerald-600",
-    primaryHover: "hover:bg-emerald-500",
-    secondary: "bg-teal-600",
-    secondaryHover: "hover:bg-teal-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-emerald-950 via-green-900 to-emerald-950",
-    cardBackground: "bg-emerald-700",
+  burgundy: {
+    id: "burgundy",
+    name: "Burgundy",
+    feltClass: "felt-burgundy",
+    felt: "#6a1e2a",
+    felt2: "#320d12",
+    frame: "#1a0a05",
+    frame2: "#0a0402",
+    accent: "#ffb070",
   },
   midnight: {
-    primary: "bg-indigo-600",
-    primaryHover: "hover:bg-indigo-500",
-    secondary: "bg-violet-600",
-    secondaryHover: "hover:bg-violet-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950",
-    cardBackground: "bg-indigo-800",
+    id: "midnight",
+    name: "Midnight",
+    feltClass: "felt-midnight",
+    felt: "#1a2c5a",
+    felt2: "#0a1530",
+    frame: "#14100a",
+    frame2: "#08060a",
+    accent: "#ffc14a",
   },
-  ruby: {
-    primary: "bg-rose-700",
-    primaryHover: "hover:bg-rose-600",
-    secondary: "bg-amber-600",
-    secondaryHover: "hover:bg-amber-500",
-    danger: "bg-red-700",
-    dangerHover: "hover:bg-red-600",
-    tableBackground: "bg-gradient-to-br from-red-950 via-rose-900 to-red-950",
-    cardBackground: "bg-rose-800",
+  forest: {
+    id: "forest",
+    name: "Forest",
+    feltClass: "felt-forest",
+    felt: "#1f4a28",
+    felt2: "#0a2010",
+    frame: "#1f1408",
+    frame2: "#0e0904",
+    accent: "#c8f078",
   },
-  arctic: {
-    primary: "bg-sky-600",
-    primaryHover: "hover:bg-sky-500",
-    secondary: "bg-blue-600",
-    secondaryHover: "hover:bg-blue-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-slate-950 via-sky-950 to-slate-950",
-    cardBackground: "bg-sky-800",
+  amber: {
+    id: "amber",
+    name: "Amber",
+    feltClass: "felt-amber",
+    felt: "#7a4818",
+    felt2: "#361e06",
+    frame: "#1a0e04",
+    frame2: "#0c0602",
+    accent: "#ffe080",
   },
-  desert: {
-    primary: "bg-amber-700",
-    primaryHover: "hover:bg-amber-600",
-    secondary: "bg-orange-700",
-    secondaryHover: "hover:bg-orange-600",
-    danger: "bg-red-700",
-    dangerHover: "hover:bg-red-600",
-    tableBackground: "bg-gradient-to-br from-amber-950 via-orange-900 to-amber-950",
-    cardBackground: "bg-amber-800",
+  slate: {
+    id: "slate",
+    name: "Slate",
+    feltClass: "felt-slate",
+    felt: "#2c3540",
+    felt2: "#131820",
+    frame: "#0e0c0a",
+    frame2: "#050404",
+    accent: "#88d4ff",
   },
-  neon: {
-    primary: "bg-fuchsia-600",
-    primaryHover: "hover:bg-fuchsia-500",
-    secondary: "bg-cyan-600",
-    secondaryHover: "hover:bg-cyan-500",
-    danger: "bg-pink-600",
-    dangerHover: "hover:bg-pink-500",
-    tableBackground: "bg-gradient-to-br from-purple-950 via-fuchsia-950 to-cyan-950",
-    cardBackground: "bg-fuchsia-800",
+  plum: {
+    id: "plum",
+    name: "Plum",
+    feltClass: "felt-plum",
+    felt: "#4a1a58",
+    felt2: "#200a28",
+    frame: "#16080e",
+    frame2: "#08040a",
+    accent: "#ff7ae0",
   },
-  royal: {
-    primary: "bg-purple-700",
-    primaryHover: "hover:bg-purple-600",
-    secondary: "bg-yellow-600",
-    secondaryHover: "hover:bg-yellow-500",
-    danger: "bg-red-600",
-    dangerHover: "hover:bg-red-500",
-    tableBackground: "bg-gradient-to-br from-purple-950 via-violet-900 to-purple-950",
-    cardBackground: "bg-purple-800",
+  indigo: {
+    id: "indigo",
+    name: "Indigo",
+    feltClass: "felt-indigo",
+    felt: "#2624a8",
+    felt2: "#0e0c40",
+    frame: "#100a14",
+    frame2: "#06040a",
+    accent: "#b8a8ff",
   },
-} as const;
+  graphite: {
+    id: "graphite",
+    name: "Graphite",
+    feltClass: "felt-graphite",
+    felt: "#2a2a2c",
+    felt2: "#131314",
+    frame: "#0a0a0a",
+    frame2: "#050505",
+    accent: "#f0c14a",
+  },
+} as const satisfies Record<string, FeltTheme>;
 
 export type ThemeName = keyof typeof themes;
 
-export function getTheme(themeName: ThemeName = "classic"): ThemeColors {
-  return themes[themeName];
+export const THEME_IDS: readonly ThemeName[] = [
+  "emerald",
+  "teal",
+  "burgundy",
+  "midnight",
+  "forest",
+  "amber",
+  "slate",
+  "plum",
+  "indigo",
+  "graphite",
+];
+
+export const DEFAULT_THEME: ThemeName = "emerald";
+
+export function getTheme(themeName: ThemeName = DEFAULT_THEME): FeltTheme {
+  return themes[themeName] ?? themes[DEFAULT_THEME];
 }
