@@ -992,63 +992,11 @@ export function CardActionDialog({
                 </button>
               );
             })}
-            {canPlayToProperty &&
-              !settings.wildcardFlipCountsAsMove &&
-              activeCard.type === CardType.PropertyWildcard &&
-              activeCard.colors &&
-              activeCard.colors.length > 2 && (
-                <button
-                  onClick={() => {
-                    markDispatchedAndClose();
-                    onPlayToProperty(activeCard.id, PC.Unassigned);
-                    onClose();
-                  }}
-                  className="rounded-lg flex flex-col items-center justify-center col-span-2 transition-transform hover:-translate-y-0.5"
-                  style={{
-                    padding: "10px 12px",
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: 12,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "#f5ead0",
-                    background:
-                      "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
-                    cursor: "pointer",
-                    position: "relative",
-                    overflow: "hidden",
-                  }}
-                >
-                  {/* Thin rainbow stripe at the top to signal "any color" */}
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      height: 3,
-                      display: "flex",
-                    }}
-                  >
-                    {[
-                      "var(--p-brown)",
-                      "var(--p-skyblue)",
-                      "var(--p-pink)",
-                      "var(--p-orange)",
-                      "var(--p-red)",
-                      "var(--p-yellow)",
-                      "var(--p-green)",
-                      "var(--p-darkblue)",
-                      "var(--p-railroad)",
-                    ].map((c, i) => (
-                      <span key={i} style={{ flex: 1, background: c }} />
-                    ))}
-                  </span>
-                  I'll decide later
-                </button>
-              )}
+            {/* Property-wildcard "I'll decide later" button used to live
+                here, but the new tile UI above already handles
+                multi-color wildcards (with their own rainbow button).
+                This branch only renders for non-wildcard cards now,
+                so the dead PropertyWildcard check has been removed. */}
           </div>
             );
           })()}
