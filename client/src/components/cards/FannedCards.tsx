@@ -218,6 +218,9 @@ export interface HandRenderItem {
   onClick?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: () => void;
+  /** Touch-only: fired when the user swipes the card upward past the
+   *  threshold (DragPeekHand replacement for HTML5 drag-to-bank). */
+  onSwipeUp?: () => void;
 }
 
 interface HoverFanHandProps {
@@ -456,19 +459,114 @@ export function DragPeekHand({
   const tiltStep = 1.6;
   const pushAmount = Math.min(overlap * 0.8 + 8, pushHeadroom);
 
-  const onMove = (e: React.MouseEvent | React.TouchEvent) => {
+  // ─── Touch-driven swipe-up gesture (mobile drag-to-bank) ───────────
+  // HTML5 drag-and-drop doesn't work on touch, so the desktop draggable
+  // attribute is useless here AND emits a translucent ghost during the
+  // peek scrub. We disable it entirely (see card div below) and run our
+  // own gesture detector:
+  //
+  //   1. touchstart on a card: record start position + lock the gesture
+  //      to that card index. Peek follows the finger.
+  //   2. touchmove: classify direction. Vertical-up past 16px → "lift"
+  //      mode (lifts the card with the finger, prevents scroll). Strong
+  //      horizontal motion → cancel lift, let the rail update peek.
+  //   3. touchend: if total upward distance exceeded SWIPE_UP_THRESHOLD,
+  //      fire onSwipeUp (i.e. play-to-bank). Otherwise treat as a tap →
+  //      onClick fires naturally.
+  const SWIPE_UP_THRESHOLD = 70;
+  const AXIS_DECISION_PX = 8;
+  const swipeRef = useRef<{
+    idx: number;
+    startX: number;
+    startY: number;
+    dx: number;
+    dy: number;
+    /** "pending" until we decide; "vertical" once committed to lift. */
+    kind: "pending" | "vertical" | "horizontal";
+  } | null>(null);
+  // Live lift offset for the card being swiped — drives a transient
+  // translateY without re-rendering the world. Stored in state so the
+  // peeked card animates as the finger moves.
+  const [liftedY, setLiftedY] = useState(0);
+
+  // Update peek index from a clientX coordinate (cross-card scrub).
+  const peekFromClientX = (clientX: number) => {
     const el = railRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
-    const clientX =
-      "touches" in e
-        ? (e.touches[0]?.clientX ?? r.left + r.width / 2)
-        : (e as React.MouseEvent).clientX;
     const x = clientX - r.left;
     const center = r.width / 2;
     const offsetFromCenter = x - center;
     const i = Math.round(offsetFromCenter / Math.max(1, overlap) + mid);
     setHovered(Math.max(0, Math.min(n - 1, i)));
+  };
+
+  const onMouseMove = (e: React.MouseEvent) => peekFromClientX(e.clientX);
+
+  const onCardTouchStart = (e: React.TouchEvent, i: number) => {
+    const t = e.touches[0];
+    if (!t) return;
+    swipeRef.current = {
+      idx: i,
+      startX: t.clientX,
+      startY: t.clientY,
+      dx: 0,
+      dy: 0,
+      kind: "pending",
+    };
+    setHovered(i);
+    setLiftedY(0);
+  };
+
+  const onCardTouchMove = (e: React.TouchEvent) => {
+    const s = swipeRef.current;
+    const t = e.touches[0];
+    if (!s || !t) return;
+    s.dx = t.clientX - s.startX;
+    s.dy = t.clientY - s.startY;
+
+    if (s.kind === "pending") {
+      const adx = Math.abs(s.dx);
+      const ady = Math.abs(s.dy);
+      if (adx > AXIS_DECISION_PX || ady > AXIS_DECISION_PX) {
+        // Going up + dominant vertical → start the lift gesture.
+        if (s.dy < 0 && ady > adx) {
+          s.kind = "vertical";
+        } else {
+          s.kind = "horizontal";
+        }
+      }
+    }
+
+    if (s.kind === "vertical") {
+      // Lift the card with the finger. Clamp to a small overshoot so
+      // the visual stays sane if the user keeps dragging.
+      const lift = Math.min(160, Math.max(0, -s.dy));
+      setLiftedY(lift);
+      // Block the page from scrolling while we own this gesture. (Not
+      // strictly required — outer layout already has overflow:hidden —
+      // but cheap insurance.)
+      if (e.cancelable) e.preventDefault();
+    } else if (s.kind === "horizontal") {
+      // Hand peek control back to the rail-wide scrub: update which
+      // card is peeked based on the current X.
+      peekFromClientX(t.clientX);
+      setLiftedY(0);
+    }
+  };
+
+  const onCardTouchEnd = () => {
+    const s = swipeRef.current;
+    if (!s) return;
+    if (s.kind === "vertical" && -s.dy >= SWIPE_UP_THRESHOLD) {
+      const item = items[s.idx];
+      // Fire the play-to-bank callback. Wrap in microtask so React
+      // sees the touchend complete before any state churn from the
+      // play (e.g. card removed from hand → re-render).
+      Promise.resolve().then(() => item?.onSwipeUp?.());
+    }
+    swipeRef.current = null;
+    setLiftedY(0);
   };
 
   return (
@@ -484,17 +582,12 @@ export function DragPeekHand({
         paddingBottom: 22,
         overflow: "visible",
       }}
-      onMouseMove={onMove}
+      onMouseMove={onMouseMove}
       onMouseLeave={() => setHovered(peekedIdx)}
-      onTouchMove={onMove}
       // ─── On touch release: keep the peek sticky ───
-      // Touch users drag a finger across the rail to peek; if we cleared
-      // the peek on touch end, the player would have to either tap
-      // immediately (hard to time on a fanned arc) or scrub back to the
-      // card they wanted. Leaving `hovered` set means the peeked card
-      // stays raised + readable, and the very next tap on it lands the
-      // play. A different card pulls peek to it; the rail's onTouchMove
-      // also continues to update peek as the finger moves.
+      // Touch users drag a finger across the rail to peek; clearing it
+      // on touch end means a small misalignment forces a re-scrub. The
+      // last-peeked card stays raised + readable until the next gesture.
     >
       <div style={{ position: "relative", height: railHeight, width: "100%" }}>
         {items.map((item, i) => {
@@ -505,8 +598,9 @@ export function DragPeekHand({
           let extraTilt = 0;
           let z = i;
 
+          const isPeeked = hovered === i;
           if (hovered != null) {
-            if (i === hovered) {
+            if (isPeeked) {
               y -= cardLift;
               extraTilt = -tilt;
               z = 100;
@@ -520,30 +614,49 @@ export function DragPeekHand({
             y -= cardLift * 0.6;
           }
 
+          // Apply live lift on the card the finger is currently on.
+          const isBeingSwiped = swipeRef.current?.idx === i;
+          const liftY = isBeingSwiped ? liftedY : 0;
+
           return (
             <div
               key={item.id}
               onMouseEnter={() => setHovered(i)}
-              draggable={item.draggable}
-              onDragStart={(e) => item.onDragStart?.(e)}
-              onDragEnd={() => item.onDragEnd?.()}
+              onTouchStart={(e) => onCardTouchStart(e, i)}
+              onTouchMove={onCardTouchMove}
+              onTouchEnd={onCardTouchEnd}
+              onTouchCancel={onCardTouchEnd}
+              // HTML5 drag is desktop-only and emits a translucent ghost
+              // when started by touch. Disable it here; the swipe-up
+              // handlers above are the touch equivalent.
+              draggable={false}
               onClick={item.onClick}
               style={{
                 position: "absolute",
                 bottom: 0,
                 left: "50%",
-                transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) rotate(${tilt + extraTilt}deg)`,
+                transform: `translateX(calc(-50% + ${x}px)) translateY(${y - liftY}px) rotate(${tilt + extraTilt}deg)`,
                 transformOrigin: "bottom center",
-                zIndex: z,
-                transition:
-                  "transform var(--d-base, 220ms) var(--ease-out-soft, cubic-bezier(.22,.9,.32,1))",
-                cursor: item.onClick || item.draggable ? "pointer" : "default",
-                filter:
-                  hovered === i
+                zIndex: isBeingSwiped ? 200 : z,
+                transition: isBeingSwiped
+                  ? "none"
+                  : "transform var(--d-base, 220ms) var(--ease-out-soft, cubic-bezier(.22,.9,.32,1))",
+                cursor: item.onClick ? "pointer" : "default",
+                filter: isBeingSwiped
+                  ? "drop-shadow(0 14px 22px rgba(0,0,0,0.65))"
+                  : isPeeked
                     ? "drop-shadow(0 8px 16px rgba(0,0,0,0.6))"
                     : hovered != null
                       ? "brightness(0.92)"
                       : "none",
+                // Suppress the iOS long-press callout / text selection
+                // that occasionally fires on the card during the gesture.
+                WebkitTouchCallout: "none",
+                WebkitUserSelect: "none",
+                userSelect: "none",
+                // Tell the browser we'll handle horizontal pans (peek)
+                // and vertical pans (swipe-to-bank) ourselves.
+                touchAction: "none",
               }}
             >
               {item.node}
@@ -565,7 +678,7 @@ export function DragPeekHand({
           pointerEvents: "none",
         }}
       >
-        ← drag to peek · tap to play →
+        drag to peek · swipe up to bank · tap to play
       </div>
     </div>
   );

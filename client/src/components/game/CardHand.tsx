@@ -67,6 +67,9 @@ export function CardHand({
       onClick: () => onCardClick(card),
       onDragStart: (e) => handleDragStart(e, card),
       onDragEnd: handleDragEnd,
+      // Touch-only mirror of drag-to-bank: fires when the user swipes the
+      // peeked card upward in DragPeekHand.
+      onSwipeUp: draggable ? () => onDragToBank?.(card) : undefined,
       node: (
         <div className={card.id === shakingCardId ? "animate-shake" : undefined}>
           <GameCard
