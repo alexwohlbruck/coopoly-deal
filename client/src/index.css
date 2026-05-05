@@ -318,6 +318,53 @@ body {
   min-height: 100dvh;
 }
 
+/* ============================================================
+   Custom dynamic viewport height utility
+   ----------------------------------------------------------------
+   Tailwind 4 generates .h-screen AFTER .h-dvh in the cascade, which
+   means combining `h-screen h-dvh` doesn't work — h-screen wins and
+   we get 100vh (largest viewport) on Android Chrome, clipping the
+   bottom whenever the URL bar is visible. This utility forces the
+   dynamic-height value to win because it's authored after Tailwind's
+   utilities in this stylesheet.
+   ============================================================ */
+.h-dynamic-screen {
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
+}
+.min-h-dynamic-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============================================================
+   Disable text selection / Android Chrome "select to search" UI
+   inside the in-game table. The game has no text the user should be
+   able to select; Chrome's tap-and-hold-to-google handler otherwise
+   pops up unexpectedly on cards / labels.
+   ============================================================ */
+.no-text-select,
+.no-text-select * {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.no-text-select input,
+.no-text-select textarea,
+.no-text-select [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Touch drop-zone highlight (driven by the touch-drag handler below). */
+[data-touch-drop-active="true"] {
+  outline: 2px solid var(--accent, #f0c14a);
+  outline-offset: 2px;
+  background-color: color-mix(in oklab, var(--accent, #f0c14a) 14%, transparent);
+  border-radius: 12px;
+  transition: background-color 120ms ease-out, outline-color 120ms ease-out;
+}
+
 /* Hide scrollbar for player carousel */
 .scrollbar-hide {
   -ms-overflow-style: none;

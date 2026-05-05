@@ -143,6 +143,7 @@ export function PlayerBoard({
         onCardDragStart={onCardDragStart}
         onCardDragEnd={onCardDragEnd}
         dragOverColor={dragOverColor}
+        touchDropEnabled={canDropProp || canDropBank}
       />
     </div>
   );

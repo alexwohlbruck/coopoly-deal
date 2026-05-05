@@ -417,6 +417,7 @@ export function GameTableCompact({
             disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
             needsDiscard={needsDiscard}
             onDragToBank={(card) => onPlayToBank(card.id)}
+            onDropToProperty={(card, color) => onPlayToProperty(card.id, color)}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={gameState.settings.useSocialistTheme}

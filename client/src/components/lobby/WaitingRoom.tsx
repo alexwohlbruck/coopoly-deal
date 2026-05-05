@@ -43,7 +43,7 @@ export function WaitingRoom({
 
   return (
     <div
-      className={`min-h-screen min-h-dvh ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+      className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
       {/* Music controls in top right */}
       {musicControls && (

@@ -445,6 +445,11 @@ export interface PropertySetsRowExtraProps {
    *  overflow-x: auto if it can't fit. The design's compact mockup uses
    *  horizontal scroll; the desktop variant lets it wrap. */
   wrap?: boolean;
+  /** When true, mark the bank/set cells with `data-touch-drop` attributes
+   *  so the touch-drag handler in DragPeekHand can dispatch drops via
+   *  elementFromPoint. Should match the same `canDrop*` gates used by
+   *  the desktop HTML5 drop handlers (i.e. isYou && isCurrentTurn). */
+  touchDropEnabled?: boolean;
 }
 
 export function PropertySetsRow({
@@ -467,6 +472,7 @@ export function PropertySetsRow({
   onCardDragEnd,
   dragOverColor,
   wrap = false,
+  touchDropEnabled = false,
 }: PropertySetsRowProps & PropertySetsRowExtraProps) {
   const hasBank = Array.isArray(bank) && bank.length > 0;
   const n = sets.length + (hasBank ? 1 : 0);
@@ -518,6 +524,10 @@ export function PropertySetsRow({
       {hasBank && (
         <div
           key="__bank"
+          // Touch-drag drop target: the DragPeekHand handler walks up the DOM
+          // from elementFromPoint looking for [data-touch-drop]. When enabled,
+          // dropping here plays the card to the bank.
+          data-touch-drop={touchDropEnabled ? "bank" : undefined}
           style={{
             width: cellW,
             display: "flex",
@@ -531,6 +541,7 @@ export function PropertySetsRow({
       {sets.map((s, i) => (
         <div
           key={`${s.color}-${i}`}
+          data-touch-drop={touchDropEnabled ? `set:${s.color}` : undefined}
           style={{
             width: cellW,
             display: "flex",

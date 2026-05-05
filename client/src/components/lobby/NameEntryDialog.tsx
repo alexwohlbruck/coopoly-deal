@@ -27,7 +27,7 @@ export function NameEntryDialog({
 
   return (
     <div
-      className={`min-h-screen min-h-dvh ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+      className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}

@@ -1,10 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
-import type { Card } from "../../types/game";
+import type { Card, PropertyColor } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
 import {
   HoverFanHand,
   DragPeekHand,
   type HandRenderItem,
+  type TouchDropSpec,
 } from "../cards/FannedCards";
 import { useEffect, useRef, useState } from "react";
 
@@ -16,6 +17,10 @@ interface CardHandProps {
   disabled?: boolean;
   needsDiscard?: boolean;
   onDragToBank?: (card: Card) => void;
+  /** Touch-only: fired when the user drags a card and releases over a
+   *  property-set drop zone in DragPeekHand. Mirrors the desktop
+   *  HTML5 drop-on-property-set pipeline. */
+  onDropToProperty?: (card: Card, color: PropertyColor) => void;
   onDragStart?: (card: Card) => void;
   onDragEnd?: () => void;
   useSocialistTheme?: boolean;
@@ -35,6 +40,7 @@ export function CardHand({
   disabled,
   needsDiscard,
   onDragToBank,
+  onDropToProperty,
   onDragStart,
   onDragEnd,
   useSocialistTheme = false,
@@ -60,6 +66,8 @@ export function CardHand({
     const draggable = !disabled && !needsDiscard && onDragToBank !== undefined;
     const cardWidth = fanMode === "hover" ? 116 : 96;
     const cardHeight = Math.round(cardWidth * 1.5);
+    // Map of card-id → card for touch-drop dispatch.
+    const cardById = new Map(cards.map((c) => [c.id, c]));
     const items: HandRenderItem[] = cards.map((card) => ({
       id: card.id,
       legal: !disabled,
@@ -67,9 +75,6 @@ export function CardHand({
       onClick: () => onCardClick(card),
       onDragStart: (e) => handleDragStart(e, card),
       onDragEnd: handleDragEnd,
-      // Touch-only mirror of drag-to-bank: fires when the user swipes the
-      // peeked card upward in DragPeekHand.
-      onSwipeUp: draggable ? () => onDragToBank?.(card) : undefined,
       node: (
         <div className={card.id === shakingCardId ? "animate-shake" : undefined}>
           <GameCard
@@ -83,6 +88,18 @@ export function CardHand({
         </div>
       ),
     }));
+
+    // Route a touch-drop spec → the appropriate play action.
+    const handleTouchDrop = (item: HandRenderItem, spec: TouchDropSpec) => {
+      const card = cardById.get(item.id);
+      if (!card) return;
+      if (spec.kind === "bank") {
+        onDragToBank?.(card);
+      } else if (spec.kind === "set") {
+        onDropToProperty?.(card, spec.color as PropertyColor);
+      }
+    };
+
     return (
       <div className="w-full">
         {fanMode === "hover" ? (
@@ -100,6 +117,12 @@ export function CardHand({
             cardWidth={cardWidth}
             cardHeight={cardHeight}
             resetSignal={peekResetSignal}
+            onTouchDragStart={(item) => {
+              const card = cardById.get(item.id);
+              if (card) onDragStart?.(card);
+            }}
+            onTouchDragEnd={() => onDragEnd?.()}
+            onTouchDrop={handleTouchDrop}
           />
         )}
       </div>
