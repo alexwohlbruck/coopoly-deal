@@ -676,33 +676,70 @@ function ActionCardContent({
   const accent = ACTION_ACCENT[card.type] ?? "#e8c878";
   const subtitle = getActionSubtitle(card.type, useSocialistTheme);
   const title = getCardTypeLabel(card.type, useSocialistTheme);
+  const value = card.value > 0 ? card.value : null;
   return (
-    <>
-      <div
-        className="paper-grain"
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--card-paper)",
-        }}
-      >
+    <div
+      className="paper-grain"
+      style={{
+        flex: 1,
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--card-paper)",
+      }}
+    >
+      {/* Header bar: $value chip on the left, "ACTION" centered.
+          The chip used to be a floating absolute-positioned badge in
+          the top-left corner, which overlapped the centered title at
+          small card sizes. Now it lives inside the header so layout
+          flow keeps everything readable. */}
       <div
         style={{
           background: "linear-gradient(180deg, #2a2a2a 0%, #141414 100%)",
           color: accent,
-          padding: `${5 * fontScale}px ${8 * fontScale}px ${4 * fontScale}px`,
+          padding: `${5 * fontScale}px ${6 * fontScale}px ${4 * fontScale}px`,
           fontFamily: "var(--font-display)",
           fontSize: 9.5 * fontScale,
           fontWeight: 700,
           letterSpacing: "0.18em",
           textTransform: "uppercase",
-          textAlign: "center",
           borderBottom: `2px solid ${accent}`,
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 4,
         }}
       >
-        Action
+        <span
+          style={{
+            background: "rgba(0,0,0,0.4)",
+            color: "#f5ead0",
+            padding: `0 ${5 * fontScale}px`,
+            borderRadius: 3,
+            fontSize: 8.5 * fontScale,
+            letterSpacing: "0.02em",
+            fontVariantNumeric: "tabular-nums",
+            visibility: value != null ? "visible" : "hidden",
+            // Reserve roughly the same width whether visible or not so
+            // "ACTION" stays centered.
+            minWidth: 26 * fontScale,
+            textAlign: "center",
+          }}
+        >
+          {value != null ? `$${value}M` : "$0M"}
+        </span>
+        <span style={{ flex: 1, textAlign: "center" }}>Action</span>
+        {/* Right-side spacer: same width as the left chip so the
+            centered text stays visually centered. */}
+        <span
+          style={{
+            visibility: "hidden",
+            minWidth: 26 * fontScale,
+            padding: `0 ${5 * fontScale}px`,
+          }}
+        >
+          $0M
+        </span>
       </div>
       <div
         style={{
@@ -741,9 +778,7 @@ function ActionCardContent({
           </div>
         )}
       </div>
-      </div>
-      <CardValueBadge value={card.value} fontScale={fontScale} />
-    </>
+    </div>
   );
 }
 

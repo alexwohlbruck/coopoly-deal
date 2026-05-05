@@ -7,12 +7,27 @@ import { LobbyScreen } from "./components/lobby/LobbyScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
 import { NameEntryDialog } from "./components/lobby/NameEntryDialog";
 import { GameTable } from "./components/game/GameTable";
+import { CardTestScreen } from "./components/dev/CardTestScreen";
 import { GamePhase, type ServerMessage } from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
 
 type Screen = "lobby" | "nameEntry" | "waiting" | "game";
 
+// Dev: bypass the whole app and render the card-design test screen
+// when ?test=cards is set on the URL. Used to eyeball every card
+// variant in one place after design changes.
+const isCardTestRoute =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("test") === "cards";
+
 export default function App() {
+  if (isCardTestRoute) {
+    return <CardTestScreen />;
+  }
+  return <AppMain />;
+}
+
+function AppMain() {
   const [screen, setScreen] = useState<Screen>("lobby");
   const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
 
