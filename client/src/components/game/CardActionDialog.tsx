@@ -760,7 +760,11 @@ export function CardActionDialog({
       footer={footerButtons}
       playSound={true}
     >
-      {step !== "selectRentCards" && (
+      {/* Card preview only on the initial "choose" step. Once the
+          player has committed to playing the card and is now picking
+          a color / target / partner card, the preview is redundant and
+          eats vertical space the actual decision UI needs. */}
+      {step === "choose" && (
         <div className="flex justify-center mb-3">
           <GameCard card={activeCard} useSocialistTheme={settings.useSocialistTheme} />
         </div>
@@ -867,7 +871,7 @@ export function CardActionDialog({
                         color: "#1a1208",
                         fontFamily: "var(--font-mono)",
                         fontSize: 8,
-                        letterSpacing: "0.16em",
+                        letterSpacing: "0.08em",
                         fontWeight: 800,
                         padding: "1px 5px",
                         borderRadius: 4,
@@ -1581,7 +1585,7 @@ function ForceDealSwapStep({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               color: "rgba(245,234,208,0.55)",
               textTransform: "uppercase",
             }}
@@ -1593,7 +1597,7 @@ function ForceDealSwapStep({
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 9,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 color: "rgba(245,234,208,0.35)",
                 textTransform: "uppercase",
               }}
@@ -1665,7 +1669,7 @@ function ForceDealSwapStep({
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: 10,
-            letterSpacing: "0.18em",
+            letterSpacing: "0.08em",
             color: "rgba(245,234,208,0.55)",
             textTransform: "uppercase",
             marginBottom: 6,

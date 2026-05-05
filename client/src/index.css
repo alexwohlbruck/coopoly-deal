@@ -418,6 +418,48 @@ a img,
   position: relative;
 }
 
+/* ============================================================
+   Game Rules modal styling — match the design system instead of
+   the legacy gray-700 box.
+   ============================================================ */
+.game-rules-modal {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 22, 20, 0.96) 0%,
+    rgba(16, 10, 8, 0.98) 100%
+  );
+  border-radius: 18px;
+  border: 1px solid rgba(245, 234, 208, 0.1);
+  box-shadow: var(--sh-panel);
+  backdrop-filter: blur(8px);
+  color: #f5ead0;
+}
+.game-rules-modal h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f5ead0;
+}
+.game-rules-h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--accent, #f0c14a);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-rules-h2::before {
+  content: "";
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent, #f0c14a);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent, #f0c14a) 60%, transparent);
+}
+
 /* Shake animation for invalid card plays */
 @keyframes shake {
   0%,

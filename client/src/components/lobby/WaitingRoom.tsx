@@ -93,7 +93,7 @@ export function WaitingRoom({
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: 11,
-          letterSpacing: "0.14em",
+          letterSpacing: "0.06em",
           textTransform: "uppercase",
         }}
       >
@@ -139,7 +139,7 @@ export function WaitingRoom({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              letterSpacing: "0.2em",
+              letterSpacing: "0.1em",
               color: "rgba(245,234,208,0.55)",
               textTransform: "uppercase",
               marginBottom: 4,
@@ -175,7 +175,7 @@ export function WaitingRoom({
                 alignItems: "center",
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
                 color: "rgba(245,234,208,0.5)",
                 textTransform: "uppercase",
                 marginBottom: 8,
@@ -264,7 +264,7 @@ export function WaitingRoom({
                         style={{
                           fontFamily: "var(--font-mono)",
                           fontSize: 9,
-                          letterSpacing: "0.14em",
+                          letterSpacing: "0.06em",
                           color,
                         }}
                       >
@@ -333,7 +333,7 @@ export function WaitingRoom({
                 textAlign: "center",
                 fontFamily: "var(--font-mono)",
                 fontSize: 11,
-                letterSpacing: "0.16em",
+                letterSpacing: "0.08em",
                 color: "rgba(245,234,208,0.55)",
                 textTransform: "uppercase",
               }}
@@ -374,7 +374,7 @@ export function WaitingRoom({
           transform: "translateX(-50%)",
           fontFamily: "var(--font-mono)",
           fontSize: 10,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           color: "rgba(245,234,208,0.45)",
           textTransform: "uppercase",
           whiteSpace: "nowrap",

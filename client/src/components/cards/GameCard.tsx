@@ -212,7 +212,7 @@ function PropertyBody({
       <div
         style={{
           fontSize: 8 * fontScale,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           color: "var(--card-ink-soft)",
           marginBottom: 4,
           textAlign: "center",
@@ -380,7 +380,7 @@ function WildcardPropertyContent({
             style={{
               marginTop: 5,
               fontSize: 7.5 * fontScale,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               color: "var(--card-ink-soft)",
               textTransform: "uppercase",
             }}
@@ -472,7 +472,7 @@ function WildcardPropertyContent({
           style={{
             fontFamily: "var(--font-mono)",
             fontSize: 6.5 * fontScale,
-            letterSpacing: "0.18em",
+            letterSpacing: "0.08em",
             color: "var(--card-ink-soft)",
             textAlign: "center",
             textTransform: "uppercase",
@@ -583,7 +583,7 @@ function MoneyCardContent({
           fontFamily: "var(--font-display)",
           fontSize: 9.5 * fontScale,
           fontWeight: 700,
-          letterSpacing: "0.2em",
+          letterSpacing: "0.1em",
           textTransform: "uppercase",
           borderBottom: "1px solid rgba(0,0,0,0.28)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22)",
@@ -700,7 +700,7 @@ function ActionCardContent({
           fontFamily: "var(--font-display)",
           fontSize: 9.5 * fontScale,
           fontWeight: 700,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           textTransform: "uppercase",
           borderBottom: `2px solid ${accent}`,
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
@@ -1079,7 +1079,7 @@ export function CardBack({
                 fontFamily: "var(--font-display)",
                 fontWeight: 800,
                 fontSize: 7 * fontScale,
-                letterSpacing: "0.3em",
+                letterSpacing: "0.08em",
                 color: "rgba(248,232,196,0.8)",
               }}
             >
@@ -1092,7 +1092,7 @@ export function CardBack({
               fontFamily: "var(--font-display)",
               fontWeight: 800,
               fontSize: 11 * fontScale,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
               color: "#f8e8c4",
               textShadow: "0 1px 0 rgba(0,0,0,0.4)",
@@ -1105,7 +1105,7 @@ export function CardBack({
             <span
               style={{
                 fontSize: 7 * fontScale,
-                letterSpacing: "0.3em",
+                letterSpacing: "0.08em",
                 opacity: 0.8,
               }}
             >

@@ -133,7 +133,7 @@ function WinnerSeal({ size = 92 }: { size?: number }) {
         <div
           style={{
             fontSize: size * 0.22,
-            letterSpacing: "0.18em",
+            letterSpacing: "0.08em",
             lineHeight: 1,
           }}
         >
@@ -142,7 +142,7 @@ function WinnerSeal({ size = 92 }: { size?: number }) {
         <div
           style={{
             fontSize: size * 0.085,
-            letterSpacing: "0.32em",
+            letterSpacing: "0.08em",
             marginTop: 3,
             opacity: 0.7,
           }}
@@ -260,7 +260,7 @@ function RankRibbon({ rank, height = 72 }: { rank: number; height?: number }) {
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: 9,
-          letterSpacing: "0.16em",
+          letterSpacing: "0.08em",
           opacity: 0.7,
           fontWeight: 700,
         }}
@@ -310,7 +310,7 @@ function StatReadout({
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: 9,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           color: "rgba(245,234,208,0.55)",
           textTransform: "uppercase",
         }}
@@ -403,7 +403,7 @@ function CompactPropertyStrip({
                 style={{
                   opacity: 0.85,
                   fontSize: 9,
-                  letterSpacing: "0.14em",
+                  letterSpacing: "0.06em",
                 }}
               >
                 ✓ SET
@@ -555,7 +555,7 @@ function HeroPlaque({
             gap: 8,
             fontFamily: "var(--font-mono)",
             fontSize: 10,
-            letterSpacing: "0.28em",
+            letterSpacing: "0.06em",
             color: "var(--accent, #f0c14a)",
           }}
         >
@@ -734,7 +734,7 @@ function StandingsRow({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 10,
-                  letterSpacing: "0.18em",
+                  letterSpacing: "0.08em",
                   color: "var(--accent, #f0c14a)",
                 }}
               >
@@ -762,7 +762,7 @@ function StandingsRow({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 9,
-                  letterSpacing: "0.18em",
+                  letterSpacing: "0.08em",
                   color: "rgba(245,234,208,0.5)",
                 }}
               >
@@ -794,7 +794,7 @@ function StandingsRow({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 9,
-                  letterSpacing: "0.18em",
+                  letterSpacing: "0.08em",
                   color: "rgba(245,234,208,0.5)",
                 }}
               >
@@ -844,7 +844,7 @@ function StandingsRow({
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                letterSpacing: "0.22em",
+                letterSpacing: "0.12em",
                 color: "rgba(245,234,208,0.55)",
                 marginBottom: 8,
               }}
@@ -958,7 +958,7 @@ function MobileStandingsCard({
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 9,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
                 color: "var(--accent, #f0c14a)",
               }}
             >
@@ -1005,7 +1005,7 @@ function MobileStandingsCard({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 8,
-                  letterSpacing: "0.22em",
+                  letterSpacing: "0.12em",
                   color: "rgba(245,234,208,0.55)",
                 }}
               >
@@ -1134,7 +1134,7 @@ export function EndGameSummary({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 9,
-                  letterSpacing: "0.24em",
+                  letterSpacing: "0.12em",
                   color: "var(--accent, #f0c14a)",
                   marginBottom: 2,
                 }}
@@ -1256,7 +1256,7 @@ export function EndGameSummary({
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 11,
-                letterSpacing: "0.28em",
+                letterSpacing: "0.06em",
                 color: "rgba(245,234,208,0.6)",
               }}
             >
@@ -1274,7 +1274,7 @@ export function EndGameSummary({
               style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
                 color: "rgba(245,234,208,0.4)",
               }}
             >

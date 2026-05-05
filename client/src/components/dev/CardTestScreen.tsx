@@ -152,7 +152,7 @@ function Section({
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: 11,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           color: "rgba(245,234,208,0.7)",
           textTransform: "uppercase",
           marginBottom: 8,
@@ -204,7 +204,7 @@ export function CardTestScreen() {
         style={{
           fontFamily: "var(--font-mono)",
           fontSize: 11,
-          letterSpacing: "0.14em",
+          letterSpacing: "0.06em",
           color: "rgba(245,234,208,0.55)",
           textTransform: "uppercase",
           marginBottom: 24,

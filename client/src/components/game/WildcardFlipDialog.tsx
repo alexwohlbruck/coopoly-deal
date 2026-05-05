@@ -152,7 +152,7 @@ export function WildcardFlipDialog({
                       fontSize: 10,
                       fontWeight: 600,
                       marginTop: 2,
-                      letterSpacing: "0.18em",
+                      letterSpacing: "0.08em",
                       opacity: 0.85,
                     }}
                   >

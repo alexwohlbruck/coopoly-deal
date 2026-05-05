@@ -285,7 +285,7 @@ export function GameTableCompact({
               fontFamily: "var(--font-mono)",
               fontSize: 9,
               color: "rgba(245,234,208,0.6)",
-              letterSpacing: "0.14em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
             }}
           >
@@ -315,7 +315,7 @@ export function GameTableCompact({
                   fontFamily: "var(--font-mono)",
                   fontSize: 8,
                   color: "rgba(245,234,208,0.3)",
-                  letterSpacing: "0.18em",
+                  letterSpacing: "0.08em",
                   textTransform: "uppercase",
                 }}
               >
@@ -346,7 +346,7 @@ export function GameTableCompact({
                 margin: "auto",
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 color: "rgba(245,234,208,0.4)",
               }}
             >
@@ -484,7 +484,7 @@ export function GameTableCompact({
               fontFamily: "var(--font-mono)",
               fontSize: 8,
               color: "rgba(245,234,208,0.6)",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               marginBottom: 3,
               textTransform: "uppercase",
               flexShrink: 0,

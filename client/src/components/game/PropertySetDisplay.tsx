@@ -7,6 +7,7 @@ import {
 } from "../../types/game";
 import type { PropertySet, Card } from "../../types/game";
 import { GameCard } from "../cards/GameCard";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PropertySetDisplayProps {
   set: PropertySet;
@@ -168,7 +169,10 @@ export function PropertySetDisplay({
         </div>
       )}
 
-      {/* Stack of cards (banner of each peeks out above the next) */}
+      {/* Stack of cards (banner of each peeks out above the next).
+          AnimatePresence wraps so cards spring in when added to the
+          set and slide out when stolen / moved. The lift on enter
+          mimics the card landing on the table from above. */}
       <div
         style={{
           position: "relative",
@@ -176,51 +180,62 @@ export function PropertySetDisplay({
           height: cardH + Math.max(0, allCards.length - 1) * overlap,
         }}
       >
-        {allCards.map((card, i) => {
-          const tilt = (i % 2 === 0 ? -1 : 1) * 0.5;
-          const draggable =
-            isYou && isCurrentTurn && card.type === CardType.PropertyWildcard;
-          return (
-            <div
-              key={card.id ?? i}
-              style={{
-                position: "absolute",
-                left: 0,
-                top: i * overlap,
-                transform: `rotate(${tilt}deg)`,
-                cursor:
-                  isYou && isCurrentTurn && card.type === CardType.PropertyWildcard
-                    ? "pointer"
-                    : "default",
-              }}
-              draggable={draggable}
-              onDragStart={(e) => {
-                if (draggable && onDragStart) onDragStart(e, card);
-              }}
-              onDragEnd={() => {
-                if (draggable && onDragEnd) onDragEnd();
-              }}
-              onClick={() => {
-                if (
-                  isYou &&
-                  isCurrentTurn &&
-                  card.type === CardType.PropertyWildcard &&
-                  onWildcardClick
-                ) {
-                  onWildcardClick(card, set.color);
-                }
-              }}
-            >
-              <GameCard
-                card={card}
-                width={cardW}
-                orientation={getCardOrientation(card)}
-                useSocialistTheme={useSocialistTheme}
-                disableHover
-              />
-            </div>
-          );
-        })}
+        <AnimatePresence initial={false}>
+          {allCards.map((card, i) => {
+            const tilt = (i % 2 === 0 ? -1 : 1) * 0.5;
+            const draggable =
+              isYou && isCurrentTurn && card.type === CardType.PropertyWildcard;
+            return (
+              <motion.div
+                key={card.id ?? i}
+                initial={{ opacity: 0, y: -18, scale: 0.94 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  scale: 1,
+                  rotate: tilt,
+                }}
+                exit={{ opacity: 0, y: 14, scale: 0.94 }}
+                transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: i * overlap,
+                  cursor:
+                    isYou && isCurrentTurn && card.type === CardType.PropertyWildcard
+                      ? "pointer"
+                      : "default",
+                }}
+                draggable={draggable}
+                onDragStart={(e) => {
+                  if (draggable && onDragStart)
+                    onDragStart(e as unknown as React.DragEvent, card);
+                }}
+                onDragEnd={() => {
+                  if (draggable && onDragEnd) onDragEnd();
+                }}
+                onClick={() => {
+                  if (
+                    isYou &&
+                    isCurrentTurn &&
+                    card.type === CardType.PropertyWildcard &&
+                    onWildcardClick
+                  ) {
+                    onWildcardClick(card, set.color);
+                  }
+                }}
+              >
+                <GameCard
+                  card={card}
+                  width={cardW}
+                  orientation={getCardOrientation(card)}
+                  useSocialistTheme={useSocialistTheme}
+                  disableHover
+                />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     </div>
   );

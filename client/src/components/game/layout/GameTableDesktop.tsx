@@ -232,7 +232,7 @@ export function GameTableDesktop({
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
                 color: "rgba(245,234,208,0.55)",
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
             >
@@ -283,7 +283,7 @@ export function GameTableDesktop({
               fontFamily: "var(--font-mono)",
               fontSize: 9,
               color: "rgba(245,234,208,0.55)",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
             }}
           >
@@ -414,7 +414,7 @@ export function GameTableDesktop({
                 fontFamily: "var(--font-mono)",
                 fontSize: 9,
                 color: "rgba(245,234,208,0.55)",
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
             >
@@ -506,7 +506,7 @@ function ActiveOpponentBoardWrapper({
             fontFamily: "var(--font-mono)",
             fontSize: 11,
             color: "rgba(245,234,208,0.4)",
-            letterSpacing: "0.18em",
+            letterSpacing: "0.08em",
             padding: 36,
             margin: "auto",
           }}

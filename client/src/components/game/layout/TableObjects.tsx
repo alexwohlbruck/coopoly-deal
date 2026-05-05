@@ -7,62 +7,16 @@
 import type { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PropertySetDisplay } from "../PropertySetDisplay";
-import { CardBack } from "../../cards/GameCard";
+import { CardBack, GameCard } from "../../cards/GameCard";
+import { CardType } from "../../../types/game";
 import type { Card, PropertySet, PropertyColor } from "../../../types/game";
 
-const MONEY_BG_VAR: Record<number, string> = {
-  1: "var(--m-1)",
-  2: "var(--m-2)",
-  3: "var(--m-3)",
-  4: "var(--m-4)",
-  5: "var(--m-5)",
-  10: "var(--m-10)",
-};
-
-/**
- * A single money card rendered as part of the bank chip stack.
- * Simpler than the full MoneyCard from GameCard.tsx — this just shows
- * the denomination and a count badge, sized for stacking.
- */
-function StackMoneyCard({ value, w, h }: { value: number; w: number; h: number }) {
-  const bg = MONEY_BG_VAR[value] ?? MONEY_BG_VAR[1];
-  return (
-    <div
-      style={{
-        width: w,
-        height: h,
-        background: `linear-gradient(160deg, ${bg} 0%, color-mix(in oklab, ${bg} 78%, #000) 100%)`,
-        borderRadius: 5,
-        boxShadow:
-          "0 1px 0 rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.25)",
-        color: "#fff",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 4,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 800,
-          fontSize: w >= 80 ? 19 : 16,
-          lineHeight: 1,
-          textShadow: "0 1px 0 rgba(0,0,0,0.3)",
-        }}
-      >
-        ${value}M
-      </div>
-    </div>
-  );
-}
-
 // ────────────────────────────────────────────────────────────────────
-// BankStack — money cards displayed as an overlapped stack with a single
-// "BANK $NM" badge on top. Reads as a chip stack rather than a fan.
-// Sized to drop into a property-row grid cell so the bank lives alongside
-// the property stacks at the same scale.
+// BankStack — money cards displayed as an overlapped stack of REAL
+// MoneyCard faces (via GameCard) with a "BANK $NM" badge on top.
+// Reads as a chip stack rather than a fan. Sized to drop into a
+// property-row grid cell so the bank lives alongside the property
+// stacks at the same scale.
 // ────────────────────────────────────────────────────────────────────
 
 interface BankStackProps {
@@ -70,12 +24,24 @@ interface BankStackProps {
   compact?: boolean;
 }
 
+// Build a minimal Card object for GameCard rendering. Bank cards
+// don't need stable ids since they're not interactive (the bank
+// wrapper handles drops); a stable-per-position id keeps React keys
+// happy.
+function moneyCardFromValue(value: number, key: string | number): Card {
+  return { id: `bank-${key}-${value}`, type: CardType.Money, value };
+}
+
 export function BankStack({ cards, compact = false }: BankStackProps) {
   const total = cards.reduce((a, b) => a + b, 0);
   // Sort descending so the largest denomination shows on top.
   const sorted = [...cards].sort((a, b) => b - a);
   const cardW = compact ? 76 : 88;
-  const cardH = compact ? 106 : 124;
+  // Real GameCard renders at 2:3 (width × 1.5), so the container
+  // height has to match — earlier this used a hand-tuned 106/124
+  // which was a bit shorter than the actual face and clipped the
+  // bottom denomination row.
+  const cardH = Math.round(cardW * 1.5);
   // Cap stack height: target the same envelope as a 3-card property stack
   // (so 5+ bills don't tower over property sets). Squeeze overlap as count grows.
   const targetMaxStackH = cardH + (compact ? 22 * 2 : 28 * 2);
@@ -162,19 +128,33 @@ export function BankStack({ cards, compact = false }: BankStackProps) {
             empty
           </div>
         )}
-        {sorted.map((v, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: i * overlap,
-              transform: `rotate(${(i % 2 === 0 ? -1 : 1) * 0.5}deg)`,
-            }}
-          >
-            <StackMoneyCard value={v} w={cardW} h={cardH} />
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {sorted.map((v, i) => (
+            <motion.div
+              key={`${i}-${v}`}
+              initial={{ opacity: 0, y: -12, scale: 0.92 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                rotate: (i % 2 === 0 ? -1 : 1) * 0.5,
+              }}
+              exit={{ opacity: 0, y: 8, scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: i * overlap,
+              }}
+            >
+              <GameCard
+                card={moneyCardFromValue(v, i)}
+                width={cardW}
+                disableHover
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -384,7 +364,7 @@ export function MiniPile({ kind, count }: MiniPileProps) {
                 fontFamily: "var(--font-mono)",
                 fontSize: 8,
                 color: "rgba(255,255,255,0.4)",
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
               }}
             >
               empty
@@ -499,7 +479,7 @@ export function PropertySetsRow({
           fontFamily: "var(--font-mono)",
           fontSize: 11,
           color: "rgba(245,234,208,0.4)",
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
         }}
       >
         no sets played

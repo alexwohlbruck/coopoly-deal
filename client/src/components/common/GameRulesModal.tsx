@@ -35,7 +35,7 @@ export function GameRulesModal({
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
-          className="relative w-full max-w-4xl max-h-[85vh] bg-gradient-to-br from-gray-900 to-gray-800 rounded-2xl shadow-2xl border border-gray-700 flex flex-col"
+          className="relative w-full max-w-4xl max-h-[85vh] game-rules-modal flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-700">
@@ -52,7 +52,7 @@ export function GameRulesModal({
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Overview */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Overview
               </h3>
               <p className="text-gray-300 leading-relaxed">
@@ -70,7 +70,7 @@ export function GameRulesModal({
 
             {/* Setup */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Setup
               </h3>
               <ul className="space-y-2 text-gray-300">
@@ -104,7 +104,7 @@ export function GameRulesModal({
 
             {/* Turn Structure */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Turn Structure
               </h3>
               <div className="space-y-4">
@@ -169,7 +169,7 @@ export function GameRulesModal({
 
             {/* Winning */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Winning the Game
               </h3>
               <p className="text-gray-300 leading-relaxed">
@@ -184,7 +184,7 @@ export function GameRulesModal({
 
             {/* Property Sets */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Property Sets
               </h3>
               <div className="bg-gray-800/50 rounded-lg p-4 overflow-x-auto">
@@ -303,7 +303,7 @@ export function GameRulesModal({
 
             {/* Key Action Cards */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Key {useSocialistTheme ? "Directive" : "Action"} Cards
               </h3>
               <div className="space-y-3">
@@ -369,7 +369,7 @@ export function GameRulesModal({
 
             {/* Payment Rules */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Payment Rules
               </h3>
               <ul className="space-y-2 text-gray-300">
@@ -419,7 +419,7 @@ export function GameRulesModal({
 
             {/* Wildcards */}
             <section>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-3">
+              <h3 className="game-rules-h2">
                 Property Wildcards
               </h3>
               <ul className="space-y-2 text-gray-300">

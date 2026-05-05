@@ -131,7 +131,7 @@ export function WildcardColorOption({
                 color: "#1a1208",
                 fontFamily: "var(--font-mono)",
                 fontSize: 8,
-                letterSpacing: "0.16em",
+                letterSpacing: "0.08em",
                 fontWeight: 800,
                 padding: "1px 5px",
                 borderRadius: 4,
