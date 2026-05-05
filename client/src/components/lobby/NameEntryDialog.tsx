@@ -14,8 +14,10 @@ export function NameEntryDialog({
   onSubmit,
   onBack,
 }: NameEntryDialogProps) {
-  const [name, setName] = useState("");
-  const { theme } = useGameStore();
+  const { theme, playerName: savedPlayerName } = useGameStore();
+  // Pre-fill with the saved player name so returning players don't
+  // have to retype. They can still edit it before joining.
+  const [name, setName] = useState(savedPlayerName ?? "");
   const themeData = getTheme(theme);
 
   const handleSubmit = (e: React.FormEvent) => {

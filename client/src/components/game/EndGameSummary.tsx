@@ -463,29 +463,86 @@ function neededFor(color: PropertyColor): number {
 }
 
 // ─── Quips per rank ──────────────────────────────────────────────
+// Lots of variants in a Marxist-tinged tone — picked at game end so
+// the end-screen reads differently each time you finish a match.
 const QUIPS: Record<number, string[]> = {
   1: [
     "Sole owner of three city blocks. The board complies.",
     "Built a property empire in 14 turns.",
     "The first to three. Rent is, as ever, theft.",
+    "History will absolve them — for now.",
+    "Late capitalism, early dinner.",
+    "Vanguard of the parcel.",
+    "Means of production: secured.",
+    "The deeds are signed. Comrades, take note.",
+    "Primitive accumulation, completed in record time.",
+    "Three sets, one ruling class.",
+    "The board has spoken. Ownership is destiny.",
+    "Capital begets capital. The cycle continues.",
+    "A new bourgeoisie is born.",
   ],
   2: [
     "One set short. The Boardwalk awaits.",
     "Came up a deed shy. Rematch?",
     "Silver medal, gilded edges.",
+    "So close to vanguard. Cadre status confirmed.",
+    "Surplus value extracted, but not enough.",
+    "Held the line. The line moved.",
+    "Almost — the dialectic isn't finished.",
+    "Runner-up in the great game of Monopoly Capital.",
+    "A footnote in the next edition of Capital.",
+    "The petite bourgeoisie's finest hour.",
+    "Second place: the most painful place.",
+    "Theory was sound. Practice fell short.",
   ],
   3: [
     "Built things. Lost things. Mostly built.",
     "Held the middle. The middle held back.",
+    "Petit bourgeois pretender, foiled.",
+    "Lumpenproletariat with property.",
+    "A slow descent into bourgeois mediocrity.",
+    "Played a fair game. Capitalism didn't.",
+    "Third-place revolutionary wears no laurels.",
+    "Some accumulated, some alienated. Net: middling.",
+    "Mid-cadre. Useful to the cause, statistically.",
+    "Class consciousness intact, holdings depleted.",
   ],
-  4: ["Honored to participate.", "Last place, first principles."],
+  4: [
+    "Honored to participate.",
+    "Last place, first principles.",
+    "Lumpenproletariat. No deeds, no chains.",
+    "Lost the means, kept the consciousness.",
+    "The wretched of the earth — and this board.",
+    "Even Marx didn't win on his first try.",
+    "Reading Capital between turns.",
+    "Nothing to lose but their cards.",
+    "A specter haunts the board — the specter of last place.",
+    "The expropriators were expropriated.",
+    "Solidarity forever. Money, never.",
+    "Last shall be first, eventually. Not this game.",
+  ],
 };
 
-function quipFor(rank: number, isYou: boolean): string {
-  // YOU at rank ≥ 3 gets the "loser framing" first quip.
-  if (isYou && rank >= 3) return QUIPS[3][0] ?? "Built things. Lost things.";
-  const arr = QUIPS[rank] ?? QUIPS[4];
-  return arr[0];
+/** Random index — uses card.id-style randomness based on the player
+ *  id + game-end count so the same quip doesn't show every game but
+ *  it's stable within a single end-screen render. */
+function pickQuip(arr: readonly string[], seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(h) % arr.length;
+  return arr[idx] ?? arr[0]!;
+}
+
+function quipFor(rank: number, isYou: boolean, seed: string): string {
+  const arr = QUIPS[rank] ?? QUIPS[4]!;
+  // YOU at rank ≥ 3 still pulls from rank 3's "loser framing" pool —
+  // but pick a random one rather than always the first.
+  if (isYou && rank >= 3) {
+    return pickQuip(QUIPS[3]!, seed);
+  }
+  return pickQuip(arr, seed);
 }
 
 // ─── HeroPlaque (desktop spotlight) ──────────────────────────────
@@ -604,7 +661,7 @@ function HeroPlaque({
             marginTop: 2,
           }}
         >
-          “{quipFor(1, isYouWinner)}”
+          “{quipFor(1, isYouWinner, winner.id)}”
         </div>
       </div>
 
@@ -827,7 +884,7 @@ function StandingsRow({
                 color: isYou ? "#f5ead0" : "rgba(245,234,208,0.65)",
               }}
             >
-              “{quipFor(rank, isYou)}”
+              “{quipFor(rank, isYou, player.id)}”
             </div>
           </div>
         </div>
