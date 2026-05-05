@@ -423,6 +423,23 @@ export function stopBackgroundMusic() {
   musicGainNode = null;
 }
 
+// ── Preview helper (non-hook) ─────────────────────────────────────
+// Plays a single effect from a SPECIFIC theme without going through
+// the React-memoized `play` returned by useSoundManager. Use this for
+// previews where the user has just clicked a theme chip — the
+// hook-based play would otherwise be one render "behind" because its
+// useCallback captures the previous theme value (the chip click
+// schedules play() in a setTimeout / event handler whose closure
+// captures the now-stale callback).
+export function previewSound(theme: SoundTheme, effect: SoundEffect) {
+  try {
+    const set = THEMES[theme] ?? THEMES.classic;
+    play(set[effect]);
+  } catch {
+    // AudioContext may not be initialized yet (no user gesture).
+  }
+}
+
 // ── Hook ───────────────────────────────────────────────────────────
 
 export function useSoundManager() {

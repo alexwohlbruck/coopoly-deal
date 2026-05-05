@@ -8,10 +8,10 @@ import {
   SOUND_THEME_LABEL,
   SOUND_THEME_HINT,
   useSoundSettings,
+  previewSound,
   type SoundTheme,
-  useSoundManager,
 } from "../../hooks/useSoundManager";
-import { useHaptics } from "../../hooks/useHaptics";
+import { previewHaptic } from "../../hooks/useHaptics";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -45,10 +45,6 @@ export function SettingsPanel({
   const setSoundTheme = useSoundSettings((s) => s.setSoundTheme);
   const hapticsEnabled = useSoundSettings((s) => s.hapticsEnabled);
   const toggleHaptics = useSoundSettings((s) => s.toggleHaptics);
-  // Demo helpers — preview the sound theme + haptics when the user
-  // clicks the relevant chip in settings.
-  const { play } = useSoundManager();
-  const { haptic } = useHaptics();
 
   const handleSave = () => {
     onUpdateSettings?.({ maxHandSize: handLimit });
@@ -154,9 +150,10 @@ export function SettingsPanel({
                   key={id}
                   onClick={() => {
                     setSoundTheme(id);
-                    // Preview a representative sound after the state
-                    // change commits.
-                    setTimeout(() => play("setComplete"), 0);
+                    // Preview using the EXPLICIT id we just clicked.
+                    // Going through the hook-based play() would use
+                    // the previous render's theme (stale closure).
+                    previewSound(id, "setComplete");
                   }}
                   style={{
                     padding: "8px 10px",
@@ -223,8 +220,10 @@ export function SettingsPanel({
             <button
               onClick={() => {
                 toggleHaptics();
-                // Preview only when turning ON.
-                if (!hapticsEnabled) setTimeout(() => haptic("complete"), 0);
+                // Preview only when turning ON. previewHaptic bypasses
+                // the enabled check (the hook-based haptic would
+                // capture the still-false enabled value here).
+                if (!hapticsEnabled) previewHaptic("complete");
               }}
               className={`relative w-12 h-6 rounded-full transition-colors ${
                 hapticsEnabled ? "bg-emerald-600" : "bg-gray-600"

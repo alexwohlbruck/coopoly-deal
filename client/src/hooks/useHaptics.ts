@@ -5,6 +5,7 @@
 
 import { useCallback } from "react";
 import { useWebHaptics } from "web-haptics/react";
+import { WebHaptics } from "web-haptics";
 import { useSoundSettings } from "./useSoundManager";
 
 /**
@@ -93,4 +94,24 @@ export function useHaptics() {
   );
 
   return { haptic: fire };
+}
+
+// ── Preview helper (non-hook) ─────────────────────────────────────
+// Bypasses the `enabled` check so settings can fire a one-shot
+// preview when the user toggles haptics ON (the hook-based haptic
+// would otherwise be cached against the previous `enabled = false`
+// render and skip the call).
+let previewHapticsInstance: WebHaptics | null = null;
+function getPreviewHaptics(): WebHaptics {
+  if (!previewHapticsInstance) previewHapticsInstance = new WebHaptics();
+  return previewHapticsInstance;
+}
+
+export function previewHaptic(event: HapticEvent) {
+  try {
+    const h = getPreviewHaptics();
+    dispatch((p) => h.trigger(p as never), event);
+  } catch {
+    // Vibration API unavailable; silent fallback.
+  }
 }
