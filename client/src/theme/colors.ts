@@ -7,7 +7,7 @@
 
 export interface FeltTheme {
   /** Stable id, also the suffix for the .felt-{id} CSS class. */
-  id: ThemeName;
+  id: string;
   /** Display name. */
   name: string;
   /** ClassName to apply to the root element (e.g. "felt-emerald"). */

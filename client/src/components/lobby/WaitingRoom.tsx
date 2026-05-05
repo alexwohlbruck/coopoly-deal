@@ -1,15 +1,21 @@
+// Waiting room — redesigned per design's MockupWaitingRoom.
+// Centered "Waiting Room / Room {code}" card with a player list and
+// host controls. Settings panel on the right at desktop, stacked
+// below at compact widths. Footer shows the share-code line.
+
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, BookOpen } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { GameSettingsPanel } from "./GameSettingsPanel";
 import { type GameSettings } from "../../types/game";
-
 import { useI18n } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
+import { useLayout } from "../../hooks/useLayout";
+import { PrimaryButton, SecondaryButton } from "../ui/Button";
 
 interface WaitingRoomProps {
   gameState: ClientGameState;
@@ -25,6 +31,21 @@ interface WaitingRoomProps {
   };
 }
 
+// Color palette for player avatars — picked from the design's PlayerCrest
+// swatches; stable per player by index so colors don't shuffle on join.
+const AVATAR_PALETTE = [
+  "#f0c14a",
+  "#6c9bd2",
+  "#d96aa1",
+  "#7adb88",
+  "#e08840",
+  "#b8a8ff",
+];
+
+const PANEL_BG =
+  "linear-gradient(180deg, rgba(28,22,20,0.85) 0%, rgba(16,10,8,0.92) 100%)";
+const PANEL_BORDER = "1px solid rgba(245,234,208,0.08)";
+
 export function WaitingRoom({
   gameState,
   playerId,
@@ -37,17 +58,26 @@ export function WaitingRoom({
   const { t } = useI18n();
   const { theme } = useGameStore();
   const themeData = getTheme(theme);
+  const layout = useLayout();
+  const isCompact = layout === "compact";
   const [showRules, setShowRules] = useState(false);
+
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
 
   return (
     <div
-      className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+      className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-start justify-center`}
+      style={{
+        // Push content down past the top chrome (Rules button + music
+        // controls). Bottom padding leaves room for the share-code
+        // footer line so it doesn't overlap the settings panel.
+        padding: isCompact ? "70px 12px 56px" : "92px 24px 68px",
+      }}
     >
-      {/* Music controls in top right */}
+      {/* Music + settings — top right */}
       {musicControls && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
           <MusicControls
             isPlaying={musicControls.isPlaying}
             onToggle={musicControls.onToggle}
@@ -56,13 +86,19 @@ export function WaitingRoom({
         </div>
       )}
 
-      {/* Rules button in top left */}
+      {/* Rules — top left */}
       <button
         onClick={() => setShowRules(true)}
-        className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/20"
+        className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/15 backdrop-blur-lg text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/15"
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 11,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+        }}
       >
         <BookOpen className="w-4 h-4" />
-        <span className="font-semibold">Rules</span>
+        <span>Rules</span>
       </button>
 
       <GameRulesModal
@@ -72,100 +108,282 @@ export function WaitingRoom({
         useSocialistTheme={gameState.settings.useSocialistTheme}
         onClose={() => setShowRules(false)}
       />
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md space-y-4"
+        transition={{ duration: 0.32, ease: [0.22, 0.9, 0.32, 1] }}
+        style={{
+          width: "100%",
+          maxWidth: isCompact ? 460 : 740,
+          display: "flex",
+          flexDirection: isCompact ? "column" : "row",
+          gap: isCompact ? 14 : 24,
+          alignItems: "flex-start",
+          justifyContent: "center",
+        }}
       >
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-black text-white mb-1">Waiting Room</h1>
-          <div className="inline-block bg-white/10 backdrop-blur rounded-lg px-6 py-2 border border-white/20">
-            <span className="text-emerald-300 text-sm">
-              {t.waiting.roomCode}
-            </span>
-            <p className="text-3xl font-mono font-bold text-white tracking-[0.3em]">
-              {gameState.id}
-            </p>
+        {/* ── Players card ─────────────────────────────────────── */}
+        <div
+          style={{
+            flex: isCompact ? undefined : "0 0 380px",
+            width: isCompact ? "100%" : 380,
+            padding: isCompact ? 18 : 24,
+            borderRadius: 16,
+            background: PANEL_BG,
+            border: PANEL_BORDER,
+            boxShadow: "var(--sh-panel)",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.1em",
+              color: "rgba(245,234,208,0.55)",
+              textTransform: "uppercase",
+              marginBottom: 4,
+            }}
+          >
+            Waiting Room
           </div>
-        </div>
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: 24,
+              fontWeight: 700,
+              color: "#f5ead0",
+              letterSpacing: "-0.01em",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            Room {gameState.id}
+          </div>
 
-        <div className="space-y-4 gap-2">
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 shadow-2xl border border-white/20">
-            <h3 className="text-emerald-200 text-sm font-medium mb-3">
-              {gameState.settings.useSocialistTheme ? "Comrades" : t.waiting.players} ({gameState.players.length}/6)
-            </h3>
-            <div className="space-y-2">
-              {gameState.players.map((player, i) => (
-                <motion.div
-                  key={player.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex items-center gap-3 bg-white/5 rounded-lg px-4 py-3"
-                >
-                  <div
-                    className={`w-8 h-8 rounded-full ${player.isBot ? "bg-blue-500" : "bg-emerald-500"} flex items-center justify-center text-white font-bold text-sm`}
-                  >
-                    {player.isBot ? "B" : player.name[0]?.toUpperCase()}
-                  </div>
-                  <span className="text-white font-medium">{player.name}</span>
-                  {player.isBot && (
-                    <span className="text-blue-400 text-xs">CPU</span>
-                  )}
-                  {player.id === playerId && (
-                    <span className="text-emerald-400 text-xs ml-auto">
-                      ({t.common.you})
-                    </span>
-                  )}
-                  {i === 0 && !player.isBot && (
-                    <span className="text-yellow-400 text-xs ml-auto">
-                      Host
-                    </span>
-                  )}
-                  {isHost && i > 0 && onRemovePlayer && (
-                    <button
-                      onClick={() => onRemovePlayer(player.id)}
-                      className="ml-auto p-1 hover:bg-red-500/20 rounded transition-colors text-red-400 hover:text-red-300"
-                      title={gameState.settings.useSocialistTheme ? "Remove comrade" : "Remove player"}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </motion.div>
-              ))}
+          <div
+            style={{
+              marginTop: 14,
+              padding: "14px 0",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                color: "rgba(245,234,208,0.5)",
+                textTransform: "uppercase",
+                marginBottom: 8,
+              }}
+            >
+              <span>
+                {gameState.settings.useSocialistTheme
+                  ? "Comrades"
+                  : t.waiting.players}
+              </span>
+              <span>
+                {gameState.players.length} / 6
+              </span>
             </div>
+
+            <AnimatePresence initial={false}>
+              {gameState.players.map((player, i) => {
+                const color = AVATAR_PALETTE[i % AVATAR_PALETTE.length];
+                const isMe = player.id === playerId;
+                const isHostRow = i === 0 && !player.isBot;
+                const tag = player.isBot
+                  ? "CPU"
+                  : isHostRow
+                    ? isMe
+                      ? "YOU · HOST"
+                      : "HOST"
+                    : isMe
+                      ? "YOU"
+                      : "PLAYER";
+                return (
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, x: -12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -8 }}
+                    transition={{ delay: i * 0.06, duration: 0.22 }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 999,
+                        background: `linear-gradient(180deg, ${color}, color-mix(in oklab, ${color} 60%, #000))`,
+                        color: "#1a1208",
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 800,
+                        fontSize: 13,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        boxShadow:
+                          "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.2)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {(player.isBot ? "B" : player.name[0])?.toUpperCase()}
+                    </div>
+                    <div
+                      style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-ui)",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: "#f5ead0",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {player.name}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 9,
+                          letterSpacing: "0.06em",
+                          color,
+                        }}
+                      >
+                        {tag}
+                      </span>
+                    </div>
+                    {isHost && !isHostRow && onRemovePlayer && (
+                      <button
+                        onClick={() => onRemovePlayer(player.id)}
+                        title={
+                          gameState.settings.useSocialistTheme
+                            ? "Remove comrade"
+                            : "Remove player"
+                        }
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 6,
+                          background: "rgba(255,255,255,0.05)",
+                          border: "1px solid rgba(255,255,255,0.06)",
+                          color: "rgba(255,200,200,0.7)",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: 0,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
+
+          {isHost ? (
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <SecondaryButton
+                onClick={onAddBot}
+                disabled={gameState.players.length >= 6}
+                size="md"
+                style={{ flex: 1 }}
+              >
+                + {t.waiting.addBot}
+              </SecondaryButton>
+              <PrimaryButton
+                onClick={onStartGame}
+                disabled={!canStart}
+                size="md"
+                style={{ flex: 1 }}
+              >
+                {canStart
+                  ? t.waiting.startGame
+                  : gameState.settings.useSocialistTheme
+                    ? "Need Comrades"
+                    : t.waiting.needMorePlayers}
+              </PrimaryButton>
+            </div>
+          ) : (
+            <p
+              style={{
+                marginTop: 14,
+                textAlign: "center",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                color: "rgba(245,234,208,0.55)",
+                textTransform: "uppercase",
+              }}
+            >
+              {gameState.settings.useSocialistTheme
+                ? "Waiting for comrades…"
+                : t.waiting.waitingForPlayers}
+            </p>
+          )}
         </div>
 
-        <GameSettingsPanel
-          isHost={isHost}
-          settings={gameState.settings}
-          onSettingsChange={onUpdateSettings}
-        />
-
-        {isHost ? (
-          <div className="flex gap-3">
-            <button
-              onClick={onAddBot}
-              disabled={gameState.players.length >= 6}
-              className="flex-1 py-4 bg-purple-600 hover:bg-purple-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
-            >
-              + {t.waiting.addBot}
-            </button>
-            <button
-              onClick={onStartGame}
-              disabled={!canStart}
-              className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50 text-white font-bold rounded-xl text-lg transition-colors shadow-lg"
-            >
-              {canStart ? t.waiting.startGame : (gameState.settings.useSocialistTheme ? "Need More Comrades" : t.waiting.needMorePlayers)}
-            </button>
-          </div>
-        ) : (
-          <p className="text-center text-emerald-300 text-sm">
-            {gameState.settings.useSocialistTheme ? "Waiting for comrades..." : t.waiting.waitingForPlayers}
-          </p>
-        )}
+        {/* ── Settings panel ───────────────────────────────────── */}
+        <div
+          style={{
+            flex: isCompact ? undefined : "0 0 320px",
+            width: isCompact ? "100%" : 320,
+            padding: isCompact ? 16 : 20,
+            borderRadius: 16,
+            background: PANEL_BG,
+            border: PANEL_BORDER,
+            boxShadow: "var(--sh-panel)",
+          }}
+        >
+          <GameSettingsPanel
+            isHost={isHost}
+            settings={gameState.settings}
+            onSettingsChange={onUpdateSettings}
+          />
+        </div>
       </motion.div>
+
+      {/* Share-code footer */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: 18,
+          left: "50%",
+          transform: "translateX(-50%)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          color: "rgba(245,234,208,0.45)",
+          textTransform: "uppercase",
+          whiteSpace: "nowrap",
+          pointerEvents: "none",
+          zIndex: 4,
+        }}
+      >
+        Share room code · {gameState.id.split("").join(" ")}
+      </div>
     </div>
   );
 }

@@ -52,6 +52,7 @@ function toSeatPlayer(
   player: ClientPlayer,
   index: number,
   allowDuplicateSets: boolean,
+  currentTurnPlayerId?: string,
 ): OpponentSeatPlayer {
   const money = player.bank.reduce((sum, c) => sum + c.value, 0);
   return {
@@ -63,6 +64,7 @@ function toSeatPlayer(
     totalSetsNeeded: 3,
     money,
     handCount: player.hand?.length ?? 0,
+    isCurrentTurn: !!currentTurnPlayerId && player.id === currentTurnPlayerId,
   };
 }
 
@@ -106,8 +108,11 @@ export function GameTableDesktop({
   );
 
   const seatPlayers: OpponentSeatPlayer[] = useMemo(
-    () => opponents.map((p, i) => toSeatPlayer(p, i, allowDuplicateSets)),
-    [opponents, allowDuplicateSets],
+    () =>
+      opponents.map((p, i) =>
+        toSeatPlayer(p, i, allowDuplicateSets, gameState.turn?.playerId),
+      ),
+    [opponents, allowDuplicateSets, gameState.turn?.playerId],
   );
 
   const deckCount = gameState.deckCount ?? 0;
@@ -227,7 +232,7 @@ export function GameTableDesktop({
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
                 color: "rgba(245,234,208,0.55)",
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
             >
@@ -278,7 +283,7 @@ export function GameTableDesktop({
               fontFamily: "var(--font-mono)",
               fontSize: 9,
               color: "rgba(245,234,208,0.55)",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
             }}
           >
@@ -409,7 +414,7 @@ export function GameTableDesktop({
                 fontFamily: "var(--font-mono)",
                 fontSize: 9,
                 color: "rgba(245,234,208,0.55)",
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 textTransform: "uppercase",
               }}
             >
@@ -501,7 +506,7 @@ function ActiveOpponentBoardWrapper({
             fontFamily: "var(--font-mono)",
             fontSize: 11,
             color: "rgba(245,234,208,0.4)",
-            letterSpacing: "0.18em",
+            letterSpacing: "0.08em",
             padding: 36,
             margin: "auto",
           }}

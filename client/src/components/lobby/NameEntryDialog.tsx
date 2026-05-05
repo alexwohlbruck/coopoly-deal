@@ -27,7 +27,7 @@ export function NameEntryDialog({
 
   return (
     <div
-      className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+      className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -50,7 +50,7 @@ export function NameEntryDialog({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 11,
-              letterSpacing: "0.14em",
+              letterSpacing: "0.06em",
               textTransform: "uppercase",
               color: "rgba(245,234,208,0.65)",
               background: "transparent",
@@ -66,7 +66,7 @@ export function NameEntryDialog({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              letterSpacing: "0.2em",
+              letterSpacing: "0.1em",
               color: "rgba(245,234,208,0.55)",
               textTransform: "uppercase",
               marginBottom: 4,
@@ -80,7 +80,7 @@ export function NameEntryDialog({
               fontSize: 28,
               fontWeight: 700,
               color: "#f5ead0",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               fontVariantNumeric: "tabular-nums",
               margin: 0,
               marginBottom: 22,
@@ -94,7 +94,7 @@ export function NameEntryDialog({
                 display: "block",
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
                 color: "rgba(245,234,208,0.55)",
                 textTransform: "uppercase",
                 marginBottom: 6,

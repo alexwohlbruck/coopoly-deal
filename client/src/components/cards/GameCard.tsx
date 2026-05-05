@@ -212,7 +212,7 @@ function PropertyBody({
       <div
         style={{
           fontSize: 8 * fontScale,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           color: "var(--card-ink-soft)",
           marginBottom: 4,
           textAlign: "center",
@@ -380,7 +380,7 @@ function WildcardPropertyContent({
             style={{
               marginTop: 5,
               fontSize: 7.5 * fontScale,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               color: "var(--card-ink-soft)",
               textTransform: "uppercase",
             }}
@@ -393,7 +393,16 @@ function WildcardPropertyContent({
     );
   }
 
-  // 2-color wildcard
+  // 2-color wildcard. The "active" (top-of-stack) color goes on top
+  // right-side up; the inactive color is on the bottom rotated 180°
+  // so flipping the card brings it right-side up.
+  //
+  // The body shows BOTH rent tables side-by-side: the active color's
+  // rents on the right (right-side up) and the inactive color's
+  // rents on the left (rotated 180°). When the player physically
+  // flips the card, the previously-left rent table is now on the
+  // right and right-side up — the layout reads symmetrically from
+  // either orientation, mirroring the printed real-life card.
   const c1 = colors[0] ?? PropertyColor.Brown;
   const c2 = colors[1] ?? PropertyColor.Brown;
   const top = orientation === "bottom" ? c2 : c1;
@@ -416,6 +425,7 @@ function WildcardPropertyContent({
           position === "top"
             ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)"
             : "inset 0 1px 0 rgba(0,0,0,0.18), inset 0 -1px 0 rgba(255,255,255,0.18)",
+        transform: position === "bottom" ? "rotate(180deg)" : undefined,
       }}
     >
       <span
@@ -433,6 +443,93 @@ function WildcardPropertyContent({
       </span>
     </div>
   );
+
+  // Mini rent column. Used twice — once right-side up (active/top
+  // color), once rotated 180° (inactive/bottom color). Compact: shows
+  // the rent ladder with a tiny "RENT" label and a colored stripe
+  // matching the column's color.
+  const RentColumn = ({
+    color,
+    rotated,
+  }: {
+    color: PropertyColor;
+    rotated: boolean;
+  }) => {
+    const rents = RENT_VALUES[color] ?? [];
+    const setSize = SET_SIZE[color] ?? rents.length;
+    return (
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          padding: `${4 * fontScale}px ${5 * fontScale}px`,
+          transform: rotated ? "rotate(180deg)" : undefined,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 6.5 * fontScale,
+            letterSpacing: "0.08em",
+            color: "var(--card-ink-soft)",
+            textAlign: "center",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: 2 * fontScale,
+          }}
+        >
+          {useSocialistTheme ? "Levy" : "Rent"}
+        </div>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-evenly",
+            fontSize: 7.5 * fontScale,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {rents.map((rent, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                borderBottom:
+                  i < rents.length - 1
+                    ? "1px dotted rgba(0,0,0,0.15)"
+                    : "none",
+                padding: "0.5px 1px",
+                lineHeight: 1.1,
+              }}
+            >
+              <span style={{ color: "var(--card-ink-soft)" }}>
+                {i + 1}
+                {i + 1 === setSize ? "★" : ""}
+              </span>
+              <span style={{ fontWeight: 600, color: "var(--card-ink)" }}>
+                ${rent}
+              </span>
+            </div>
+          ))}
+        </div>
+        {/* Color stripe to anchor each column to its color. */}
+        <div
+          style={{
+            marginTop: 3,
+            height: 2,
+            borderRadius: 1,
+            background: PROPERTY_COLOR_VAR[color],
+            boxShadow: "inset 0 1px 0 rgba(0,0,0,0.2)",
+          }}
+        />
+      </div>
+    );
+  };
+
   return (
     <>
       <ColorBand color={top} position="top" />
@@ -441,36 +538,19 @@ function WildcardPropertyContent({
         style={{
           flex: 1,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          flexDirection: "row",
+          alignItems: "stretch",
           background: "var(--card-paper)",
+          // Hairline divider between the two columns.
+          backgroundImage:
+            "linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(0,0,0,0.12) calc(50% - 0.5px), rgba(0,0,0,0.12) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
         }}
       >
-        <div
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 13 * fontScale,
-            fontWeight: 800,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            color: "var(--card-ink)",
-            textAlign: "center",
-            lineHeight: 1.05,
-          }}
-        >
-          Wild
-          <br />
-          <span
-            style={{
-              fontSize: 7.5 * fontScale,
-              fontWeight: 600,
-              letterSpacing: "0.18em",
-              color: "var(--card-ink-soft)",
-            }}
-          >
-            2-color
-          </span>
-        </div>
+        {/* Inactive color rents on the LEFT, rotated 180° so they read
+            correctly when the card is flipped. */}
+        <RentColumn color={bot} rotated />
+        {/* Active color rents on the RIGHT, right-side up. */}
+        <RentColumn color={top} rotated={false} />
       </div>
       <ColorBand color={bot} position="bottom" />
     </>
@@ -503,7 +583,7 @@ function MoneyCardContent({
           fontFamily: "var(--font-display)",
           fontSize: 9.5 * fontScale,
           fontWeight: 700,
-          letterSpacing: "0.2em",
+          letterSpacing: "0.1em",
           textTransform: "uppercase",
           borderBottom: "1px solid rgba(0,0,0,0.28)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22)",
@@ -540,6 +620,50 @@ function MoneyCardContent({
 }
 
 /** Action card (Sly Deal, Pass Go, etc.). */
+/**
+ * Small "$NM" chip used on cards whose face doesn't otherwise show
+ * their bank value (action / rent cards). Positioned absolutely so
+ * it floats over the card's top-left corner regardless of the card
+ * body's flex layout. Skips rendering when value <= 0.
+ *
+ * The closest positioned ancestor is the GameCard inner wrapper
+ * (which sets position: relative + overflow: hidden), so the badge
+ * lands at the corner of the card itself.
+ */
+function CardValueBadge({
+  value,
+  fontScale = 1,
+}: {
+  value: number;
+  fontScale?: number;
+}) {
+  if (!value || value <= 0) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 4,
+        left: 4,
+        background: "rgba(0,0,0,0.7)",
+        color: "#f5ead0",
+        fontFamily: "var(--font-display)",
+        fontWeight: 800,
+        fontSize: 9 * fontScale,
+        letterSpacing: "0.02em",
+        padding: `${1 * fontScale}px ${5 * fontScale}px`,
+        borderRadius: 4,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.5)",
+        fontVariantNumeric: "tabular-nums",
+        zIndex: 4,
+        pointerEvents: "none",
+      }}
+    >
+      ${value}M
+    </div>
+  );
+}
+
 function ActionCardContent({
   card,
   fontScale,
@@ -552,6 +676,7 @@ function ActionCardContent({
   const accent = ACTION_ACCENT[card.type] ?? "#e8c878";
   const subtitle = getActionSubtitle(card.type, useSocialistTheme);
   const title = getCardTypeLabel(card.type, useSocialistTheme);
+  const value = card.value > 0 ? card.value : null;
   return (
     <div
       className="paper-grain"
@@ -562,22 +687,59 @@ function ActionCardContent({
         background: "var(--card-paper)",
       }}
     >
+      {/* Header bar: $value chip on the left, "ACTION" centered.
+          The chip used to be a floating absolute-positioned badge in
+          the top-left corner, which overlapped the centered title at
+          small card sizes. Now it lives inside the header so layout
+          flow keeps everything readable. */}
       <div
         style={{
           background: "linear-gradient(180deg, #2a2a2a 0%, #141414 100%)",
           color: accent,
-          padding: `${5 * fontScale}px ${8 * fontScale}px ${4 * fontScale}px`,
+          padding: `${5 * fontScale}px ${6 * fontScale}px ${4 * fontScale}px`,
           fontFamily: "var(--font-display)",
           fontSize: 9.5 * fontScale,
           fontWeight: 700,
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
           textTransform: "uppercase",
-          textAlign: "center",
           borderBottom: `2px solid ${accent}`,
           boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 4,
         }}
       >
-        Action
+        <span
+          style={{
+            background: "rgba(0,0,0,0.4)",
+            color: "#f5ead0",
+            padding: `0 ${5 * fontScale}px`,
+            borderRadius: 3,
+            fontSize: 8.5 * fontScale,
+            letterSpacing: "0.02em",
+            fontVariantNumeric: "tabular-nums",
+            visibility: value != null ? "visible" : "hidden",
+            // Reserve roughly the same width whether visible or not so
+            // "ACTION" stays centered.
+            minWidth: 26 * fontScale,
+            textAlign: "center",
+          }}
+        >
+          {value != null ? `$${value}M` : "$0M"}
+        </span>
+        <span style={{ flex: 1, textAlign: "center" }}>Action</span>
+        {/* Right-side spacer: same width as the left chip so the
+            centered text stays visually centered. */}
+        <span
+          style={{
+            visibility: "hidden",
+            minWidth: 26 * fontScale,
+            padding: `0 ${5 * fontScale}px`,
+          }}
+        >
+          $0M
+        </span>
       </div>
       <div
         style={{
@@ -661,6 +823,7 @@ function RentCardContent({
       ? `linear-gradient(135deg, ${PROPERTY_COLOR_VAR[c1]} 50%, ${PROPERTY_COLOR_VAR[c2]} 50%)`
       : "var(--p-railroad)";
   return (
+    <>
     <div
       className="paper-grain"
       style={{
@@ -716,6 +879,8 @@ function RentCardContent({
         )}
       </div>
     </div>
+    <CardValueBadge value={card.value} fontScale={fontScale} />
+    </>
   );
 }
 
@@ -820,8 +985,14 @@ export function GameCard({
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          transform: orientation === "bottom" ? "rotate(180deg)" : undefined,
-          transformOrigin: "center center",
+          // NB: the outer card stays right-side-up at all orientations.
+          // For 2-color wildcards, WildcardPropertyContent reorders the
+          // top/bot color bands based on `orientation`, and only the
+          // inactive (bottom) band is rotated 180° internally so it
+          // reads correctly when the card is physically flipped.
+          // Earlier this rotated the WHOLE card when orientation ===
+          // "bottom" — which conflicted with the band reorder and net-
+          // resulted in the INACTIVE color appearing visually on top.
           boxShadow: selected
             ? `0 0 0 3px var(--accent, #f0c14a), ${liftedShadow}`
             : baseShadow,
@@ -908,7 +1079,7 @@ export function CardBack({
                 fontFamily: "var(--font-display)",
                 fontWeight: 800,
                 fontSize: 7 * fontScale,
-                letterSpacing: "0.3em",
+                letterSpacing: "0.08em",
                 color: "rgba(248,232,196,0.8)",
               }}
             >
@@ -921,7 +1092,7 @@ export function CardBack({
               fontFamily: "var(--font-display)",
               fontWeight: 800,
               fontSize: 11 * fontScale,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
               color: "#f8e8c4",
               textShadow: "0 1px 0 rgba(0,0,0,0.4)",
@@ -934,7 +1105,7 @@ export function CardBack({
             <span
               style={{
                 fontSize: 7 * fontScale,
-                letterSpacing: "0.3em",
+                letterSpacing: "0.08em",
                 opacity: 0.8,
               }}
             >

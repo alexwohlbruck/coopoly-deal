@@ -5,63 +5,18 @@
 //   PropertySetsRow — responsive grid of PropertySetDisplay stacks, with bank as first cell
 
 import type { ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { PropertySetDisplay } from "../PropertySetDisplay";
-import { CardBack } from "../../cards/GameCard";
+import { CardBack, GameCard } from "../../cards/GameCard";
+import { CardType } from "../../../types/game";
 import type { Card, PropertySet, PropertyColor } from "../../../types/game";
 
-const MONEY_BG_VAR: Record<number, string> = {
-  1: "var(--m-1)",
-  2: "var(--m-2)",
-  3: "var(--m-3)",
-  4: "var(--m-4)",
-  5: "var(--m-5)",
-  10: "var(--m-10)",
-};
-
-/**
- * A single money card rendered as part of the bank chip stack.
- * Simpler than the full MoneyCard from GameCard.tsx — this just shows
- * the denomination and a count badge, sized for stacking.
- */
-function StackMoneyCard({ value, w, h }: { value: number; w: number; h: number }) {
-  const bg = MONEY_BG_VAR[value] ?? MONEY_BG_VAR[1];
-  return (
-    <div
-      style={{
-        width: w,
-        height: h,
-        background: `linear-gradient(160deg, ${bg} 0%, color-mix(in oklab, ${bg} 78%, #000) 100%)`,
-        borderRadius: 5,
-        boxShadow:
-          "0 1px 0 rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.25)",
-        color: "#fff",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 4,
-      }}
-    >
-      <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontWeight: 800,
-          fontSize: w >= 80 ? 19 : 16,
-          lineHeight: 1,
-          textShadow: "0 1px 0 rgba(0,0,0,0.3)",
-        }}
-      >
-        ${value}M
-      </div>
-    </div>
-  );
-}
-
 // ────────────────────────────────────────────────────────────────────
-// BankStack — money cards displayed as an overlapped stack with a single
-// "BANK $NM" badge on top. Reads as a chip stack rather than a fan.
-// Sized to drop into a property-row grid cell so the bank lives alongside
-// the property stacks at the same scale.
+// BankStack — money cards displayed as an overlapped stack of REAL
+// MoneyCard faces (via GameCard) with a "BANK $NM" badge on top.
+// Reads as a chip stack rather than a fan. Sized to drop into a
+// property-row grid cell so the bank lives alongside the property
+// stacks at the same scale.
 // ────────────────────────────────────────────────────────────────────
 
 interface BankStackProps {
@@ -69,12 +24,24 @@ interface BankStackProps {
   compact?: boolean;
 }
 
+// Build a minimal Card object for GameCard rendering. Bank cards
+// don't need stable ids since they're not interactive (the bank
+// wrapper handles drops); a stable-per-position id keeps React keys
+// happy.
+function moneyCardFromValue(value: number, key: string | number): Card {
+  return { id: `bank-${key}-${value}`, type: CardType.Money, value };
+}
+
 export function BankStack({ cards, compact = false }: BankStackProps) {
   const total = cards.reduce((a, b) => a + b, 0);
   // Sort descending so the largest denomination shows on top.
   const sorted = [...cards].sort((a, b) => b - a);
   const cardW = compact ? 76 : 88;
-  const cardH = compact ? 106 : 124;
+  // Real GameCard renders at 2:3 (width × 1.5), so the container
+  // height has to match — earlier this used a hand-tuned 106/124
+  // which was a bit shorter than the actual face and clipped the
+  // bottom denomination row.
+  const cardH = Math.round(cardW * 1.5);
   // Cap stack height: target the same envelope as a 3-card property stack
   // (so 5+ bills don't tower over property sets). Squeeze overlap as count grows.
   const targetMaxStackH = cardH + (compact ? 22 * 2 : 28 * 2);
@@ -161,19 +128,33 @@ export function BankStack({ cards, compact = false }: BankStackProps) {
             empty
           </div>
         )}
-        {sorted.map((v, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: i * overlap,
-              transform: `rotate(${(i % 2 === 0 ? -1 : 1) * 0.5}deg)`,
-            }}
-          >
-            <StackMoneyCard value={v} w={cardW} h={cardH} />
-          </div>
-        ))}
+        <AnimatePresence initial={false}>
+          {sorted.map((v, i) => (
+            <motion.div
+              key={`${i}-${v}`}
+              initial={{ opacity: 0, y: -12, scale: 0.92 }}
+              animate={{
+                opacity: 1,
+                y: 0,
+                scale: 1,
+                rotate: (i % 2 === 0 ? -1 : 1) * 0.5,
+              }}
+              exit={{ opacity: 0, y: 8, scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: i * overlap,
+              }}
+            >
+              <GameCard
+                card={moneyCardFromValue(v, i)}
+                width={cardW}
+                disableHover
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -383,7 +364,7 @@ export function MiniPile({ kind, count }: MiniPileProps) {
                 fontFamily: "var(--font-mono)",
                 fontSize: 8,
                 color: "rgba(255,255,255,0.4)",
-                letterSpacing: "0.14em",
+                letterSpacing: "0.06em",
               }}
             >
               empty
@@ -445,6 +426,15 @@ export interface PropertySetsRowExtraProps {
    *  overflow-x: auto if it can't fit. The design's compact mockup uses
    *  horizontal scroll; the desktop variant lets it wrap. */
   wrap?: boolean;
+  /** When true, mark the bank/set cells with `data-touch-drop` attributes
+   *  so the touch-drag handler in DragPeekHand can dispatch drops via
+   *  elementFromPoint. Should match the same `canDrop*` gates used by
+   *  the desktop HTML5 drop handlers (i.e. isYou && isCurrentTurn). */
+  touchDropEnabled?: boolean;
+  /** When true, render the "+ NEW" drop slot at the end of the row.
+   *  Wrapped in an AnimatePresence so it fades in/out as the parent
+   *  (player board) toggles this in response to drag start/end. */
+  isDragInProgress?: boolean;
 }
 
 export function PropertySetsRow({
@@ -467,9 +457,15 @@ export function PropertySetsRow({
   onCardDragEnd,
   dragOverColor,
   wrap = false,
+  touchDropEnabled = false,
+  isDragInProgress = false,
 }: PropertySetsRowProps & PropertySetsRowExtraProps) {
   const hasBank = Array.isArray(bank) && bank.length > 0;
-  const n = sets.length + (hasBank ? 1 : 0);
+  // Show the bank cell whenever the player can interact with this board
+  // (their own table) — even when empty — so it can serve as a touch
+  // drop target with an empty-state placeholder.
+  const showBankCell = hasBank || touchDropEnabled;
+  const n = sets.length + (showBankCell ? 1 : 0) + (touchDropEnabled ? 1 : 0);
 
   if (n === 0) {
     return (
@@ -483,7 +479,7 @@ export function PropertySetsRow({
           fontFamily: "var(--font-mono)",
           fontSize: 11,
           color: "rgba(245,234,208,0.4)",
-          letterSpacing: "0.18em",
+          letterSpacing: "0.08em",
         }}
       >
         no sets played
@@ -515,9 +511,14 @@ export function PropertySetsRow({
         paddingTop: 4,
       }}
     >
-      {hasBank && (
+      {showBankCell && (
         <div
           key="__bank"
+          // Touch-drag drop target: the DragPeekHand handler walks up the DOM
+          // from elementFromPoint looking for [data-touch-drop]. When enabled,
+          // dropping here plays the card to the bank. Rendered even when
+          // empty so the player can drop the very first money/action card.
+          data-touch-drop={touchDropEnabled ? "bank" : undefined}
           style={{
             width: cellW,
             display: "flex",
@@ -525,12 +526,13 @@ export function PropertySetsRow({
             flexShrink: 0,
           }}
         >
-          <BankStack cards={bank!} compact={compact} />
+          <BankStack cards={bank ?? []} compact={compact} />
         </div>
       )}
       {sets.map((s, i) => (
         <div
           key={`${s.color}-${i}`}
+          data-touch-drop={touchDropEnabled ? `set:${s.color}` : undefined}
           style={{
             width: cellW,
             display: "flex",
@@ -554,6 +556,89 @@ export function PropertySetsRow({
           />
         </div>
       ))}
+      <AnimatePresence initial={false}>
+        {touchDropEnabled && isDragInProgress && (
+          <motion.div
+            key="__new-set"
+            data-touch-drop="new-set"
+            initial={{ opacity: 0, width: 0, marginLeft: -gap }}
+            animate={{ opacity: 1, width: cellW, marginLeft: 0 }}
+            exit={{ opacity: 0, width: 0, marginLeft: -gap }}
+            transition={{ duration: 0.18, ease: [0.22, 0.9, 0.32, 1] }}
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              flexShrink: 0,
+              overflow: "hidden",
+            }}
+          >
+            <NewSetPlaceholder cardWidth={cardWidth} compact={compact} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// NewSetPlaceholder — empty cell at the end of the property row that
+// serves as a touch drop target for "create a new set with this
+// card". Visually a dashed-border card slot with a + icon.
+// ────────────────────────────────────────────────────────────────────
+function NewSetPlaceholder({
+  cardWidth,
+  compact,
+}: {
+  cardWidth: number;
+  compact: boolean;
+}) {
+  const cardH = compact ? 106 : 124;
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+        padding: "6px 8px 4px",
+        borderRadius: 10,
+        background: "rgba(0,0,0,0.04)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+      }}
+    >
+      <div
+        style={{
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "rgba(0,0,0,0.3)",
+          color: "rgba(255,255,255,0.55)",
+          fontFamily: "var(--font-mono)",
+          fontSize: 9.5,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.06)",
+        }}
+      >
+        + NEW
+      </div>
+      <div
+        style={{
+          width: cardWidth,
+          height: cardH,
+          borderRadius: 6,
+          border: "1px dashed rgba(255,255,255,0.2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: "var(--font-display)",
+          fontSize: 28,
+          fontWeight: 700,
+          color: "rgba(255,255,255,0.35)",
+          letterSpacing: "0.04em",
+        }}
+      >
+        +
+      </div>
     </div>
   );
 }

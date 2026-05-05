@@ -146,6 +146,19 @@ export function GameTable({
   }, [selectedCard, isCardStillInHand]);
   const opponents = gameState.players.filter((p) => p.id !== playerId);
   const isMyTurn = gameState.turn?.playerId === playerId;
+  // If the turn ends while a dialog/prompt is open (e.g. the player
+  // started picking targets for a Force Deal but ran out the clock),
+  // close the dialog and toast a clear message instead of leaving an
+  // orphaned prompt over a turn that's no longer ours.
+  useEffect(() => {
+    if (selectedCard && !isMyTurn) {
+      console.log("[GameTable] Turn ended while dialog open, closing");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedCard(null);
+      setToast("Time's up — your turn ended.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMyTurn]);
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
   const timeLeft = useTurnTimer(
@@ -403,7 +416,7 @@ export function GameTable({
   return (
     <div
       ref={headerRef}
-      className={`h-screen ${themeData.feltClass} felt-surface flex flex-col overflow-hidden touch-pan-x relative`}
+      className={`h-dynamic-screen no-text-select ${themeData.feltClass} felt-surface flex flex-col overflow-hidden relative`}
       style={{ overscrollBehavior: "none" }}
     >
       <TopBar
@@ -533,6 +546,7 @@ export function GameTable({
                 .flatMap((s) => s.cards)
                 .find((c) => c.id === pendingWildcardAssignment.cardId)!
             }
+            player={me}
             settings={gameState.settings}
             onAssign={onAssignReceivedWildcard}
           />

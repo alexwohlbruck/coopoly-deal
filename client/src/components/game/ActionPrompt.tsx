@@ -405,7 +405,7 @@ export function ActionPrompt({
           {me.bank.filter((c) => c.value > 0).length > 0 && (
             <div className="mb-2">
               <p className="text-gray-500 text-[10px] mb-1">Bank</p>
-              <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
+              <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {[...me.bank]
                   .filter((c) => c.value > 0)
                   .sort((a, b) => a.value - b.value)
@@ -427,7 +427,7 @@ export function ActionPrompt({
             .length > 0 && (
             <div className="mb-3">
               <p className="text-gray-500 text-[10px] mb-1">Properties</p>
-              <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
+              <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {me.properties.flatMap((set) => [
                   ...set.cards
                     .filter((c) => c.value > 0)

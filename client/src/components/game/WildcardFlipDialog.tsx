@@ -6,11 +6,14 @@ import type {
 } from "../../types/game";
 import {
   PROPERTY_COLOR_HEX,
-  getPropertyColorLabel,
   PropertyColor as PC,
   SET_SIZE,
 } from "../../types/game";
 import { BottomSheet } from "../common/BottomSheet";
+import {
+  WildcardColorOption,
+  rentGainFor,
+} from "./WildcardColorOption";
 
 interface WildcardFlipDialogProps {
   card: Card;
@@ -63,6 +66,20 @@ export function WildcardFlipDialog({
         ]
     : card.colors || [];
 
+  // Determine the "best" choice — the color that yields the highest
+  // rent gain. Skip if it equals the currentColor (already there) or
+  // tie with currentColor (no improvement).
+  const gains = availableColors
+    .filter((c) => c !== PC.Unassigned)
+    .map((c) => ({ color: c, gain: rentGainFor(c, player) }));
+  const maxGain = gains.reduce((m, g) => Math.max(m, g.gain), 0);
+  const bestColor =
+    maxGain > 0
+      ? gains.find(
+          (g) => g.gain === maxGain && g.color !== currentColor,
+        )?.color
+      : undefined;
+
   return (
     <BottomSheet
       isOpen={true}
@@ -71,14 +88,28 @@ export function WildcardFlipDialog({
       height="h-auto"
       playSound={true}
     >
-      <p className="text-gray-300 text-sm mb-4">
-        Select a new color for this wildcard property:
+      <p
+        style={{
+          color: "rgba(245,234,208,0.7)",
+          fontSize: 13,
+          marginBottom: 14,
+        }}
+      >
+        Pick a color. Each tile shows your current set count and the
+        rent ladder — the highlighted row is where this card lands.
       </p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
         {availableColors.map((color) => {
           if (color === PC.Unassigned) {
-            // Rainbow gradient matching the wildcard property colors
+            // Rainbow gradient — keep the existing visual since this
+            // option doesn't map to a single color's rent table.
             const wildcardColors = Object.values(PROPERTY_COLOR_HEX);
             const gradientStops = wildcardColors
               .map((c, i, arr) => {
@@ -87,7 +118,6 @@ export function WildcardFlipDialog({
                 return `${c} ${startPct}%, ${c} ${endPct}%`;
               })
               .join(", ");
-
             return (
               <button
                 key={color}
@@ -96,44 +126,56 @@ export function WildcardFlipDialog({
                   onClose();
                 }}
                 disabled={color === currentColor}
-                className={`
-                  col-span-2 px-4 py-3 rounded-xl font-bold text-white transition-all border-2 border-white/30 shadow-lg relative overflow-hidden
-                  ${color === currentColor ? "opacity-50 cursor-not-allowed ring-2 ring-yellow-400" : "hover:scale-105 hover:shadow-xl"}
-                `}
                 style={{
-                  background: `linear-gradient(90deg, ${gradientStops})`,
+                  gridColumn: "span 2",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#fff",
                   textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+                  background: `linear-gradient(90deg, ${gradientStops})`,
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  cursor: color === currentColor ? "not-allowed" : "pointer",
+                  opacity: color === currentColor ? 0.5 : 1,
+                  boxShadow: "var(--sh-object)",
                 }}
               >
-                <span className="relative z-10">
-                  I'll decide later
-                  {color === currentColor && (
-                    <span className="block text-xs mt-1 font-normal">(Current)</span>
-                  )}
-                </span>
+                I'll decide later
+                {color === currentColor && (
+                  <span
+                    style={{
+                      display: "block",
+                      fontSize: 10,
+                      fontWeight: 600,
+                      marginTop: 2,
+                      letterSpacing: "0.08em",
+                      opacity: 0.85,
+                    }}
+                  >
+                    Current
+                  </span>
+                )}
               </button>
             );
           }
 
           return (
-            <button
+            <WildcardColorOption
               key={color}
+              color={color}
+              player={player}
+              isCurrent={color === currentColor}
+              isBest={color === bestColor}
               onClick={() => {
                 onFlip(color);
                 onClose();
               }}
-              disabled={color === currentColor}
-              className={`
-                px-4 py-3 rounded-xl font-semibold text-white transition-all
-                ${color === currentColor ? "opacity-50 cursor-not-allowed ring-2 ring-yellow-400" : "hover:scale-105 hover:shadow-lg"}
-              `}
-              style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
-            >
-              {getPropertyColorLabel(color, settings.useSocialistTheme)}
-              {color === currentColor && (
-                <span className="block text-xs mt-1">(Current)</span>
-              )}
-            </button>
+              useSocialistTheme={settings.useSocialistTheme}
+            />
           );
         })}
       </div>

@@ -3,7 +3,6 @@ import { TurnPhase, isPlayerWaitingForAction } from "../../types/game";
 import { CardBack } from "../cards/GameCard";
 import { CardHand } from "./CardHand";
 import { useI18n } from "../../i18n";
-import { useGameStore } from "../../hooks/useGameStore";
 import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -285,7 +284,7 @@ export function PlayerTurnBar({
               fontFamily: "var(--font-mono)",
               fontSize: 9,
               color: "rgba(245,234,208,0.45)",
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               textAlign: "center",
               padding: "0 0 6px",
               textTransform: "uppercase",

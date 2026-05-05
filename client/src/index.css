@@ -2,7 +2,10 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
-/* Tailwind theme tokens (kept for property-color utility classes) */
+/* Tailwind theme tokens (kept for property-color utility classes).
+   Values MUST match PROPERTY_COLOR_HEX in client/src/types/game.ts —
+   that file is the JS source of truth; these vars mirror it for
+   utility classes / card-band rendering. */
 @theme {
   --color-brown: #6a4a31;
   --color-light-blue: #6fb7d4;
@@ -13,7 +16,7 @@
   --color-green: #2f8f5e;
   --color-dark-blue: #1c3a6e;
   --color-railroad: #1a1a1a;
-  --color-utility: #4a3a78;
+  --color-utility: #6b7280; /* silver — was #4a3a78 (purple) */
 
   --color-table-green: #1a5c2e;
   --color-table-dark: #14472a;
@@ -81,7 +84,9 @@
   --card-back-1: #b22b2b;
   --card-back-2: #7a1818;
 
-  /* Property color bands — distinct hues, all readable on cream */
+  /* Property color bands — distinct hues, all readable on cream.
+     KEEP IN SYNC with PROPERTY_COLOR_HEX in client/src/types/game.ts.
+     If you change a value here, change it there too (and vice versa). */
   --p-brown: #6a4a31;
   --p-skyblue: #6fb7d4;
   --p-pink: #d96aa1;
@@ -92,7 +97,7 @@
   --p-blue: #2d5fa8;
   --p-darkblue: #1c3a6e;
   --p-railroad: #1a1a1a;
-  --p-utility: #4a3a78;
+  --p-utility: #6b7280; /* silver — was #4a3a78 (purple) */
 
   /* Money denominations */
   --m-1: #b8b8b8;
@@ -299,6 +304,11 @@
 body {
   margin: 0;
   min-height: 100vh;
+  /* Use dynamic viewport height where supported so the body fills the
+     visible area as Android Chrome's URL bar shows/hides. Without this,
+     100vh = the largest viewport (chrome retracted) and bottom content
+     gets clipped when chrome is visible and the page can't scroll. */
+  min-height: 100dvh;
   font-family: var(--font-ui);
   color: #1c1a14;
   /* Safe area insets for iOS/Android */
@@ -310,6 +320,54 @@ body {
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============================================================
+   Custom dynamic viewport height utility
+   ----------------------------------------------------------------
+   Tailwind 4 generates .h-screen AFTER .h-dvh in the cascade, which
+   means combining `h-screen h-dvh` doesn't work — h-screen wins and
+   we get 100vh (largest viewport) on Android Chrome, clipping the
+   bottom whenever the URL bar is visible. This utility forces the
+   dynamic-height value to win because it's authored after Tailwind's
+   utilities in this stylesheet.
+   ============================================================ */
+.h-dynamic-screen {
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
+}
+.min-h-dynamic-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ============================================================
+   Disable text selection / Android Chrome "select to search" UI
+   inside the in-game table. The game has no text the user should be
+   able to select; Chrome's tap-and-hold-to-google handler otherwise
+   pops up unexpectedly on cards / labels.
+   ============================================================ */
+.no-text-select,
+.no-text-select * {
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+.no-text-select input,
+.no-text-select textarea,
+.no-text-select [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Touch drop-zone highlight (driven by the touch-drag handler below). */
+[data-touch-drop-active="true"] {
+  outline: 2px solid var(--accent, #f0c14a);
+  outline-offset: 2px;
+  background-color: color-mix(in oklab, var(--accent, #f0c14a) 14%, transparent);
+  border-radius: 12px;
+  transition: background-color 120ms ease-out, outline-color 120ms ease-out;
 }
 
 /* Hide scrollbar for player carousel */
@@ -360,6 +418,48 @@ a img,
   position: relative;
 }
 
+/* ============================================================
+   Game Rules modal styling — match the design system instead of
+   the legacy gray-700 box.
+   ============================================================ */
+.game-rules-modal {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 22, 20, 0.96) 0%,
+    rgba(16, 10, 8, 0.98) 100%
+  );
+  border-radius: 18px;
+  border: 1px solid rgba(245, 234, 208, 0.1);
+  box-shadow: var(--sh-panel);
+  backdrop-filter: blur(8px);
+  color: #f5ead0;
+}
+.game-rules-modal h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #f5ead0;
+}
+.game-rules-h2 {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: var(--accent, #f0c14a);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-rules-h2::before {
+  content: "";
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--accent, #f0c14a);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--accent, #f0c14a) 60%, transparent);
+}
+
 /* Shake animation for invalid card plays */
 @keyframes shake {
   0%,
@@ -378,16 +478,25 @@ a img,
   animation: shake 0.3s ease-in-out;
 }
 
-/* Confetti drift — used on the end-game screen */
+/* Confetti fall — used on the end-game screen.
+   Particles spawn above the viewport and fall to past the bottom,
+   spinning as they go. With a per-particle random delay the loop's
+   restart looks continuous (some particles always above, some
+   always falling). */
 @keyframes confetti-drift {
   0% {
-    transform: translateY(-6px) rotate(var(--r0, 0deg));
+    transform: translateY(-15vh) rotate(var(--r0, 0deg));
+    opacity: 0;
   }
-  50% {
-    transform: translateY(8px) rotate(calc(var(--r0, 0deg) + 18deg));
+  6% {
+    opacity: 0.9;
+  }
+  90% {
+    opacity: 0.9;
   }
   100% {
-    transform: translateY(-6px) rotate(var(--r0, 0deg));
+    transform: translateY(115vh) rotate(calc(var(--r0, 0deg) + 720deg));
+    opacity: 0;
   }
 }
 

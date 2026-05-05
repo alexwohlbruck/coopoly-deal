@@ -1,66 +1,113 @@
 import {
   PropertyColor,
+  PROPERTY_COLOR_HEX,
   type Card,
+  type ClientPlayer,
   type PendingWildcardAssignment,
   type GameSettings,
 } from "../../types/game";
-import { PROPERTY_COLOR_HEX, getPropertyColorLabel } from "../../types/game";
 import { BottomSheet } from "../common/BottomSheet";
+import {
+  WildcardColorOption,
+  rentGainFor,
+} from "./WildcardColorOption";
 
 interface WildcardAssignmentPromptProps {
   assignment: PendingWildcardAssignment;
   card: Card;
+  /** The receiving player — needed so the option tiles can show
+   *  current set counts and rent gains for each color choice. */
+  player: ClientPlayer;
   settings: GameSettings;
   onAssign: (cardId: string, color: PropertyColor) => void;
 }
 
 export function WildcardAssignmentPrompt({
   assignment,
+  player,
   settings,
   onAssign,
 }: WildcardAssignmentPromptProps) {
+  // Determine the "best" choice — the color that yields the highest
+  // rent gain. Skipped for the rainbow / unassigned option.
+  const gains = assignment.availableColors
+    .filter((c) => c !== PropertyColor.Unassigned)
+    .map((c) => ({ color: c, gain: rentGainFor(c, player) }));
+  const maxGain = gains.reduce((m, g) => Math.max(m, g.gain), 0);
+  const bestColor =
+    maxGain > 0 ? gains.find((g) => g.gain === maxGain)?.color : undefined;
+
   return (
     <BottomSheet
       isOpen={true}
       onClose={() => {}}
       title="Assign Wildcard Color"
-      height="h-64"
+      height="h-auto"
       playSound={true}
     >
-      <div className="p-4">
-        <p className="text-gray-300 text-sm mb-4 text-center">
-          You received a wildcard! Choose which color to assign it to:
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {assignment.availableColors.map((color) => {
-            if (color === PropertyColor.Unassigned) {
-              return (
-                <button
-                  key={color}
-                  onClick={() => onAssign(assignment.cardId, color)}
-                  className="col-span-2 py-3 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80 border-2 border-white/20 shadow-sm"
-                  style={{
-                    background:
-                      "linear-gradient(to right, #8B4513, #87CEEB, #FF69B4, #FFA500, #FF0000, #FFFF00, #008000, #00008B, #000000, #A0D6B4)",
-                    textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                  }}
-                >
-                  I'll decide later
-                </button>
-              );
-            }
+      <p
+        style={{
+          color: "rgba(245,234,208,0.7)",
+          fontSize: 13,
+          marginBottom: 14,
+        }}
+      >
+        You received a wildcard! Pick which color to file it under —
+        each tile shows your set count and the rent ladder.
+      </p>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
+        {assignment.availableColors.map((color) => {
+          if (color === PropertyColor.Unassigned) {
+            const wildcardColors = Object.values(PROPERTY_COLOR_HEX);
+            const gradientStops = wildcardColors
+              .map((c, i, arr) => {
+                const startPct = (i / arr.length) * 100;
+                const endPct = ((i + 1) / arr.length) * 100;
+                return `${c} ${startPct}%, ${c} ${endPct}%`;
+              })
+              .join(", ");
             return (
               <button
                 key={color}
                 onClick={() => onAssign(assignment.cardId, color)}
-                className="py-3 rounded-lg text-white font-semibold text-sm transition-opacity hover:opacity-80"
-                style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
+                style={{
+                  gridColumn: "span 2",
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#fff",
+                  textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+                  background: `linear-gradient(90deg, ${gradientStops})`,
+                  border: "2px solid rgba(255,255,255,0.3)",
+                  cursor: "pointer",
+                  boxShadow: "var(--sh-object)",
+                }}
               >
-                {getPropertyColorLabel(color, settings.useSocialistTheme)}
+                I'll decide later
               </button>
             );
-          })}
-        </div>
+          }
+          return (
+            <WildcardColorOption
+              key={color}
+              color={color}
+              player={player}
+              isBest={color === bestColor}
+              onClick={() => onAssign(assignment.cardId, color)}
+              useSocialistTheme={settings.useSocialistTheme}
+            />
+          );
+        })}
       </div>
     </BottomSheet>
   );

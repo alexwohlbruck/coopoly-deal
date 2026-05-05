@@ -46,7 +46,7 @@ export function LobbyScreen({
 
   return (
     <div
-      className={`min-h-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
+      className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
       {/* Music + settings — top right */}
       {musicControls && (
@@ -98,7 +98,7 @@ export function LobbyScreen({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              letterSpacing: "0.2em",
+              letterSpacing: "0.1em",
               color: "rgba(245,234,208,0.55)",
               marginBottom: 8,
               textTransform: "uppercase",
@@ -161,7 +161,7 @@ export function LobbyScreen({
               gap: 12,
               fontFamily: "var(--font-mono)",
               fontSize: 9,
-              letterSpacing: "0.18em",
+              letterSpacing: "0.08em",
               color: "rgba(245,234,208,0.4)",
               textTransform: "uppercase",
               padding: "2px 0",
@@ -204,7 +204,7 @@ export function LobbyScreen({
                 color: "#f5ead0",
                 fontFamily: "var(--font-mono)",
                 fontSize: 14,
-                letterSpacing: "0.18em",
+                letterSpacing: "0.08em",
                 outline: "none",
                 textAlign: "center",
               }}
