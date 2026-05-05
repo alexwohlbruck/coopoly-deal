@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useGameStore } from "./hooks/useGameStore";
 import { useSoundManager } from "./hooks/useSoundManager";
+import { useHaptics } from "./hooks/useHaptics";
 import { useBackgroundMusic } from "./hooks/useBackgroundMusic";
 import { LobbyScreen } from "./components/lobby/LobbyScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
@@ -49,6 +50,7 @@ function AppMain() {
   } = useGameStore();
 
   const { play } = useSoundManager();
+  const { haptic } = useHaptics();
   const { isPlaying, toggleMusic, nextTrack, startMusic } =
     useBackgroundMusic();
 
@@ -92,6 +94,7 @@ function AppMain() {
         case "TURN_STARTED":
           if (msg.payload.playerId === playerId) {
             play("turnStart");
+            haptic("select");
             setToast("Your turn!");
           }
           break;
@@ -99,9 +102,11 @@ function AppMain() {
         case "GAME_ENDED":
           if (msg.payload.winnerId === playerId) {
             play("gameWin");
+            haptic("win");
             recordWin();
           } else {
             play("gameLose");
+            haptic("buzz");
             recordLoss();
           }
           setToast(
@@ -113,6 +118,7 @@ function AppMain() {
 
         case "ERROR":
           play("error");
+          haptic("error");
           setError(msg.payload.message);
           setTimeout(() => setError(null), 4000);
           break;
@@ -359,10 +365,12 @@ function AppMain() {
           sessionStats={sessionStats}
           onPlayToBank={(cardId) => {
             play("cardPlay");
+            haptic("play");
             send({ type: "PLAY_CARD_TO_BANK", payload: { cardId } });
           }}
           onPlayToProperty={(cardId, asColor, groupWithUnassigned) => {
             play("cardPlay");
+            haptic("play");
             send({
               type: "PLAY_CARD_TO_PROPERTY",
               payload: { cardId, asColor, groupWithUnassigned },

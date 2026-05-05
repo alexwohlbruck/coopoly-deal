@@ -3,6 +3,15 @@ import { useI18n, type Locale } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
 import { THEME_IDS, themes, type ThemeName } from "../../theme/colors";
 import { BottomSheet } from "../common/BottomSheet";
+import {
+  SOUND_THEMES,
+  SOUND_THEME_LABEL,
+  SOUND_THEME_HINT,
+  useSoundSettings,
+  type SoundTheme,
+  useSoundManager,
+} from "../../hooks/useSoundManager";
+import { useHaptics } from "../../hooks/useHaptics";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -32,6 +41,14 @@ export function SettingsPanel({
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useGameStore();
   const [handLimit, setHandLimit] = useState(currentHandLimit);
+  const soundTheme = useSoundSettings((s) => s.soundTheme);
+  const setSoundTheme = useSoundSettings((s) => s.setSoundTheme);
+  const hapticsEnabled = useSoundSettings((s) => s.hapticsEnabled);
+  const toggleHaptics = useSoundSettings((s) => s.toggleHaptics);
+  // Demo helpers — preview the sound theme + haptics when the user
+  // clicks the relevant chip in settings.
+  const { play } = useSoundManager();
+  const { haptic } = useHaptics();
 
   const handleSave = () => {
     onUpdateSettings?.({ maxHandSize: handLimit });
@@ -100,7 +117,7 @@ export function SettingsPanel({
           </select>
         </div>
 
-        {/* Sound Effects */}
+        {/* Sound Effects + theme picker */}
         <div>
           <label className="flex items-center justify-between text-gray-300 text-sm">
             <span className="font-medium">{t.settings.soundEffects}</span>
@@ -113,6 +130,109 @@ export function SettingsPanel({
               <div
                 className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
                   sfxEnabled ? "translate-x-6" : ""
+                }`}
+              />
+            </button>
+          </label>
+
+          {/* Sound theme — disabled visually when sfx are off. Tap a
+              chip to switch theme AND preview the new sound. */}
+          <div
+            style={{
+              marginTop: 10,
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 6,
+              opacity: sfxEnabled ? 1 : 0.4,
+              pointerEvents: sfxEnabled ? "auto" : "none",
+            }}
+          >
+            {SOUND_THEMES.map((id: SoundTheme) => {
+              const active = soundTheme === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => {
+                    setSoundTheme(id);
+                    // Preview a representative sound after the state
+                    // change commits.
+                    setTimeout(() => play("setComplete"), 0);
+                  }}
+                  style={{
+                    padding: "8px 10px",
+                    borderRadius: 8,
+                    background: active
+                      ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
+                      : "rgba(255,255,255,0.05)",
+                    border: "1px solid",
+                    borderColor: active
+                      ? "transparent"
+                      : "rgba(255,255,255,0.08)",
+                    color: active ? "#1a1208" : "rgba(245,234,208,0.78)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    boxShadow: active
+                      ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+                      : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 12,
+                      letterSpacing: "-0.005em",
+                    }}
+                  >
+                    {SOUND_THEME_LABEL[id]}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 9,
+                      letterSpacing: "0.04em",
+                      opacity: 0.85,
+                      marginTop: 2,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {SOUND_THEME_HINT[id]}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Haptic feedback */}
+        <div>
+          <label className="flex items-center justify-between text-gray-300 text-sm">
+            <span>
+              <span className="font-medium">Haptic Feedback</span>
+              <span
+                style={{
+                  display: "block",
+                  fontSize: 11,
+                  color: "rgba(245,234,208,0.5)",
+                  marginTop: 2,
+                }}
+              >
+                Vibration on cards, errors, and wins (mobile only)
+              </span>
+            </span>
+            <button
+              onClick={() => {
+                toggleHaptics();
+                // Preview only when turning ON.
+                if (!hapticsEnabled) setTimeout(() => haptic("complete"), 0);
+              }}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                hapticsEnabled ? "bg-emerald-600" : "bg-gray-600"
+              }`}
+            >
+              <div
+                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                  hapticsEnabled ? "translate-x-6" : ""
                 }`}
               />
             </button>
