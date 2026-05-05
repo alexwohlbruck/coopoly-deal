@@ -620,6 +620,50 @@ function MoneyCardContent({
 }
 
 /** Action card (Sly Deal, Pass Go, etc.). */
+/**
+ * Small "$NM" chip used on cards whose face doesn't otherwise show
+ * their bank value (action / rent cards). Positioned absolutely so
+ * it floats over the card's top-left corner regardless of the card
+ * body's flex layout. Skips rendering when value <= 0.
+ *
+ * The closest positioned ancestor is the GameCard inner wrapper
+ * (which sets position: relative + overflow: hidden), so the badge
+ * lands at the corner of the card itself.
+ */
+function CardValueBadge({
+  value,
+  fontScale = 1,
+}: {
+  value: number;
+  fontScale?: number;
+}) {
+  if (!value || value <= 0) return null;
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 4,
+        left: 4,
+        background: "rgba(0,0,0,0.7)",
+        color: "#f5ead0",
+        fontFamily: "var(--font-display)",
+        fontWeight: 800,
+        fontSize: 9 * fontScale,
+        letterSpacing: "0.02em",
+        padding: `${1 * fontScale}px ${5 * fontScale}px`,
+        borderRadius: 4,
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.5)",
+        fontVariantNumeric: "tabular-nums",
+        zIndex: 4,
+        pointerEvents: "none",
+      }}
+    >
+      ${value}M
+    </div>
+  );
+}
+
 function ActionCardContent({
   card,
   fontScale,
@@ -633,15 +677,16 @@ function ActionCardContent({
   const subtitle = getActionSubtitle(card.type, useSocialistTheme);
   const title = getCardTypeLabel(card.type, useSocialistTheme);
   return (
-    <div
-      className="paper-grain"
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--card-paper)",
-      }}
-    >
+    <>
+      <div
+        className="paper-grain"
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          background: "var(--card-paper)",
+        }}
+      >
       <div
         style={{
           background: "linear-gradient(180deg, #2a2a2a 0%, #141414 100%)",
@@ -696,7 +741,9 @@ function ActionCardContent({
           </div>
         )}
       </div>
-    </div>
+      </div>
+      <CardValueBadge value={card.value} fontScale={fontScale} />
+    </>
   );
 }
 
@@ -741,6 +788,7 @@ function RentCardContent({
       ? `linear-gradient(135deg, ${PROPERTY_COLOR_VAR[c1]} 50%, ${PROPERTY_COLOR_VAR[c2]} 50%)`
       : "var(--p-railroad)";
   return (
+    <>
     <div
       className="paper-grain"
       style={{
@@ -796,6 +844,8 @@ function RentCardContent({
         )}
       </div>
     </div>
+    <CardValueBadge value={card.value} fontScale={fontScale} />
+    </>
   );
 }
 
