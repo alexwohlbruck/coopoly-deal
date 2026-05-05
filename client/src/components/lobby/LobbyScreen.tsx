@@ -7,6 +7,7 @@ import { RulesButton } from "../common/RulesButton";
 import { IconButton } from "../common/IconButton";
 import { SettingsPanel } from "../game/SettingsPanel";
 import { useSoundSettings } from "../../hooks/useSoundManager";
+import { useModalParam } from "../../hooks/useModalParam";
 
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
@@ -31,8 +32,7 @@ export function LobbyScreen({
   const { t } = useI18n();
   const { playerName: savedPlayerName, theme } = useGameStore();
   const [roomCode, setRoomCode] = useState("");
-  const [showRules, setShowRules] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const { modal, open, close } = useModalParam();
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const themeData = getTheme(theme);
 
@@ -53,7 +53,7 @@ export function LobbyScreen({
       {/* Top-right chrome: settings gear + music. Same IconButton-
           based components used by the waiting room for consistency. */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <IconButton onClick={() => setShowSettings(true)} title="Settings">
+        <IconButton onClick={() => open("settings")} title="Settings">
           <Settings className="w-4 h-4" />
         </IconButton>
         {musicControls && (
@@ -67,14 +67,14 @@ export function LobbyScreen({
 
       {/* Top-left rules pill — shared component matches waiting room. */}
       <div className="fixed top-4 left-4 z-50">
-        <RulesButton onClick={() => setShowRules(true)} />
+        <RulesButton onClick={() => open("rules")} />
       </div>
 
-      <GameRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
+      <GameRulesModal isOpen={modal === "rules"} onClose={close} />
 
       <SettingsPanel
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        isOpen={modal === "settings"}
+        onClose={close}
         currentHandLimit={7}
         canEdit={false}
         sfxEnabled={sfxEnabled}

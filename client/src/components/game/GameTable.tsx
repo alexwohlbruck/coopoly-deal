@@ -15,6 +15,7 @@ import { RainbowGroupDialog } from "./RainbowGroupDialog";
 import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
+import { useModalParam } from "../../hooks/useModalParam";
 import { TopBar } from "./layout/Chrome";
 import { GameTableDesktop } from "./layout/GameTableDesktop";
 import { GameTableCompact } from "./layout/GameTableCompact";
@@ -88,7 +89,8 @@ export function GameTable({
   onDevSetMoney,
 }: GameTableProps) {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  const { modal, open: openModal, close: closeModal } = useModalParam();
+  const showSettings = modal === "settings";
   const [showDevTools, setShowDevTools] = useState(false);
   const [shakingCardId, setShakingCardId] = useState<string | null>(null);
   const [wildcardFlipData, setWildcardFlipData] = useState<{
@@ -422,7 +424,7 @@ export function GameTable({
       <TopBar
         roomCode={gameState.id}
         compact={layoutMode === "compact"}
-        onSettings={() => setShowSettings(true)}
+        onSettings={() => openModal("settings")}
         onResign={onResign}
         onLeave={onGoHome}
         onDevTools={() => setShowDevTools(true)}
@@ -555,7 +557,7 @@ export function GameTable({
       {/* Settings Panel */}
       <SettingsPanel
         isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={closeModal}
         currentHandLimit={gameState.settings?.maxHandSize ?? 7}
         canEdit={false}
         sfxEnabled={sfxEnabled}

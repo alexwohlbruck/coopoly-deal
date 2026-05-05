@@ -4,6 +4,14 @@ const UMAMI_API_URL =
   process.env.UMAMI_API_URL || "https://cloud.umami.is/api/send";
 const UMAMI_HOSTNAME = process.env.UMAMI_HOSTNAME || "coopoly-deal";
 const ANALYTICS_ENABLED = process.env.ANALYTICS_ENABLED !== "false";
+const ANALYTICS_DEBUG = process.env.ANALYTICS_DEBUG === "true";
+
+// Umami's collector runs the User-Agent through `isbot` and silently drops
+// anything that looks bot-like (including "Mozilla/5.0 (compatible; ...)"
+// since that matches the Googlebot pattern). For server-to-server tracking
+// we have to send a plain real-browser UA — verified to pass the filter.
+const SERVER_USER_AGENT =
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
 type EventData = Record<string, string | number | boolean>;
 
@@ -14,7 +22,7 @@ export function track(eventName: string, data?: EventData): void {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "coopoly-deal-server",
+      "User-Agent": SERVER_USER_AGENT,
     },
     body: JSON.stringify({
       type: "event",
@@ -28,5 +36,16 @@ export function track(eventName: string, data?: EventData): void {
         url: "/_server",
       },
     }),
-  }).catch(() => {});
+  })
+    .then(async (res) => {
+      if (!ANALYTICS_DEBUG) return;
+      const body = await res.text();
+      console.log(`[analytics] ${eventName} → ${res.status} ${body.slice(0, 120)}`);
+      if (body.includes("beep")) {
+        console.warn("[analytics] Umami flagged the request as a bot — events being dropped");
+      }
+    })
+    .catch((err) => {
+      if (ANALYTICS_DEBUG) console.error(`[analytics] ${eventName} failed:`, err);
+    });
 }

@@ -3,7 +3,6 @@
 // host controls. Settings panel on the right at desktop, stacked
 // below at compact widths. Footer shows the share-code line.
 
-import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
@@ -11,6 +10,7 @@ import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { RulesButton } from "../common/RulesButton";
 import { GameSettingsPanel } from "./GameSettingsPanel";
+import { useModalParam } from "../../hooks/useModalParam";
 import { type GameSettings } from "../../types/game";
 import { useI18n } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
@@ -61,7 +61,7 @@ export function WaitingRoom({
   const themeData = getTheme(theme);
   const layout = useLayout();
   const isCompact = layout === "compact";
-  const [showRules, setShowRules] = useState(false);
+  const { modal, open, close } = useModalParam();
 
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
@@ -89,15 +89,15 @@ export function WaitingRoom({
 
       {/* Top-left rules pill — shared component matches the home lobby. */}
       <div className="fixed top-4 left-4 z-50">
-        <RulesButton onClick={() => setShowRules(true)} />
+        <RulesButton onClick={() => open("rules")} />
       </div>
 
       <GameRulesModal
-        isOpen={showRules}
+        isOpen={modal === "rules"}
         maxHandSize={gameState.settings.maxHandSize}
         allowDuplicateSets={gameState.settings.allowDuplicateSets}
         useSocialistTheme={gameState.settings.useSocialistTheme}
-        onClose={() => setShowRules(false)}
+        onClose={close}
       />
 
       <motion.div

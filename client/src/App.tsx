@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+import {
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { useWebSocket } from "./hooks/useWebSocket";
 import { useGameStore } from "./hooks/useGameStore";
 import { useSoundManager } from "./hooks/useSoundManager";
 import { useHaptics } from "./hooks/useHaptics";
 import { useBackgroundMusic } from "./hooks/useBackgroundMusic";
+import { usePageviewTracking } from "./hooks/usePageviewTracking";
 import { LobbyScreen } from "./components/lobby/LobbyScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
 import { NameEntryDialog } from "./components/lobby/NameEntryDialog";
@@ -12,25 +21,19 @@ import { CardTestScreen } from "./components/dev/CardTestScreen";
 import { GamePhase, type ServerMessage } from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
 
-type Screen = "lobby" | "nameEntry" | "waiting" | "game";
-
-// Dev: bypass the whole app and render the card-design test screen
-// when ?test=cards is set on the URL. Used to eyeball every card
-// variant in one place after design changes.
-const isCardTestRoute =
-  typeof window !== "undefined" &&
-  new URLSearchParams(window.location.search).get("test") === "cards";
-
 export default function App() {
-  if (isCardTestRoute) {
-    return <CardTestScreen />;
-  }
-  return <AppMain />;
+  return (
+    <Routes>
+      <Route path="/test/cards" element={<CardTestScreen />} />
+      <Route path="*" element={<AppMain />} />
+    </Routes>
+  );
 }
 
 function AppMain() {
-  const [screen, setScreen] = useState<Screen>("lobby");
-  const [pendingRoomCode, setPendingRoomCode] = useState<string | null>(null);
+  usePageviewTracking();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const {
     playerId,
@@ -61,21 +64,23 @@ function AppMain() {
           setPlayer(msg.payload.playerId, playerName ?? "Player");
           setRoomCode(msg.payload.roomCode);
           setGameState(msg.payload.state);
-          setScreen("waiting");
+          navigate(`/room/${msg.payload.roomCode}`, { replace: true });
           break;
 
         case "GAME_STATE_UPDATE":
           setGameState(msg.payload.state);
           if (
             msg.payload.state.phase === GamePhase.Playing &&
-            screen !== "game"
+            !location.pathname.startsWith("/game/")
           ) {
-            setScreen("game");
+            navigate(`/game/${msg.payload.state.id}`, { replace: true });
           }
           break;
 
         case "GAME_STARTED":
-          setScreen("game");
+          if (gameState?.id) {
+            navigate(`/game/${gameState.id}`, { replace: true });
+          }
           break;
 
         case "PLAYER_JOINED":
@@ -127,8 +132,10 @@ function AppMain() {
     [
       playerId,
       playerName,
-      screen,
+      gameState?.id,
       gameState?.settings?.useSocialistTheme,
+      location.pathname,
+      navigate,
       setPlayer,
       setRoomCode,
       setGameState,
@@ -137,6 +144,7 @@ function AppMain() {
       recordWin,
       recordLoss,
       play,
+      haptic,
     ],
   );
 
@@ -156,27 +164,25 @@ function AppMain() {
   }, [toast, setToast]);
 
   const handleCreateRoom = useCallback(async () => {
-    startMusic(); // Start music on first user interaction
+    startMusic();
     try {
       const res = await fetch("/api/rooms", { method: "POST" });
       const data = await res.json();
-      setPendingRoomCode(data.roomCode);
-      setScreen("nameEntry");
+      navigate(`/join/${data.roomCode}`);
     } catch {
       setError("Failed to create room");
     }
-  }, [setError, startMusic]);
+  }, [navigate, setError, startMusic]);
 
   const handleJoinRoom = useCallback(
     (code: string, name: string, isHost: boolean = false) => {
-      startMusic(); // Start music on first user interaction
+      startMusic();
       setPlayer("", name);
       send({
         type: "JOIN_ROOM",
         payload: { roomCode: code, playerName: name },
       });
 
-      // If host, apply preferred settings after a short delay to ensure room is joined
       if (isHost) {
         setTimeout(() => {
           const { preferredSettings } = useGameStore.getState();
@@ -190,17 +196,8 @@ function AppMain() {
     [send, setPlayer, startMusic],
   );
 
-  const handleNameSubmit = useCallback(
-    (name: string) => {
-      if (pendingRoomCode) {
-        handleJoinRoom(pendingRoomCode, name, true); // true because they created the room
-      }
-    },
-    [pendingRoomCode, handleJoinRoom],
-  );
-
   const handleStartGame = useCallback(() => {
-    startMusic(); // Start music on first user interaction
+    startMusic();
     send({ type: "START_GAME" });
   }, [send, startMusic]);
 
@@ -222,9 +219,9 @@ function AppMain() {
   const handleGoHome = useCallback(() => {
     disconnect();
     reset();
-    setScreen("lobby");
+    navigate("/");
     setTimeout(() => connect(), 100);
-  }, [disconnect, reset, connect]);
+  }, [disconnect, reset, connect, navigate]);
 
   const handleResign = useCallback(() => {
     send({ type: "RESIGN" });
@@ -257,11 +254,14 @@ function AppMain() {
     [send],
   );
 
+  const musicProps = {
+    isPlaying,
+    onToggle: toggleMusic,
+    onNext: nextTrack,
+  };
+
   return (
     <div className="min-h-screen">
-      {/* Toast — themed pill that sits below the TopBar (top: 70 in-game,
-          top: 16 elsewhere). Pointer-events-none so it can't intercept
-          clicks on the table behind. */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -302,7 +302,6 @@ function AppMain() {
         )}
       </AnimatePresence>
 
-      {/* Error */}
       <AnimatePresence>
         {error && (
           <motion.div
@@ -316,112 +315,142 @@ function AppMain() {
         )}
       </AnimatePresence>
 
-      {/* Screens */}
-      {screen === "lobby" && (
-        <LobbyScreen
-          onCreateRoom={handleCreateRoom}
-          onJoinRoom={handleJoinRoom}
-          musicControls={{
-            isPlaying,
-            onToggle: toggleMusic,
-            onNext: nextTrack,
-          }}
-        />
-      )}
-
-      {screen === "nameEntry" && pendingRoomCode && (
-        <NameEntryDialog
-          roomCode={pendingRoomCode}
-          onSubmit={handleNameSubmit}
-          onBack={() => setScreen("lobby")}
-        />
-      )}
-
-      {screen === "waiting" && gameState && playerId && (
-        <WaitingRoom
-          gameState={gameState}
-          playerId={playerId}
-          onStartGame={handleStartGame}
-          onUpdateSettings={(settings) => {
-            send({ type: "UPDATE_SETTINGS", payload: { settings } });
-            if (gameState.players[0]?.id === playerId) {
-              useGameStore.getState().setPreferredSettings(settings);
-            }
-          }}
-          onAddBot={handleAddBot}
-          onRemovePlayer={handleRemovePlayer}
-          musicControls={{
-            isPlaying,
-            onToggle: toggleMusic,
-            onNext: nextTrack,
-          }}
-        />
-      )}
-
-      {screen === "game" && gameState && playerId && (
-        <GameTable
-          gameState={gameState}
-          playerId={playerId}
-          sessionStats={sessionStats}
-          onPlayToBank={(cardId) => {
-            play("cardPlay");
-            haptic("play");
-            send({ type: "PLAY_CARD_TO_BANK", payload: { cardId } });
-          }}
-          onPlayToProperty={(cardId, asColor, groupWithUnassigned) => {
-            play("cardPlay");
-            haptic("play");
-            send({
-              type: "PLAY_CARD_TO_PROPERTY",
-              payload: { cardId, asColor, groupWithUnassigned },
-            });
-          }}
-          onPlayAction={(payload) => {
-            console.log("[App] onPlayAction called", payload);
-            play("actionPlayed");
-            haptic("play");
-            console.log("[App] Sending PLAY_ACTION_CARD to server");
-            send({ type: "PLAY_ACTION_CARD", payload });
-            console.log("[App] PLAY_ACTION_CARD sent");
-          }}
-          onRearrangeProperty={(cardId, toColor, createNewSet) => {
-            send({
-              type: "REARRANGE_PROPERTY",
-              payload: { cardId, toColor, createNewSet },
-            });
-          }}
-          onAssignReceivedWildcard={(cardId, color) => {
-            send({
-              type: "ASSIGN_RECEIVED_WILDCARD",
-              payload: { cardId, color },
-            });
-          }}
-          onEndTurn={() => send({ type: "END_TURN" })}
-          onDiscardCards={(cardIds) =>
-            send({ type: "DISCARD_CARDS", payload: { cardIds } })
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <LobbyScreen
+              onCreateRoom={handleCreateRoom}
+              onJoinRoom={handleJoinRoom}
+              musicControls={musicProps}
+            />
           }
-          onPayWithCards={(cardIds) => {
-            play("payment");
-            send({ type: "PAY_WITH_CARDS", payload: { cardIds } });
-          }}
-          onJustSayNo={() => {
-            play("justSayNo");
-            send({ type: "JUST_SAY_NO" });
-          }}
-          onAcceptAction={() => send({ type: "ACCEPT_ACTION" })}
-          onRematch={handleRematch}
-          onGoHome={handleGoHome}
-          onResign={handleResign}
-          musicControls={{
-            isPlaying,
-            onToggle: toggleMusic,
-            onNext: nextTrack,
-          }}
-          onDevInjectCard={handleDevInjectCard}
-          onDevGiveCompleteSet={handleDevGiveCompleteSet}
-          onDevSetMoney={handleDevSetMoney}
         />
-      )}
+        <Route
+          path="/join/:code"
+          element={
+            <NameEntryRoute
+              onSubmit={(name, code) => handleJoinRoom(code, name, true)}
+            />
+          }
+        />
+        <Route
+          path="/room/:code"
+          element={
+            gameState && playerId ? (
+              <WaitingRoom
+                gameState={gameState}
+                playerId={playerId}
+                onStartGame={handleStartGame}
+                onUpdateSettings={(settings) => {
+                  send({ type: "UPDATE_SETTINGS", payload: { settings } });
+                  if (gameState.players[0]?.id === playerId) {
+                    useGameStore.getState().setPreferredSettings(settings);
+                  }
+                }}
+                onAddBot={handleAddBot}
+                onRemovePlayer={handleRemovePlayer}
+                musicControls={musicProps}
+              />
+            ) : (
+              <DeepLinkRedirect />
+            )
+          }
+        />
+        <Route
+          path="/game/:code"
+          element={
+            gameState && playerId ? (
+              <GameTable
+                gameState={gameState}
+                playerId={playerId}
+                sessionStats={sessionStats}
+                onPlayToBank={(cardId) => {
+                  play("cardPlay");
+                  haptic("play");
+                  send({
+                    type: "PLAY_CARD_TO_BANK",
+                    payload: { cardId },
+                  });
+                }}
+                onPlayToProperty={(cardId, asColor, groupWithUnassigned) => {
+                  play("cardPlay");
+                  haptic("play");
+                  send({
+                    type: "PLAY_CARD_TO_PROPERTY",
+                    payload: { cardId, asColor, groupWithUnassigned },
+                  });
+                }}
+                onPlayAction={(payload) => {
+                  play("actionPlayed");
+                  haptic("play");
+                  send({ type: "PLAY_ACTION_CARD", payload });
+                }}
+                onRearrangeProperty={(cardId, toColor, createNewSet) => {
+                  send({
+                    type: "REARRANGE_PROPERTY",
+                    payload: { cardId, toColor, createNewSet },
+                  });
+                }}
+                onAssignReceivedWildcard={(cardId, color) => {
+                  send({
+                    type: "ASSIGN_RECEIVED_WILDCARD",
+                    payload: { cardId, color },
+                  });
+                }}
+                onEndTurn={() => send({ type: "END_TURN" })}
+                onDiscardCards={(cardIds) =>
+                  send({ type: "DISCARD_CARDS", payload: { cardIds } })
+                }
+                onPayWithCards={(cardIds) => {
+                  play("payment");
+                  send({ type: "PAY_WITH_CARDS", payload: { cardIds } });
+                }}
+                onJustSayNo={() => {
+                  play("justSayNo");
+                  send({ type: "JUST_SAY_NO" });
+                }}
+                onAcceptAction={() => send({ type: "ACCEPT_ACTION" })}
+                onRematch={handleRematch}
+                onGoHome={handleGoHome}
+                onResign={handleResign}
+                musicControls={musicProps}
+                onDevInjectCard={handleDevInjectCard}
+                onDevGiveCompleteSet={handleDevGiveCompleteSet}
+                onDevSetMoney={handleDevSetMoney}
+              />
+            ) : (
+              <DeepLinkRedirect />
+            )
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
+  );
+}
+
+// Direct visits to /room/:code or /game/:code without an active WS session
+// can't restore the game state, so bounce the user to the join flow for
+// that room (where they can enter a name and reconnect).
+function DeepLinkRedirect() {
+  const { code } = useParams();
+  return <Navigate to={code ? `/join/${code}` : "/"} replace />;
+}
+
+function NameEntryRoute({
+  onSubmit,
+}: {
+  onSubmit: (name: string, code: string) => void;
+}) {
+  const { code } = useParams();
+  const navigate = useNavigate();
+  if (!code) return <Navigate to="/" replace />;
+  return (
+    <NameEntryDialog
+      roomCode={code}
+      onSubmit={(name) => onSubmit(name, code)}
+      onBack={() => navigate("/")}
+    />
   );
 }
