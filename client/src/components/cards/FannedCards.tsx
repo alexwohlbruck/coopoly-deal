@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard, CardBack } from "./GameCard";
+import { useHaptics } from "../../hooks/useHaptics";
 
 // ────────────────────────────────────────────────────────────────────
 // FannedCards — collapsed-by-default fan that expands on hover/tap.
@@ -478,11 +479,40 @@ export function DragPeekHand({
   const mid = (n - 1) / 2;
   const railRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<number | null>(peekedIdx);
+  const { haptic } = useHaptics();
+
+  // Track the last index we fired a peek-tap haptic on so we only
+  // pulse when the peek SLOT actually changes — not on every
+  // touchmove that lands on the same card.
+  const lastHapticIdx = useRef<number | null>(peekedIdx ?? null);
+
+  // setHovered wrapper that fires a light haptic tap when the index
+  // crosses to a different card. Used by all the peek-update paths
+  // (touchmove scrub, mouse hover, card-touchstart).
+  const setHoveredWithTap = (
+    next: number | null | ((cur: number | null) => number | null),
+  ) => {
+    setHovered((cur) => {
+      const resolved = typeof next === "function" ? next(cur) : next;
+      if (
+        resolved != null &&
+        resolved !== lastHapticIdx.current &&
+        // Don't pulse on the very first peek of the gesture — only
+        // when the user crosses from one card to another.
+        lastHapticIdx.current != null
+      ) {
+        haptic("tap");
+      }
+      lastHapticIdx.current = resolved;
+      return resolved;
+    });
+  };
 
   // Clear peek state when resetSignal changes (parent triggers it on play /
   // dialog open).
   useEffect(() => {
     setHovered(peekedIdx);
+    lastHapticIdx.current = peekedIdx ?? null;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate: only react to resetSignal
   }, [resetSignal]);
   const [railW, setRailW] = useState(360);
@@ -578,7 +608,7 @@ export function DragPeekHand({
     const center = r.width / 2;
     const offsetFromCenter = x - center;
     const i = Math.round(offsetFromCenter / Math.max(1, overlap) + mid);
-    setHovered(Math.max(0, Math.min(n - 1, i)));
+    setHoveredWithTap(Math.max(0, Math.min(n - 1, i)));
   };
 
   const onMouseMove = (e: React.MouseEvent) => peekFromClientX(e.clientX);
@@ -595,7 +625,11 @@ export function DragPeekHand({
       kind: "pending",
       activeZone: null,
     };
+    // First touch starts the gesture — peek the card under the finger
+    // but DON'T pulse. The tap haptic only fires when the user CROSSES
+    // to a different card later.
     setHovered(i);
+    lastHapticIdx.current = i;
     setLiftXY(null);
   };
 
