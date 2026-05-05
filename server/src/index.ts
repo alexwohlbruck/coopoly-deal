@@ -58,3 +58,13 @@ for (const name of Object.keys(networkInterfaces)) {
 console.log(`Co-Opoly Deal server running on:`);
 console.log(`  Local:   http://localhost:${server.port}`);
 console.log(`  Network: http://${localIP}:${server.port}`);
+
+function shutdown() {
+  console.log("Shutting down...");
+  roomManager.destroy();
+  server.stop();
+  process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

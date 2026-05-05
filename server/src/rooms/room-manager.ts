@@ -3,6 +3,8 @@ import { GameEngine } from "../engine/game-engine.ts";
 
 const ROOM_CODE_LENGTH = 6;
 const ROOM_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
+const FINISHED_ROOM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes after game ends
+const MAX_ROOMS = 100;
 
 export class RoomManager {
   private rooms = new Map<string, GameState>();
@@ -10,6 +12,7 @@ export class RoomManager {
   private cleanupInterval: ReturnType<typeof setInterval>;
   private tickInterval: ReturnType<typeof setInterval>;
   private onStateChange?: (roomCode: string) => void;
+  private onRoomCleaned?: (roomCode: string, playerIds: string[]) => void;
 
   constructor() {
     this.cleanupInterval = setInterval(
@@ -21,6 +24,10 @@ export class RoomManager {
 
   setOnStateChange(callback: (roomCode: string) => void) {
     this.onStateChange = callback;
+  }
+
+  setOnRoomCleaned(callback: (roomCode: string, playerIds: string[]) => void) {
+    this.onRoomCleaned = callback;
   }
 
   private tick(): void {
@@ -42,6 +49,9 @@ export class RoomManager {
   }
 
   createRoom(): GameState {
+    if (this.rooms.size >= MAX_ROOMS) {
+      throw new Error("Server is at capacity, please try again later");
+    }
     const code = this.generateRoomCode();
     const game = this.engine.createGame(code);
     this.rooms.set(code, game);
@@ -89,8 +99,14 @@ export class RoomManager {
   private cleanupInactiveRooms(): void {
     const now = Date.now();
     for (const [code, game] of this.rooms) {
-      if (now - game.lastActivityAt > ROOM_TIMEOUT_MS) {
+      const timeout =
+        game.phase === GamePhase.Finished
+          ? FINISHED_ROOM_TIMEOUT_MS
+          : ROOM_TIMEOUT_MS;
+      if (now - game.lastActivityAt > timeout) {
+        const playerIds = game.players.map((p) => p.id);
         this.rooms.delete(code);
+        this.onRoomCleaned?.(code, playerIds);
       }
     }
   }
@@ -101,5 +117,7 @@ export class RoomManager {
 
   destroy(): void {
     clearInterval(this.cleanupInterval);
+    clearInterval(this.tickInterval);
+    this.rooms.clear();
   }
 }

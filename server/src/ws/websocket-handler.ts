@@ -59,6 +59,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     checkBotTurn(roomCode);
   });
 
+  roomManager.setOnRoomCleaned((_roomCode, playerIds) => {
+    for (const id of playerIds) {
+      playerSockets.delete(id);
+    }
+  });
+
   function handleMessage(ws: GameWebSocket, raw: string): void {
     let msg: ClientMessage;
     try {
@@ -446,137 +452,125 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   async function checkBotTurn(roomCode: string): Promise<void> {
-    const game = roomManager.getRoom(roomCode);
-    if (!game || game.phase !== GamePhase.Playing) return;
+    const MAX_ITERATIONS = 50;
 
-    if (
-      game.turn?.pendingWildcardAssignments &&
-      game.turn.pendingWildcardAssignments.length > 0
-    ) {
-      const assignment = game.turn.pendingWildcardAssignments[0]!;
-      const bot = game.players.find((p) => p.id === assignment.playerId);
-      if (bot?.isBot) {
-        // Delay before assigning
-        const botSpeed = game.settings?.botSpeed ?? "normal";
-        if (botSpeed !== "instant") {
-          const baseDelay = Math.max(
-            600,
-            1800 - (game.players.filter((p) => p.connected).length - 2) * 300,
-          );
-          let delay = baseDelay + Math.random() * 600;
-          if (botSpeed === "slow") delay *= 2;
-          if (botSpeed === "fast") delay *= 0.5;
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const game = roomManager.getRoom(roomCode);
+      if (!game || game.phase !== GamePhase.Playing) return;
 
-        if (game.phase !== GamePhase.Playing) return;
-
-        // Just pick the first available color for now
-        const color = assignment.availableColors[0];
-        if (color) {
-          roomManager
-            .getEngine()
-            .assignReceivedWildcard(game, bot.id, assignment.cardId, color);
-          sendStateToAll(roomCode);
-          checkGameEnd(roomCode);
-          await checkBotTurn(roomCode);
-        }
-        return;
-      }
-    }
-
-    if (game.turn?.pendingAction) {
-      const action = game.turn.pendingAction;
-      const playerCount = game.players.filter((p) => p.connected).length;
-
-      // Find all bots that need to respond
-      let botsToRespond = action.targetPlayerIds
-        .filter((pid) => !action.respondedPlayerIds.includes(pid))
-        .map((pid) => game.players.find((pl) => pl.id === pid))
-        .filter((p) => p?.isBot);
-
-      // If there's a Just Say No chain, either the source or target player needs to respond
-      if (action.justSayNoChain && botsToRespond.length === 0) {
-        // The targetPlayerId in the chain is the person who just played JSN
-        // The person who needs to respond is the OTHER player involved
-        const chainTargetId = action.justSayNoChain.targetPlayerId;
-
-        // Check if source player is a bot and needs to respond
-        const sourcePlayer = game.players.find(
-          (p) => p.id === action.sourcePlayerId,
-        );
-        if (sourcePlayer?.isBot && sourcePlayer.id !== chainTargetId) {
-          botsToRespond = [sourcePlayer];
-        }
-
-        // Also check if any target player is a bot and needs to respond
-        if (botsToRespond.length === 0) {
-          const botTarget = action.targetPlayerIds
-            .map((pid) => game.players.find((p) => p.id === pid))
-            .find((p) => p?.isBot && p.id !== chainTargetId);
-          if (botTarget) {
-            botsToRespond = [botTarget];
-          }
-        }
-      }
-
-      if (botsToRespond.length === 0) return;
-
-      // Each bot responds with a randomized delay, but in parallel
-      await Promise.all(
-        botsToRespond.map(async (bot) => {
-          if (!bot) return;
-
+      if (
+        game.turn?.pendingWildcardAssignments &&
+        game.turn.pendingWildcardAssignments.length > 0
+      ) {
+        const assignment = game.turn.pendingWildcardAssignments[0]!;
+        const bot = game.players.find((p) => p.id === assignment.playerId);
+        if (bot?.isBot) {
           const botSpeed = game.settings?.botSpeed ?? "normal";
           if (botSpeed !== "instant") {
-            // Scaled delay: 2 players = 1200-1800ms, 6 players = 600-1200ms
-            const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
+            const baseDelay = Math.max(
+              600,
+              1800 -
+                (game.players.filter((p) => p.connected).length - 2) * 300,
+            );
             let delay = baseDelay + Math.random() * 600;
             if (botSpeed === "slow") delay *= 2;
             if (botSpeed === "fast") delay *= 0.5;
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
 
-          // Ensure game is still playing before responding
           if (game.phase !== GamePhase.Playing) return;
 
-          botPlayer.respondToAction(game, bot.id);
-          sendStateToAll(roomCode);
-          checkGameEnd(roomCode);
-        }),
-      );
+          const color = assignment.availableColors[0];
+          if (color) {
+            roomManager
+              .getEngine()
+              .assignReceivedWildcard(game, bot.id, assignment.cardId, color);
+            sendStateToAll(roomCode);
+            checkGameEnd(roomCode);
+          }
+          continue;
+        }
+        return;
+      }
 
-      // After all bots have responded, check if there are more actions
-      await checkBotTurn(roomCode);
-      return;
-    }
+      if (game.turn?.pendingAction) {
+        const action = game.turn.pendingAction;
+        const playerCount = game.players.filter((p) => p.connected).length;
 
-    const currentPlayer = game.players[game.currentPlayerIndex];
-    if (!currentPlayer?.isBot) return;
+        let botsToRespond = action.targetPlayerIds
+          .filter((pid) => !action.respondedPlayerIds.includes(pid))
+          .map((pid) => game.players.find((pl) => pl.id === pid))
+          .filter((p) => p?.isBot);
 
-    const botSpeed = game.settings?.botSpeed ?? "normal";
-    if (botSpeed !== "instant") {
-      // Initial delay before bot starts thinking
-      const playerCount = game.players.filter((p) => p.connected).length;
-      const baseDelay = Math.max(400, 1000 - (playerCount - 2) * 150);
-      let initialDelay = baseDelay + Math.random() * 300;
-      if (botSpeed === "slow") initialDelay *= 2;
-      if (botSpeed === "fast") initialDelay *= 0.5;
-      await new Promise((resolve) => setTimeout(resolve, initialDelay));
-    }
+        if (action.justSayNoChain && botsToRespond.length === 0) {
+          const chainTargetId = action.justSayNoChain.targetPlayerId;
 
-    if (game.phase !== GamePhase.Playing) return;
+          const sourcePlayer = game.players.find(
+            (p) => p.id === action.sourcePlayerId,
+          );
+          if (sourcePlayer?.isBot && sourcePlayer.id !== chainTargetId) {
+            botsToRespond = [sourcePlayer];
+          }
 
-    // Use async version with state updates between moves
-    await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
+          if (botsToRespond.length === 0) {
+            const botTarget = action.targetPlayerIds
+              .map((pid) => game.players.find((p) => p.id === pid))
+              .find((p) => p?.isBot && p.id !== chainTargetId);
+            if (botTarget) {
+              botsToRespond = [botTarget];
+            }
+          }
+        }
+
+        if (botsToRespond.length === 0) return;
+
+        await Promise.all(
+          botsToRespond.map(async (bot) => {
+            if (!bot) return;
+
+            const botSpeed = game.settings?.botSpeed ?? "normal";
+            if (botSpeed !== "instant") {
+              const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
+              let delay = baseDelay + Math.random() * 600;
+              if (botSpeed === "slow") delay *= 2;
+              if (botSpeed === "fast") delay *= 0.5;
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+
+            if (game.phase !== GamePhase.Playing) return;
+
+            botPlayer.respondToAction(game, bot.id);
+            sendStateToAll(roomCode);
+            checkGameEnd(roomCode);
+          }),
+        );
+
+        continue;
+      }
+
+      const currentPlayer = game.players[game.currentPlayerIndex];
+      if (!currentPlayer?.isBot) return;
+
+      const botSpeed = game.settings?.botSpeed ?? "normal";
+      if (botSpeed !== "instant") {
+        const playerCount = game.players.filter((p) => p.connected).length;
+        const baseDelay = Math.max(400, 1000 - (playerCount - 2) * 150);
+        let initialDelay = baseDelay + Math.random() * 300;
+        if (botSpeed === "slow") initialDelay *= 2;
+        if (botSpeed === "fast") initialDelay *= 0.5;
+        await new Promise((resolve) => setTimeout(resolve, initialDelay));
+      }
+
+      if (game.phase !== GamePhase.Playing) return;
+
+      await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
+        sendStateToAll(roomCode);
+        checkGameEnd(roomCode);
+      });
+
       sendStateToAll(roomCode);
       checkGameEnd(roomCode);
-    });
-
-    sendStateToAll(roomCode);
-    checkGameEnd(roomCode);
-
-    await checkBotTurn(roomCode);
+    }
   }
 
   function checkTurnChanged(

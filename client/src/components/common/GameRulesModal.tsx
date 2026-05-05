@@ -4,6 +4,7 @@
 // property-color swatches in the rent table, mono captions for
 // section labels, and a PrimaryButton-style footer.
 
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import {
@@ -124,9 +125,7 @@ function SubCard({
 
 // Highlighted inline text — used for "key" facts inside paragraphs.
 function Hi({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ color: "#f5ead0", fontWeight: 700 }}>{children}</span>
-  );
+  return <span style={{ color: "#f5ead0", fontWeight: 700 }}>{children}</span>;
 }
 
 const ROW_LABEL_COL: React.CSSProperties = {
@@ -156,7 +155,8 @@ function ColorPip({ color }: { color: PropertyColor }) {
         height: 10,
         borderRadius: 2,
         background: PROPERTY_COLOR_HEX[color],
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.4)",
+        boxShadow:
+          "inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.4)",
         flexShrink: 0,
       }}
     />
@@ -189,9 +189,7 @@ function RentRow({
           style={{
             ...ROW_NUM_COL,
             color:
-              i + 1 === setSize
-                ? "var(--accent, #f0c14a)"
-                : ROW_NUM_COL.color,
+              i + 1 === setSize ? "var(--accent, #f0c14a)" : ROW_NUM_COL.color,
             fontWeight: i + 1 === setSize ? 700 : 400,
           }}
         >
@@ -219,9 +217,21 @@ export function GameRulesModal({
   isOpen,
   maxHandSize = 7,
   allowDuplicateSets = true,
-  useSocialistTheme = false,
+  useSocialistTheme: defaultSocialistTheme = false,
   onClose,
 }: GameRulesModalProps) {
+  // Local toggle for the "comrades / levies / directives" wording.
+  // Initialized from the prop (which reflects the current room
+  // setting) but the user can flip it independently while reading
+  // the rules. Re-syncs to the prop if the prop changes (e.g. host
+  // changes the setting while the modal is open).
+  const [useSocialistTheme, setUseSocialistTheme] = useState(
+    defaultSocialistTheme,
+  );
+  useEffect(() => {
+    setUseSocialistTheme(defaultSocialistTheme);
+  }, [defaultSocialistTheme]);
+
   if (!isOpen) return null;
 
   return (
@@ -251,12 +261,13 @@ export function GameRulesModal({
               display: "flex",
               alignItems: "flex-start",
               justifyContent: "space-between",
+              gap: 12,
               padding: "20px 24px 16px",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
               flexShrink: 0,
             }}
           >
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <div
                 style={{
                   fontFamily: "var(--font-mono)",
@@ -282,6 +293,75 @@ export function GameRulesModal({
               >
                 Co-Opoly Deal · Rules
               </h2>
+              {/* Theme toggle — flip the wording between standard
+                  ("players, rent, action cards") and the socialist
+                  variant ("comrades, levies, directives"). Local state
+                  only; doesn't change the room setting. */}
+              <button
+                type="button"
+                onClick={() => setUseSocialistTheme((v) => !v)}
+                aria-pressed={useSocialistTheme}
+                style={{
+                  marginTop: 10,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "5px 10px 5px 6px",
+                  borderRadius: 999,
+                  border: "1px solid rgba(245,234,208,0.1)",
+                  background: useSocialistTheme
+                    ? "color-mix(in oklab, var(--accent, #f0c14a) 14%, rgba(0,0,0,0.3))"
+                    : "rgba(0,0,0,0.3)",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: useSocialistTheme
+                    ? "var(--accent, #f0c14a)"
+                    : "rgba(245,234,208,0.65)",
+                  transition:
+                    "background var(--d-quick) var(--ease-out-soft), color var(--d-quick) var(--ease-out-soft)",
+                }}
+                title={
+                  useSocialistTheme
+                    ? "Switch to standard wording"
+                    : "Switch to socialist wording"
+                }
+              >
+                <span
+                  style={{
+                    position: "relative",
+                    width: 26,
+                    height: 14,
+                    borderRadius: 999,
+                    background: useSocialistTheme
+                      ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 65%, #000) 100%)"
+                    : "rgba(255,255,255,0.08)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    transition: "background var(--d-quick) var(--ease-out-soft)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 1,
+                      left: useSocialistTheme ? 12 : 1,
+                      width: 10,
+                      height: 10,
+                      borderRadius: 999,
+                      background: useSocialistTheme
+                        ? "#1a1208"
+                        : "rgba(245,234,208,0.85)",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.4)",
+                      transition: "left var(--d-quick) var(--ease-out-soft)",
+                    }}
+                  />
+                </span>
+                Socialist Wording
+              </button>
             </div>
             <button
               onClick={onClose}
@@ -324,16 +404,15 @@ export function GameRulesModal({
               <SectionHeading>Overview</SectionHeading>
               <p style={{ margin: 0 }}>
                 Co-Opoly Deal is a card game for 2–6{" "}
-                {useSocialistTheme ? "comrades" : "players"}. The goal is
-                to be the first {useSocialistTheme ? "comrade" : "player"} to
-                collect{" "}
+                {useSocialistTheme ? "comrades" : "players"}. The goal is to be
+                the first {useSocialistTheme ? "comrade" : "player"} to collect{" "}
                 <Hi>
                   3 complete property sets
                   {allowDuplicateSets ? "" : " of different colors"}
                 </Hi>{" "}
                 on the table in front of you.{" "}
-                {useSocialistTheme ? "Comrades" : "Players"} take turns
-                drawing cards, playing cards, and using{" "}
+                {useSocialistTheme ? "Comrades" : "Players"} take turns drawing
+                cards, playing cards, and using{" "}
                 {useSocialistTheme ? "directive" : "action"} cards to collect{" "}
                 {useSocialistTheme ? "levies" : "rent"},{" "}
                 {useSocialistTheme ? "expropriate" : "steal"} properties, and
@@ -384,17 +463,15 @@ export function GameRulesModal({
             {/* Turn Structure */}
             <section>
               <SectionHeading>Turn Structure</SectionHeading>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 8 }}
-              >
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <SubCard title="1. Draw Phase">
                   Draw <Hi>2 cards</Hi> from the draw pile. If you have{" "}
                   <Hi>0 cards</Hi> in hand at the start of your turn, draw{" "}
                   <Hi>5 cards</Hi> instead.
                 </SubCard>
                 <SubCard title="2. Play Phase">
-                  Play <Hi>up to 3 cards</Hi> from your hand. Cards can go
-                  to your bank, your property area, or be played as{" "}
+                  Play <Hi>up to 3 cards</Hi> from your hand. Cards can go to
+                  your bank, your property area, or be played as{" "}
                   {useSocialistTheme ? "directive" : "action"} cards.
                 </SubCard>
                 <SubCard title="3. Discard Phase">
@@ -416,9 +493,9 @@ export function GameRulesModal({
               <SectionHeading>Winning the Game</SectionHeading>
               <p style={{ margin: 0 }}>
                 The first {useSocialistTheme ? "comrade" : "player"} to have{" "}
-                <Hi>3 complete property sets</Hi> on the table wins
-                immediately. Property sets must be on the table — cards in
-                your hand do not count.
+                <Hi>3 complete property sets</Hi> on the table wins immediately.
+                Property sets must be on the table — cards in your hand do not
+                count.
               </p>
             </section>
 
@@ -496,8 +573,8 @@ export function GameRulesModal({
                   marginBottom: 0,
                 }}
               >
-                ★ Houses add +3M, hotels add +4M to complete sets (not
-                available for Railroad / Utility).
+                ★ Houses add +3M, hotels add +4M to complete sets (not available
+                for Railroad / Utility).
               </p>
             </section>
 
@@ -521,8 +598,8 @@ export function GameRulesModal({
                   card from any opponent (not from complete sets).
                 </SubCard>
                 <SubCard title="Force Deal" small>
-                  Swap one of your properties for one of an opponent's
-                  (neither from complete sets).
+                  Swap one of your properties for one of an opponent's (neither
+                  from complete sets).
                 </SubCard>
                 <SubCard title="Deal Breaker" small>
                   {useSocialistTheme ? "Expropriate" : "Steal"} an entire
@@ -532,13 +609,12 @@ export function GameRulesModal({
                   Charge one {useSocialistTheme ? "comrade" : "player"} 5M.
                 </SubCard>
                 <SubCard title="It's My Birthday" small>
-                  All other {useSocialistTheme ? "comrades" : "players"} pay
-                  you 2M.
+                  All other {useSocialistTheme ? "comrades" : "players"} pay you
+                  2M.
                 </SubCard>
                 <SubCard title="Just Say No" small>
-                  Cancel any{" "}
-                  {useSocialistTheme ? "directive" : "action"} card played
-                  against you. Can be chained!
+                  Cancel any {useSocialistTheme ? "directive" : "action"} card
+                  played against you. Can be chained!
                 </SubCard>
                 <SubCard
                   title={`Double the ${useSocialistTheme ? "Levy" : "Rent"}`}
@@ -566,12 +642,13 @@ export function GameRulesModal({
               >
                 {[
                   <>
-                    The <Hi>paying {useSocialistTheme ? "comrade" : "player"}</Hi>{" "}
+                    The{" "}
+                    <Hi>paying {useSocialistTheme ? "comrade" : "player"}</Hi>{" "}
                     decides which cards to use for payment.
                   </>,
                   <>
-                    You can only pay with cards <Hi>on the table</Hi>, not
-                    from your hand.
+                    You can only pay with cards <Hi>on the table</Hi>, not from
+                    your hand.
                   </>,
                   <>
                     <Hi>
@@ -580,8 +657,7 @@ export function GameRulesModal({
                     go to the recipient's bank.
                   </>,
                   <>
-                    <Hi>Property cards</Hi> go to the recipient's property
-                    area.
+                    <Hi>Property cards</Hi> go to the recipient's property area.
                   </>,
                   <>
                     <Hi>No change is given</Hi> — overpayment goes to the
