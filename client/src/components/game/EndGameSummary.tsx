@@ -3,7 +3,11 @@
 
 import { motion } from "framer-motion";
 import type { ClientPlayer, GameSettings, PropertySet } from "../../types/game";
-import { isSetComplete, PropertyColor } from "../../types/game";
+import {
+  isSetComplete,
+  PropertyColor,
+  PROPERTY_COLOR_HEX,
+} from "../../types/game";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
 import { useLayout } from "../../hooks/useLayout";
@@ -331,19 +335,10 @@ function StatReadout({
 }
 
 // ─── Compact property strip — chip pills per stack ───────────────
-const COLOR_BANDS_LITE: Record<string, string> = {
-  brown: "#6a4a31",
-  lightBlue: "#6fb7d4",
-  pink: "#d96aa1",
-  orange: "#e08840",
-  red: "#c83a3a",
-  yellow: "#e6b73c",
-  green: "#2f8f5e",
-  darkBlue: "#1c3a6e",
-  railroad: "#1a1a1a",
-  utility: "#4a3a78",
-  unassigned: "#888",
-};
+// Colors come from PROPERTY_COLOR_HEX (the JS source of truth in
+// types/game.ts) — previously this file kept its own color map that
+// drifted from the rest of the app, e.g. utility was purple here but
+// silver in PROPERTY_COLOR_HEX.
 
 function CompactPropertyStrip({
   sets,
@@ -365,7 +360,8 @@ function CompactPropertyStrip({
       }}
     >
       {sets.map((s, i) => {
-        const c = COLOR_BANDS_LITE[s.color as string] || "#888";
+        const c =
+          PROPERTY_COLOR_HEX[s.color as PropertyColor] ?? "#888";
         const complete = isSetComplete(s);
         return (
           <div

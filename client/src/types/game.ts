@@ -240,18 +240,32 @@ export function getPropertyName(
   return SOCIALIST_PROPERTY_NAMES[name] || name;
 }
 
+/**
+ * SINGLE SOURCE OF TRUTH for property-band hex colors used in JS code
+ * (progress badges, end-game pill summaries, etc.).
+ *
+ * The matching CSS custom properties in `client/src/index.css` (the
+ * `--p-{name}` block) MUST be kept in sync with these values. Card
+ * bands rendered with `var(--p-utility)` etc. read from there;
+ * everything else imports this map.
+ *
+ * If you need to change a color, change BOTH places in the same diff.
+ */
 export const PROPERTY_COLOR_HEX: Record<PropertyColor, string> = {
-  [PropertyColor.Brown]: "#8B4513",
-  [PropertyColor.LightBlue]: "#87CEEB",
-  [PropertyColor.Pink]: "#FF69B4",
-  [PropertyColor.Orange]: "#FF8C00",
-  [PropertyColor.Red]: "#DC2626",
-  [PropertyColor.Yellow]: "#EAB308",
-  [PropertyColor.Green]: "#16A34A",
-  [PropertyColor.DarkBlue]: "#1E3A8A",
-  [PropertyColor.Railroad]: "#1F2937",
+  [PropertyColor.Brown]: "#6a4a31",
+  [PropertyColor.LightBlue]: "#6fb7d4",
+  [PropertyColor.Pink]: "#d96aa1",
+  [PropertyColor.Orange]: "#e08840",
+  [PropertyColor.Red]: "#c83a3a",
+  [PropertyColor.Yellow]: "#e6b73c",
+  [PropertyColor.Green]: "#2f8f5e",
+  [PropertyColor.DarkBlue]: "#1c3a6e",
+  [PropertyColor.Railroad]: "#1a1a1a",
+  // Silver. Was #4a3a78 (purple) in CSS / EndGameSummary which created
+  // a "sometimes purple, sometimes silver" mismatch on screen — silver
+  // (Tailwind gray-500) is the canonical Monopoly-Deal utility color.
   [PropertyColor.Utility]: "#6B7280",
-  [PropertyColor.Unassigned]: "#8B5CF6", // Purple to represent Rainbow
+  [PropertyColor.Unassigned]: "#888",
 };
 
 export const CARD_TYPE_LABEL: Record<CardType, string> = {

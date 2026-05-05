@@ -2,7 +2,10 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
 
-/* Tailwind theme tokens (kept for property-color utility classes) */
+/* Tailwind theme tokens (kept for property-color utility classes).
+   Values MUST match PROPERTY_COLOR_HEX in client/src/types/game.ts —
+   that file is the JS source of truth; these vars mirror it for
+   utility classes / card-band rendering. */
 @theme {
   --color-brown: #6a4a31;
   --color-light-blue: #6fb7d4;
@@ -13,7 +16,7 @@
   --color-green: #2f8f5e;
   --color-dark-blue: #1c3a6e;
   --color-railroad: #1a1a1a;
-  --color-utility: #4a3a78;
+  --color-utility: #6b7280; /* silver — was #4a3a78 (purple) */
 
   --color-table-green: #1a5c2e;
   --color-table-dark: #14472a;
@@ -81,7 +84,9 @@
   --card-back-1: #b22b2b;
   --card-back-2: #7a1818;
 
-  /* Property color bands — distinct hues, all readable on cream */
+  /* Property color bands — distinct hues, all readable on cream.
+     KEEP IN SYNC with PROPERTY_COLOR_HEX in client/src/types/game.ts.
+     If you change a value here, change it there too (and vice versa). */
   --p-brown: #6a4a31;
   --p-skyblue: #6fb7d4;
   --p-pink: #d96aa1;
@@ -92,7 +97,7 @@
   --p-blue: #2d5fa8;
   --p-darkblue: #1c3a6e;
   --p-railroad: #1a1a1a;
-  --p-utility: #4a3a78;
+  --p-utility: #6b7280; /* silver — was #4a3a78 (purple) */
 
   /* Money denominations */
   --m-1: #b8b8b8;
