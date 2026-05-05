@@ -52,7 +52,7 @@ function CardWithSetStats({
   const setSize = SET_SIZE[color] ?? 3;
   const rents = RENT_VALUES[color] ?? [];
   const currentRent = cardsInSet > 0 ? (rents[cardsInSet - 1] ?? 0) : 0;
-  const setLabel = getPropertyColorLabel(color, useSocialistTheme);
+  const setLabel = getPropertyColorLabel(color, !!useSocialistTheme);
   const accentHex = PROPERTY_COLOR_HEX[color] ?? "#888";
 
   return (
