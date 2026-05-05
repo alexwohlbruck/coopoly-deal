@@ -214,6 +214,49 @@ export function LobbyScreen({
             </SecondaryButton>
           </form>
         </div>
+
+        {/* Tip jar — small, deferential. Sits beneath the create/join
+            card so it doesn't compete for attention with the CTAs. */}
+        <a
+          href="https://buymeacoffee.com/alexwohlbruck"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            marginTop: 16,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            width: "100%",
+            padding: "8px 12px",
+            borderRadius: 10,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "rgba(245,234,208,0.55)",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(245,234,208,0.06)",
+            textDecoration: "none",
+            transition:
+              "color var(--d-quick) var(--ease-out-soft), background var(--d-quick) var(--ease-out-soft), border-color var(--d-quick) var(--ease-out-soft)",
+          }}
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            el.style.color = "var(--accent, #f0c14a)";
+            el.style.background = "rgba(240,193,74,0.08)";
+            el.style.borderColor = "rgba(240,193,74,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            const el = e.currentTarget;
+            el.style.color = "rgba(245,234,208,0.55)";
+            el.style.background = "rgba(255,255,255,0.03)";
+            el.style.borderColor = "rgba(245,234,208,0.06)";
+          }}
+        >
+          <span aria-hidden="true">☕</span>
+          <span>Buy me a coffee</span>
+        </a>
       </motion.div>
     </div>
   );

@@ -267,6 +267,34 @@ export function SettingsPanel({
             />
           </div>
         )}
+
+        {/* Tip jar — same component as the lobby for consistency. */}
+        <a
+          href="https://buymeacoffee.com/alexwohlbruck"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            marginTop: 4,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "rgba(245,234,208,0.6)",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(245,234,208,0.08)",
+            textDecoration: "none",
+          }}
+        >
+          <span aria-hidden="true">☕</span>
+          <span>Buy me a coffee</span>
+        </a>
       </div>
     </BottomSheet>
   );
