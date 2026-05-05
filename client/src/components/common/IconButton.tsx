@@ -1,8 +1,13 @@
 // IconButton — refined glass-button used for the top-bar / lobby
 // icon controls (rules, settings gear, music play/pause/next). One
 // place to keep size/padding/colors aligned across the app.
+//
+// Fires a light haptic tap on every click so the whole UI has a
+// consistent feel — settings panel handles the toggle preview
+// itself; here we just want the universal "I tapped a thing" feedback.
 
 import type { CSSProperties, ReactNode } from "react";
+import { useHaptics } from "../../hooks/useHaptics";
 
 interface IconButtonProps {
   onClick?: () => void;
@@ -28,10 +33,20 @@ export function IconButton({
   children,
   style,
 }: IconButtonProps) {
+  const { haptic } = useHaptics();
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={
+        onClick
+          ? () => {
+              // Chrome icon buttons sit at the bottom of the haptic
+              // tier — barely-there tick rather than the full tap.
+              haptic("micro");
+              onClick();
+            }
+          : undefined
+      }
       title={title}
       aria-label={ariaLabel ?? title}
       disabled={disabled}

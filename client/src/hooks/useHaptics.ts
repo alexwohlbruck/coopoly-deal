@@ -10,69 +10,103 @@ import { useSoundSettings } from "./useSoundManager";
 
 /**
  * Higher-level event names mapped to web-haptics presets / custom
- * patterns. Keeping a fixed vocabulary here so the rest of the app
- * doesn't have to think in milliseconds and intensities.
+ * patterns. Tuned to a 4-tier importance scale so the entire UI
+ * has a consistent rhythm: chrome controls barely tick; primary
+ * actions feel firmer; success/loss bursts are reserved for game
+ * outcomes. Tweaked DOWN overall vs. the first pass — the early
+ * version was noticeably too buzzy.
+ *
+ *   micro   — barely-there tick (icon chrome buttons, peek slide)
+ *   tap     — light tap (secondary buttons, generic UI)
+ *   select  — medium tap (turn-start, choosing a target)
+ *   play    — firm tap (card committed)
+ *   primary — slightly firmer tap (primary CTAs)
+ *   warn    — double-tap caution
+ *   complete — short success cluster (set complete)
+ *   win     — triple cluster, big moment
+ *   error   — three sharp taps
+ *   steal   — escalating cluster (cards taken)
+ *   buzz    — long buzz (game-over loss / urgent)
  */
 export type HapticEvent =
-  | "tap" // generic UI tap
-  | "select" // chose an item (color / target)
-  | "play" // played a card
-  | "draw" // drew a card
-  | "complete" // completed a property set / strong success
-  | "win" // game won
-  | "error" // invalid action / rejected
-  | "warn" // caution (low timer, must discard)
-  | "steal" // a card was taken from / by you
-  | "buzz"; // long buzz (game-over loss / urgent)
+  | "micro"
+  | "tap"
+  | "select"
+  | "play"
+  | "primary"
+  | "draw"
+  | "complete"
+  | "win"
+  | "error"
+  | "warn"
+  | "steal"
+  | "buzz";
 
 type HapticTrigger = (preset: string | number | unknown) => void;
 
 function dispatch(trigger: HapticTrigger, event: HapticEvent) {
   switch (event) {
+    case "micro":
+      trigger([{ duration: 8, intensity: 0.35 }]);
+      break;
     case "tap":
-      trigger(20);
+      trigger([{ duration: 12, intensity: 0.45 }]);
       break;
     case "select":
-      trigger("nudge");
+      trigger([{ duration: 18, intensity: 0.6 }]);
       break;
     case "play":
-      // a single firmer tap when a card is committed
-      trigger([{ duration: 30, intensity: 0.8 }]);
+      // Card committed — firm but short.
+      trigger([{ duration: 22, intensity: 0.7 }]);
+      break;
+    case "primary":
+      // Primary CTAs (Confirm Swap, Start Game, Rematch).
+      trigger([{ duration: 22, intensity: 0.65 }]);
       break;
     case "draw":
       trigger([
-        { duration: 18, intensity: 0.5 },
-        { delay: 40, duration: 18, intensity: 0.4 },
+        { duration: 12, intensity: 0.4 },
+        { delay: 50, duration: 12, intensity: 0.35 },
       ]);
       break;
     case "complete":
-      trigger("success");
+      trigger([
+        { duration: 26, intensity: 0.7 },
+        { delay: 60, duration: 26, intensity: 0.55 },
+      ]);
       break;
     case "win":
+      // Slightly toned down vs. the first pass.
       trigger([
-        { duration: 60, intensity: 1 },
-        { delay: 80, duration: 60, intensity: 0.8 },
-        { delay: 80, duration: 120, intensity: 1 },
+        { duration: 40, intensity: 0.85 },
+        { delay: 80, duration: 40, intensity: 0.65 },
+        { delay: 80, duration: 90, intensity: 0.85 },
       ]);
       break;
     case "error":
-      trigger("error");
+      trigger([
+        { duration: 22, intensity: 0.65 },
+        { delay: 60, duration: 22, intensity: 0.65 },
+        { delay: 60, duration: 22, intensity: 0.65 },
+      ]);
       break;
     case "warn":
       trigger([
-        { duration: 30, intensity: 0.6 },
-        { delay: 60, duration: 30, intensity: 0.6 },
+        { duration: 18, intensity: 0.5 },
+        { delay: 60, duration: 18, intensity: 0.5 },
       ]);
       break;
     case "steal":
       trigger([
-        { duration: 25, intensity: 0.7 },
-        { delay: 35, duration: 25, intensity: 0.7 },
-        { delay: 35, duration: 60, intensity: 0.9 },
+        { duration: 18, intensity: 0.55 },
+        { delay: 40, duration: 18, intensity: 0.55 },
+        { delay: 40, duration: 40, intensity: 0.75 },
       ]);
       break;
     case "buzz":
-      trigger("buzz");
+      // Was the "buzz" preset (1000ms full intensity) — that's a lot.
+      // Short single thump for game-over loss instead.
+      trigger([{ duration: 200, intensity: 0.8 }]);
       break;
   }
 }

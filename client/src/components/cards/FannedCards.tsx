@@ -498,10 +498,12 @@ export function DragPeekHand({
         resolved != null &&
         resolved !== lastHapticIdx.current &&
         // Don't pulse on the very first peek of the gesture — only
-        // when the user crosses from one card to another.
+        // when the user crosses from one card to another. Use the
+        // smallest tier ("micro") since these fire repeatedly across
+        // a scrub gesture and would otherwise feel noisy.
         lastHapticIdx.current != null
       ) {
-        haptic("tap");
+        haptic("micro");
       }
       lastHapticIdx.current = resolved;
       return resolved;

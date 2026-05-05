@@ -1,7 +1,13 @@
 // Shared button helpers — gold-gradient primary + dark-glass secondary.
 // Mirrors the design's PrimaryButton / SecondaryButton from chrome.jsx.
+//
+// All three variants fire a haptic tap on click so the entire UI has
+// consistent tactile feedback. Disabled buttons skip both the click
+// and the haptic. The haptic comes BEFORE onClick so even if the
+// click triggers a navigation/teardown, the user still feels the tap.
 
 import type { CSSProperties, ReactNode } from "react";
+import { useHaptics, type HapticEvent } from "../../hooks/useHaptics";
 
 interface ButtonProps {
   children: ReactNode;
@@ -17,6 +23,21 @@ interface ButtonProps {
   style?: CSSProperties;
   className?: string;
   title?: string;
+}
+
+/** Wrap an onClick with a haptic-fire-then-call. Returns undefined
+ *  if the original handler is undefined (so the rendered button has
+ *  no onClick attribute and stays inert). */
+function withHaptic(
+  haptic: (e: HapticEvent) => void,
+  event: HapticEvent,
+  handler?: () => void,
+) {
+  if (!handler) return undefined;
+  return () => {
+    haptic(event);
+    handler();
+  };
 }
 
 const SIZES = {
@@ -38,10 +59,11 @@ export function PrimaryButton({
   title,
 }: ButtonProps) {
   const s = SIZES[size];
+  const { haptic } = useHaptics();
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={disabled ? undefined : withHaptic(haptic, "primary", onClick)}
       disabled={disabled}
       title={title}
       className={className}
@@ -83,10 +105,11 @@ export function SecondaryButton({
   title,
 }: Omit<ButtonProps, "tone" | "accent">) {
   const s = SIZES[size];
+  const { haptic } = useHaptics();
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={disabled ? undefined : withHaptic(haptic, "tap", onClick)}
       disabled={disabled}
       title={title}
       className={className}
@@ -125,10 +148,11 @@ export function DangerButton({
   title,
 }: Omit<ButtonProps, "tone" | "accent">) {
   const s = SIZES[size];
+  const { haptic } = useHaptics();
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={disabled ? undefined : withHaptic(haptic, "warn", onClick)}
       disabled={disabled}
       title={title}
       className={className}

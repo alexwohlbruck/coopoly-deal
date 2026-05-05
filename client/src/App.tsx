@@ -379,6 +379,7 @@ function AppMain() {
           onPlayAction={(payload) => {
             console.log("[App] onPlayAction called", payload);
             play("actionPlayed");
+            haptic("play");
             console.log("[App] Sending PLAY_ACTION_CARD to server");
             send({ type: "PLAY_ACTION_CARD", payload });
             console.log("[App] PLAY_ACTION_CARD sent");
