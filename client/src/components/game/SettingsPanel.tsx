@@ -295,6 +295,36 @@ export function SettingsPanel({
           <span aria-hidden="true">☕</span>
           <span>Buy me a coffee</span>
         </a>
+
+        {/* Author credit. Same component as the lobby for consistency. */}
+        <div
+          style={{
+            textAlign: "center",
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            color: "rgba(245,234,208,0.4)",
+            marginTop: -4,
+          }}
+        >
+          Made with{" "}
+          <span aria-hidden="true" style={{ color: "#e26a6a" }}>
+            ♥
+          </span>{" "}
+          by{" "}
+          <a
+            href="https://alex.wohlbruck.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "rgba(245,234,208,0.7)",
+              textDecoration: "none",
+              borderBottom: "1px dotted rgba(245,234,208,0.3)",
+            }}
+          >
+            Alex Wohlbruck
+          </a>
+        </div>
       </div>
     </BottomSheet>
   );

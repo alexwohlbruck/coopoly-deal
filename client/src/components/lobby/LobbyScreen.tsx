@@ -257,6 +257,43 @@ export function LobbyScreen({
           <span aria-hidden="true">☕</span>
           <span>Buy me a coffee</span>
         </a>
+
+        {/* Author credit. Tiny, centered under everything. */}
+        <div
+          style={{
+            marginTop: 14,
+            textAlign: "center",
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            color: "rgba(245,234,208,0.4)",
+          }}
+        >
+          Made with{" "}
+          <span aria-hidden="true" style={{ color: "#e26a6a" }}>
+            ♥
+          </span>{" "}
+          by{" "}
+          <a
+            href="https://alex.wohlbruck.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              color: "rgba(245,234,208,0.7)",
+              textDecoration: "none",
+              borderBottom: "1px dotted rgba(245,234,208,0.3)",
+              transition: "color var(--d-quick) var(--ease-out-soft)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--accent, #f0c14a)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(245,234,208,0.7)";
+            }}
+          >
+            Alex Wohlbruck
+          </a>
+        </div>
       </motion.div>
     </div>
   );
