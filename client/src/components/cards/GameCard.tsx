@@ -398,6 +398,10 @@ function WildcardPropertyContent({
   const c2 = colors[1] ?? PropertyColor.Brown;
   const top = orientation === "bottom" ? c2 : c1;
   const bot = orientation === "bottom" ? c1 : c2;
+  // The "active" color is on top, right-side up. The inactive color
+  // is on the bottom, ROTATED 180° — so when the player physically
+  // flips the card to swap the active color, the now-top band reads
+  // correctly.
   const ColorBand = ({ color, position }: { color: PropertyColor; position: "top" | "bottom" }) => (
     <div
       style={{
@@ -416,6 +420,9 @@ function WildcardPropertyContent({
           position === "top"
             ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)"
             : "inset 0 1px 0 rgba(0,0,0,0.18), inset 0 -1px 0 rgba(255,255,255,0.18)",
+        // Inactive (bottom) band is rendered upside-down so that
+        // flipping the card 180° brings it right-side up.
+        transform: position === "bottom" ? "rotate(180deg)" : undefined,
       }}
     >
       <span

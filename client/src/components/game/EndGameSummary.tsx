@@ -25,7 +25,12 @@ interface EndGameSummaryProps {
   onGoHome?: () => void;
 }
 
-// ─── Confetti drift over the felt ─────────────────────────────────
+// ─── Confetti fall over the felt ─────────────────────────────────
+// Pieces spawn above the viewport and fall continuously past the
+// bottom (CSS keyframe in index.css translates Y from -15vh to 115vh
+// with a 720deg rotation). Per-piece random delay distributes them
+// across the loop so the screen always has falling confetti in flight
+// rather than all-at-once bursts.
 function ConfettiLayer({ count = 60, seed = 7 }: { count?: number; seed?: number }) {
   let s = seed;
   const rnd = () => {
@@ -33,19 +38,28 @@ function ConfettiLayer({ count = 60, seed = 7 }: { count?: number; seed?: number
     return (s % 10000) / 10000;
   };
   const palette = ["#f0c14a", "#d96aa1", "#7adb88", "#6c9bd2", "#e08840", "#f5ead0"];
-  const bits = Array.from({ length: count }, () => ({
-    x: rnd() * 100,
-    y: rnd() * 100,
-    r: rnd() * 360,
-    s: 5 + rnd() * 8,
-    c: palette[Math.floor(rnd() * palette.length)],
-    flat: rnd() > 0.5,
-    delay: rnd() * 4,
-  }));
+  const bits = Array.from({ length: count }, () => {
+    // Per-piece duration 4–8s. Random delay across the FULL duration
+    // (not 0–4s as before) so spawn times are evenly distributed
+    // — including delays past one cycle so some pieces start
+    // mid-fall and the layer is dense from the first frame.
+    const duration = 4 + rnd() * 4;
+    return {
+      x: rnd() * 100, // horizontal column
+      r: Math.floor(rnd() * 360), // initial rotation
+      s: 5 + rnd() * 8, // size px
+      c: palette[Math.floor(rnd() * palette.length)],
+      flat: rnd() > 0.5,
+      duration,
+      // Negative delays start the animation mid-cycle so we get
+      // continuous coverage immediately on mount.
+      delay: -rnd() * duration,
+    };
+  });
   return (
     <div
       style={{
-        position: "absolute",
+        position: "fixed",
         inset: 0,
         pointerEvents: "none",
         zIndex: 5,
@@ -55,19 +69,24 @@ function ConfettiLayer({ count = 60, seed = 7 }: { count?: number; seed?: number
       {bits.map((b, i) => (
         <div
           key={i}
-          style={{
-            position: "absolute",
-            left: `${b.x}%`,
-            top: `${b.y}%`,
-            width: b.s,
-            height: b.flat ? b.s * 0.4 : b.s * 1.3,
-            background: b.c,
-            transform: `rotate(${b.r}deg)`,
-            borderRadius: b.flat ? 1 : 1.5,
-            boxShadow: "0 1px 1px rgba(0,0,0,0.35)",
-            opacity: 0.85,
-            animation: `confetti-drift ${5 + b.s * 0.4}s ease-in-out ${b.delay}s infinite`,
-          }}
+          style={
+            {
+              position: "absolute",
+              left: `${b.x}%`,
+              top: 0,
+              width: b.s,
+              height: b.flat ? b.s * 0.4 : b.s * 1.3,
+              background: b.c,
+              borderRadius: b.flat ? 1 : 1.5,
+              boxShadow: "0 1px 1px rgba(0,0,0,0.35)",
+              willChange: "transform, opacity",
+              animation: `confetti-drift ${b.duration}s linear ${b.delay}s infinite`,
+              // Custom property the keyframe references for the
+              // initial rotation (each piece spins from a different
+              // base angle).
+              ["--r0" as string]: `${b.r}deg`,
+            } as React.CSSProperties
+          }
         />
       ))}
     </div>
@@ -1166,71 +1185,59 @@ export function EndGameSummary({
             <WinnerSeal size={56} />
           </motion.div>
         ) : (
-          <div
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 220, damping: 22 }}
+            style={{ flexShrink: 0 }}
+          >
+            <HeroPlaque
+              winner={winner}
+              isYouWinner={isYouWinner}
+              bankTotal={winnerBank}
+              completeSets={winnerSets}
+            />
+          </motion.div>
+        )}
+
+        {/* Action buttons — right below the winner name, no card chrome.
+            Per design feedback: rematch/leave buttons sit at the top
+            below the winner without a dark background container. */}
+        {(onRematch || onGoHome) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 16,
-              alignItems: "stretch",
+              display: "flex",
+              gap: 10,
               flexShrink: 0,
+              flexDirection: isCompact ? "column" : "row",
+              justifyContent: isCompact ? "stretch" : "center",
+              alignItems: "stretch",
             }}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 220, damping: 22 }}
-            >
-              <HeroPlaque
-                winner={winner}
-                isYouWinner={isYouWinner}
-                bankTotal={winnerBank}
-                completeSets={winnerSets}
-              />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              style={{
-                padding: "18px 18px",
-                borderRadius: 16,
-                background:
-                  "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
-                border: "1px solid rgba(245,234,208,0.08)",
-                boxShadow: "var(--sh-panel)",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                minWidth: 244,
-                gap: 14,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 9,
-                  letterSpacing: "0.22em",
-                  color: "rgba(245,234,208,0.55)",
-                }}
+            {onRematch && (
+              <PrimaryButton
+                onClick={onRematch}
+                size="md"
+                fullWidth={isCompact}
+                style={!isCompact ? { minWidth: 200 } : undefined}
               >
-                NEXT
-              </div>
-              <div
-                style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                ↻ Rematch
+              </PrimaryButton>
+            )}
+            {onGoHome && (
+              <SecondaryButton
+                onClick={onGoHome}
+                size="md"
+                fullWidth={isCompact}
+                style={!isCompact ? { minWidth: 200 } : undefined}
               >
-                {onRematch && (
-                  <PrimaryButton onClick={onRematch} fullWidth size="md">
-                    ↻ Rematch
-                  </PrimaryButton>
-                )}
-                {onGoHome && (
-                  <SecondaryButton onClick={onGoHome} fullWidth size="md">
-                    Leave to Lobby
-                  </SecondaryButton>
-                )}
-              </div>
-            </motion.div>
-          </div>
+                Leave to Lobby
+              </SecondaryButton>
+            )}
+          </motion.div>
         )}
 
         {/* Final Standings ledger */}
@@ -1320,32 +1327,8 @@ export function EndGameSummary({
         </div>
 
         {/* Mobile sticky action bar */}
-        {isCompact && (
-          <div
-            style={{
-              position: "sticky",
-              bottom: 0,
-              padding: "14px 0 8px",
-              background:
-                "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.65) 60%, rgba(0,0,0,0.85) 100%)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 8,
-              marginTop: 8,
-            }}
-          >
-            {onRematch && (
-              <PrimaryButton onClick={onRematch} fullWidth size="md">
-                ↻ Rematch
-              </PrimaryButton>
-            )}
-            {onGoHome && (
-              <SecondaryButton onClick={onGoHome} fullWidth size="md">
-                Leave to Lobby
-              </SecondaryButton>
-            )}
-          </div>
-        )}
+        {/* Sticky bottom action bar removed — buttons now sit at top
+            below the winner row per design feedback. */}
       </div>
     </div>
   );

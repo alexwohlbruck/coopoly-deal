@@ -431,16 +431,25 @@ a img,
   animation: shake 0.3s ease-in-out;
 }
 
-/* Confetti drift — used on the end-game screen */
+/* Confetti fall — used on the end-game screen.
+   Particles spawn above the viewport and fall to past the bottom,
+   spinning as they go. With a per-particle random delay the loop's
+   restart looks continuous (some particles always above, some
+   always falling). */
 @keyframes confetti-drift {
   0% {
-    transform: translateY(-6px) rotate(var(--r0, 0deg));
+    transform: translateY(-15vh) rotate(var(--r0, 0deg));
+    opacity: 0;
   }
-  50% {
-    transform: translateY(8px) rotate(calc(var(--r0, 0deg) + 18deg));
+  6% {
+    opacity: 0.9;
+  }
+  90% {
+    opacity: 0.9;
   }
   100% {
-    transform: translateY(-6px) rotate(var(--r0, 0deg));
+    transform: translateY(115vh) rotate(calc(var(--r0, 0deg) + 720deg));
+    opacity: 0;
   }
 }
 
