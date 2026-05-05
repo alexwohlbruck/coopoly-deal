@@ -15,6 +15,114 @@ import { GameCard } from "../cards/GameCard";
 import { calculateRent } from "../../utils/rent-calculator";
 import { BottomSheet } from "../common/BottomSheet";
 import { PrimaryButton } from "../ui/Button";
+import { RENT_VALUES } from "../../types/game";
+
+/**
+ * Card + caption tile used in steal / swap pickers. Shows the card
+ * itself plus the set-context info that makes the choice readable:
+ *   - color name
+ *   - completion state ("2/3 cards")
+ *   - current rent for the set ("$2M rent")
+ *
+ * Helps the player decide which target card hurts the most or which
+ * of their own cards is least valuable to give up — without having
+ * to mentally cross-reference the table.
+ */
+function CardWithSetStats({
+  card,
+  player,
+  selected,
+  onClick,
+  useSocialistTheme,
+}: {
+  card: Card;
+  /** The OWNER of this card (target player for steal, you for give). */
+  player: ClientPlayer;
+  selected?: boolean;
+  onClick?: () => void;
+  useSocialistTheme?: boolean;
+}) {
+  // Locate the set this card belongs to, to compute the contextual
+  // stats. Fall back gracefully if not found.
+  const owningSet = player.properties.find((s) =>
+    s.cards.some((c) => c.id === card.id),
+  );
+  const color = owningSet?.color ?? card.colors?.[0] ?? PC.Brown;
+  const cardsInSet = owningSet?.cards.length ?? 1;
+  const setSize = SET_SIZE[color] ?? 3;
+  const rents = RENT_VALUES[color] ?? [];
+  const currentRent = cardsInSet > 0 ? (rents[cardsInSet - 1] ?? 0) : 0;
+  const setLabel = getPropertyColorLabel(color, useSocialistTheme);
+  const accentHex = PROPERTY_COLOR_HEX[color] ?? "#888";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 4,
+        // Provide breathing room so the GameCard's hover lift + the
+        // selected-ring shadow have space to render without clipping.
+        padding: "4px 2px",
+      }}
+    >
+      <GameCard
+        card={card}
+        width={96}
+        selected={selected}
+        useSocialistTheme={useSocialistTheme}
+        onClick={onClick}
+      />
+      <div
+        style={{
+          minHeight: 32,
+          width: 96,
+          padding: "3px 5px",
+          borderRadius: 6,
+          background: "rgba(0,0,0,0.4)",
+          border: `1px solid ${accentHex}33`,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 1,
+          fontFamily: "var(--font-mono)",
+          fontVariantNumeric: "tabular-nums",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.06em",
+            color: accentHex,
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "100%",
+          }}
+        >
+          {setLabel}
+        </div>
+        <div
+          style={{
+            fontSize: 9,
+            color: "rgba(255,255,255,0.78)",
+            display: "flex",
+            gap: 4,
+          }}
+        >
+          <span>
+            {cardsInSet}/{setSize}
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.3)" }}>·</span>
+          <span style={{ color: "#7adb88" }}>${currentRent}M</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface CardActionDialogProps {
   card: Card;
@@ -57,6 +165,10 @@ export function CardActionDialog({
     | "selectTargetCard"
     | "selectMyCard"
     | "selectTargetSet"
+    /** Force Deal: combined picker — choose card-to-take AND
+     *  card-to-give in one step, with multi-target swipe between
+     *  opponents in the take column. */
+    | "forceDealSwap"
   >("choose");
   const [selectedColor, setSelectedColor] = useState<PropertyColor | null>(
     null,
@@ -69,6 +181,9 @@ export function CardActionDialog({
     card.type === CardType.DoubleTheRent ? [card.id] : []
   );
   const [selectedTargetCard, setSelectedTargetCard] = useState<string | null>(null);
+  // Force Deal combined-step state: tracks the card we'll give back
+  // (the "take" card lives in selectedTargetCard above).
+  const [selectedMyCard, setSelectedMyCard] = useState<string | null>(null);
   const [autoTriggered, setAutoTriggered] = useState(false);
   const [actionDispatched, setActionDispatched] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string>(card.id);
@@ -307,6 +422,23 @@ export function CardActionDialog({
           handleSelectTarget(validOpponents[0]);
           return;
         }
+        // Force Deal jumps straight to the combined picker — its UI
+        // includes a swipeable target selector along the top, so we
+        // don't need the standalone selectTarget step.
+        if (activeCard.type === CardType.ForceDeal) {
+          const first = validOpponents[0];
+          setSelectedTarget(first);
+          const stealable = first.properties
+            .filter((s) => !isSetComplete(s))
+            .flatMap((s) => s.cards);
+          const myCards = player.properties
+            .filter((s) => !isSetComplete(s))
+            .flatMap((s) => s.cards);
+          if (stealable.length === 1) setSelectedTargetCard(stealable[0].id);
+          if (myCards.length === 1) setSelectedMyCard(myCards[0].id);
+          setStep("forceDealSwap");
+          return;
+        }
         setStep("selectTarget");
         return;
       }
@@ -398,30 +530,32 @@ export function CardActionDialog({
       }
       setStep("selectTargetCard");
     } else if (activeCard.type === CardType.ForceDeal) {
+      // Combined picker: pick what-to-take AND what-to-give in one
+      // step. Auto-resolves only if there's exactly one of each on
+      // BOTH sides (rare). Otherwise we render the side-by-side UI.
       const stealable = target.properties
         .filter((s) => !isSetComplete(s))
         .flatMap((s) => s.cards);
-      if (stealable.length === 1) {
-        setSelectedTargetCard(stealable[0].id);
-        const myCards = player.properties
-          .filter((s) => !isSetComplete(s))
-          .flatMap((s) => s.cards);
-        if (myCards.length === 1) {
-          markDispatchedAndClose();
-          onPlayAction({
-            action: "forceDeal",
-            cardId: activeCard.id,
-            myCardId: myCards[0].id,
-            targetPlayerId: target.id,
-            targetCardId: stealable[0].id,
-          });
-          onClose();
-          return;
-        }
-        setStep("selectMyCard");
+      const myCards = player.properties
+        .filter((s) => !isSetComplete(s))
+        .flatMap((s) => s.cards);
+      if (stealable.length === 1 && myCards.length === 1) {
+        markDispatchedAndClose();
+        onPlayAction({
+          action: "forceDeal",
+          cardId: activeCard.id,
+          myCardId: myCards[0].id,
+          targetPlayerId: target.id,
+          targetCardId: stealable[0].id,
+        });
+        onClose();
         return;
       }
-      setStep("selectTargetCard");
+      setStep("forceDealSwap");
+      // Pre-select the unambiguous side(s).
+      if (stealable.length === 1) setSelectedTargetCard(stealable[0].id);
+      if (myCards.length === 1) setSelectedMyCard(myCards[0].id);
+      return;
     } else if (activeCard.type === CardType.DealBreaker) {
       const completeSets = target.properties.filter(isSetComplete);
       if (completeSets.length === 1) {
@@ -806,15 +940,27 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select a property from {selectedTarget.name}:
           </p>
-          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
+          <p
+            style={{
+              color: "rgba(245,234,208,0.5)",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Each card shows its set's progress and current rent.
+          </p>
+          <div className="flex flex-wrap gap-2 max-h-[40vh] overflow-y-auto p-2 justify-center">
             {selectedTarget.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
               .map((c) => (
-                <GameCard
+                <CardWithSetStats
                   key={c.id}
                   card={c}
-                  width={96}
+                  player={selectedTarget}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectTargetCard(c.id)}
                 />
@@ -828,21 +974,66 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select your property to swap:
           </p>
-          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
+          <p
+            style={{
+              color: "rgba(245,234,208,0.5)",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Pick what hurts least — stats show what you'd give up.
+          </p>
+          <div className="flex flex-wrap gap-2 max-h-[40vh] overflow-y-auto p-2 justify-center">
             {player.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
               .map((c) => (
-                <GameCard
+                <CardWithSetStats
                   key={c.id}
                   card={c}
-                  width={96}
+                  player={player}
                   useSocialistTheme={settings.useSocialistTheme}
                   onClick={() => handleSelectMyCard(c.id)}
                 />
               ))}
           </div>
         </div>
+      )}
+
+      {step === "forceDealSwap" && (
+        <ForceDealSwapStep
+          activeCard={activeCard}
+          opponents={opponents}
+          player={player}
+          settings={settings}
+          selectedTarget={selectedTarget}
+          selectedTargetCard={selectedTargetCard}
+          selectedMyCard={selectedMyCard}
+          onSelectTarget={(t) => {
+            // Switching target invalidates any previously-selected
+            // target card (different player's hand).
+            setSelectedTarget(t);
+            setSelectedTargetCard(null);
+          }}
+          onSelectTargetCard={(id) => setSelectedTargetCard(id)}
+          onSelectMyCard={(id) => setSelectedMyCard(id)}
+          onConfirm={() => {
+            if (!selectedTarget || !selectedTargetCard || !selectedMyCard)
+              return;
+            markDispatchedAndClose();
+            onPlayAction({
+              action: "forceDeal",
+              cardId: activeCard.id,
+              myCardId: selectedMyCard,
+              targetPlayerId: selectedTarget.id,
+              targetCardId: selectedTargetCard,
+            });
+            onClose();
+          }}
+        />
       )}
 
       {step === "selectRentCards" && (
@@ -1026,5 +1217,297 @@ export function CardActionDialog({
         </div>
       )}
     </BottomSheet>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// ForceDealSwapStep — combined-prompt for the Force Deal action.
+// User picks one of the target's cards (in a swipeable row of valid
+// opponents) AND one of their own cards, then confirms. This used to
+// be two separate steps which made comparison awkward; now both
+// halves are visible at once so the player can weigh trades.
+// ────────────────────────────────────────────────────────────────────
+
+function ForceDealSwapStep({
+  activeCard,
+  opponents,
+  player,
+  settings,
+  selectedTarget,
+  selectedTargetCard,
+  selectedMyCard,
+  onSelectTarget,
+  onSelectTargetCard,
+  onSelectMyCard,
+  onConfirm,
+}: {
+  activeCard: Card;
+  opponents: ClientPlayer[];
+  player: ClientPlayer;
+  settings: GameSettings;
+  selectedTarget: ClientPlayer | null;
+  selectedTargetCard: string | null;
+  selectedMyCard: string | null;
+  onSelectTarget: (target: ClientPlayer) => void;
+  onSelectTargetCard: (id: string) => void;
+  onSelectMyCard: (id: string) => void;
+  onConfirm: () => void;
+}) {
+  // activeCard is the Force Deal action card itself — referenced
+  // mostly so this prop is "used"; the real card-pickers below pull
+  // from the player/opponent property sets.
+  void activeCard;
+  const validOpponents = opponents.filter((opp) =>
+    opp.properties.some((s) => !isSetComplete(s) && s.cards.length > 0),
+  );
+  const myCards = player.properties
+    .filter((s) => !isSetComplete(s))
+    .flatMap((s) => s.cards);
+
+  const targetRowRef = useRef<HTMLDivElement | null>(null);
+  // Two-way sync between the target swipe and selectedTarget.
+  // Same pattern as the GameTableCompact opponent swipe — see comments
+  // there. skipNextProgScroll suppresses one ScrollIntoView when the
+  // active id changed because of a swipe (page is already in view).
+  const skipNextProgScroll = useRef(false);
+  const debounce = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = targetRowRef.current;
+    if (!el || validOpponents.length <= 1) return;
+    const onScroll = () => {
+      if (debounce.current != null) window.clearTimeout(debounce.current);
+      debounce.current = window.setTimeout(() => {
+        const rect = el.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        let closestId: string | null = null;
+        let closestDist = Infinity;
+        for (const child of Array.from(el.children) as HTMLElement[]) {
+          const id = child.dataset.targetPageId;
+          if (!id) continue;
+          const r = child.getBoundingClientRect();
+          const d = Math.abs(r.left + r.width / 2 - cx);
+          if (d < closestDist) {
+            closestDist = d;
+            closestId = id;
+          }
+        }
+        if (closestId && closestId !== selectedTarget?.id) {
+          const opp = validOpponents.find((o) => o.id === closestId);
+          if (opp) {
+            skipNextProgScroll.current = true;
+            onSelectTarget(opp);
+          }
+        }
+      }, 90);
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      if (debounce.current != null) window.clearTimeout(debounce.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTarget?.id, validOpponents.length]);
+
+  useEffect(() => {
+    if (skipNextProgScroll.current) {
+      skipNextProgScroll.current = false;
+      return;
+    }
+    const el = targetRowRef.current;
+    if (!el || !selectedTarget) return;
+    const target = el.querySelector(
+      `[data-target-page-id="${selectedTarget.id}"]`,
+    ) as HTMLElement | null;
+    if (target) {
+      target.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [selectedTarget?.id]);
+
+  const canConfirm =
+    !!selectedTarget && !!selectedTargetCard && !!selectedMyCard;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <p
+        style={{
+          color: "rgba(245,234,208,0.7)",
+          fontSize: 13,
+          margin: 0,
+        }}
+      >
+        Pick a card to take and a card to give. Stats show each set's
+        current rent so you can compare directly.
+      </p>
+
+      {/* ── Target tabs (multi-opponent only) ─────────────────── */}
+      {validOpponents.length > 1 && (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {validOpponents.map((opp) => {
+            const active = selectedTarget?.id === opp.id;
+            return (
+              <button
+                key={opp.id}
+                onClick={() => onSelectTarget(opp)}
+                style={{
+                  padding: "5px 10px",
+                  borderRadius: 999,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  background: active
+                    ? "var(--accent, #f0c14a)"
+                    : "rgba(255,255,255,0.06)",
+                  color: active ? "#1a1208" : "rgba(245,234,208,0.7)",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: active ? 700 : 500,
+                  boxShadow: active
+                    ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+                    : "inset 0 0 0 1px rgba(255,255,255,0.06)",
+                }}
+              >
+                {opp.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── TAKE half: swipeable row of opponent card grids ───── */}
+      <div>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "baseline",
+            marginBottom: 6,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              color: "rgba(245,234,208,0.55)",
+              textTransform: "uppercase",
+            }}
+          >
+            Take from {selectedTarget?.name ?? "—"}
+          </div>
+          {validOpponents.length > 1 && (
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.18em",
+                color: "rgba(245,234,208,0.35)",
+                textTransform: "uppercase",
+              }}
+            >
+              ← swipe →
+            </div>
+          )}
+        </div>
+        <div
+          ref={targetRowRef}
+          style={{
+            display: "flex",
+            overflowX: validOpponents.length > 1 ? "auto" : "visible",
+            scrollSnapType:
+              validOpponents.length > 1 ? "x mandatory" : "none",
+            gap: 0,
+            // Padding so card shadows + selection rings don't get clipped
+            // at the snap boundary.
+            padding: "4px 0 8px",
+          }}
+          className="scrollbar-hide"
+        >
+          {validOpponents.map((opp) => {
+            const stealable = opp.properties
+              .filter((s) => !isSetComplete(s))
+              .flatMap((s) => s.cards);
+            return (
+              <div
+                key={opp.id}
+                data-target-page-id={opp.id}
+                style={{
+                  flex: "0 0 100%",
+                  width: "100%",
+                  scrollSnapAlign: "center",
+                  scrollSnapStop: "always",
+                }}
+              >
+                <div
+                  className="flex flex-wrap gap-2 max-h-[28vh] overflow-y-auto p-2 justify-center"
+                >
+                  {stealable.map((c) => (
+                    <CardWithSetStats
+                      key={c.id}
+                      card={c}
+                      player={opp}
+                      selected={
+                        selectedTarget?.id === opp.id &&
+                        selectedTargetCard === c.id
+                      }
+                      useSocialistTheme={settings.useSocialistTheme}
+                      onClick={() => {
+                        if (selectedTarget?.id !== opp.id) {
+                          onSelectTarget(opp);
+                        }
+                        onSelectTargetCard(c.id);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── GIVE half: your cards ─────────────────────────────── */}
+      <div>
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            letterSpacing: "0.18em",
+            color: "rgba(245,234,208,0.55)",
+            textTransform: "uppercase",
+            marginBottom: 6,
+          }}
+        >
+          Give from your sets
+        </div>
+        <div className="flex flex-wrap gap-2 max-h-[28vh] overflow-y-auto p-2 justify-center">
+          {myCards.map((c) => (
+            <CardWithSetStats
+              key={c.id}
+              card={c}
+              player={player}
+              selected={selectedMyCard === c.id}
+              useSocialistTheme={settings.useSocialistTheme}
+              onClick={() => onSelectMyCard(c.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Confirm ───────────────────────────────────────────── */}
+      <PrimaryButton
+        onClick={onConfirm}
+        disabled={!canConfirm}
+        fullWidth
+        size="md"
+      >
+        Confirm Swap
+      </PrimaryButton>
+    </div>
   );
 }

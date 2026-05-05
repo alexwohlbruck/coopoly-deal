@@ -533,6 +533,7 @@ export function GameTable({
                 .flatMap((s) => s.cards)
                 .find((c) => c.id === pendingWildcardAssignment.cardId)!
             }
+            player={me}
             settings={gameState.settings}
             onAssign={onAssignReceivedWildcard}
           />

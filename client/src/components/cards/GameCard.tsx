@@ -393,15 +393,20 @@ function WildcardPropertyContent({
     );
   }
 
-  // 2-color wildcard
+  // 2-color wildcard. The "active" (top-of-stack) color goes on top
+  // right-side up; the inactive color is on the bottom rotated 180°
+  // so flipping the card brings it right-side up.
+  //
+  // The body shows BOTH rent tables side-by-side: the active color's
+  // rents on the right (right-side up) and the inactive color's
+  // rents on the left (rotated 180°). When the player physically
+  // flips the card, the previously-left rent table is now on the
+  // right and right-side up — the layout reads symmetrically from
+  // either orientation, mirroring the printed real-life card.
   const c1 = colors[0] ?? PropertyColor.Brown;
   const c2 = colors[1] ?? PropertyColor.Brown;
   const top = orientation === "bottom" ? c2 : c1;
   const bot = orientation === "bottom" ? c1 : c2;
-  // The "active" color is on top, right-side up. The inactive color
-  // is on the bottom, ROTATED 180° — so when the player physically
-  // flips the card to swap the active color, the now-top band reads
-  // correctly.
   const ColorBand = ({ color, position }: { color: PropertyColor; position: "top" | "bottom" }) => (
     <div
       style={{
@@ -420,8 +425,6 @@ function WildcardPropertyContent({
           position === "top"
             ? "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)"
             : "inset 0 1px 0 rgba(0,0,0,0.18), inset 0 -1px 0 rgba(255,255,255,0.18)",
-        // Inactive (bottom) band is rendered upside-down so that
-        // flipping the card 180° brings it right-side up.
         transform: position === "bottom" ? "rotate(180deg)" : undefined,
       }}
     >
@@ -440,6 +443,93 @@ function WildcardPropertyContent({
       </span>
     </div>
   );
+
+  // Mini rent column. Used twice — once right-side up (active/top
+  // color), once rotated 180° (inactive/bottom color). Compact: shows
+  // the rent ladder with a tiny "RENT" label and a colored stripe
+  // matching the column's color.
+  const RentColumn = ({
+    color,
+    rotated,
+  }: {
+    color: PropertyColor;
+    rotated: boolean;
+  }) => {
+    const rents = RENT_VALUES[color] ?? [];
+    const setSize = SET_SIZE[color] ?? rents.length;
+    return (
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          padding: `${4 * fontScale}px ${5 * fontScale}px`,
+          transform: rotated ? "rotate(180deg)" : undefined,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 6.5 * fontScale,
+            letterSpacing: "0.18em",
+            color: "var(--card-ink-soft)",
+            textAlign: "center",
+            textTransform: "uppercase",
+            fontWeight: 700,
+            marginBottom: 2 * fontScale,
+          }}
+        >
+          {useSocialistTheme ? "Levy" : "Rent"}
+        </div>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-evenly",
+            fontSize: 7.5 * fontScale,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {rents.map((rent, i) => (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                borderBottom:
+                  i < rents.length - 1
+                    ? "1px dotted rgba(0,0,0,0.15)"
+                    : "none",
+                padding: "0.5px 1px",
+                lineHeight: 1.1,
+              }}
+            >
+              <span style={{ color: "var(--card-ink-soft)" }}>
+                {i + 1}
+                {i + 1 === setSize ? "★" : ""}
+              </span>
+              <span style={{ fontWeight: 600, color: "var(--card-ink)" }}>
+                ${rent}
+              </span>
+            </div>
+          ))}
+        </div>
+        {/* Color stripe to anchor each column to its color. */}
+        <div
+          style={{
+            marginTop: 3,
+            height: 2,
+            borderRadius: 1,
+            background: PROPERTY_COLOR_VAR[color],
+            boxShadow: "inset 0 1px 0 rgba(0,0,0,0.2)",
+          }}
+        />
+      </div>
+    );
+  };
+
   return (
     <>
       <ColorBand color={top} position="top" />
@@ -448,36 +538,19 @@ function WildcardPropertyContent({
         style={{
           flex: 1,
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          flexDirection: "row",
+          alignItems: "stretch",
           background: "var(--card-paper)",
+          // Hairline divider between the two columns.
+          backgroundImage:
+            "linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(0,0,0,0.12) calc(50% - 0.5px), rgba(0,0,0,0.12) calc(50% + 0.5px), transparent calc(50% + 0.5px))",
         }}
       >
-        <div
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 13 * fontScale,
-            fontWeight: 800,
-            letterSpacing: "0.04em",
-            textTransform: "uppercase",
-            color: "var(--card-ink)",
-            textAlign: "center",
-            lineHeight: 1.05,
-          }}
-        >
-          Wild
-          <br />
-          <span
-            style={{
-              fontSize: 7.5 * fontScale,
-              fontWeight: 600,
-              letterSpacing: "0.18em",
-              color: "var(--card-ink-soft)",
-            }}
-          >
-            2-color
-          </span>
-        </div>
+        {/* Inactive color rents on the LEFT, rotated 180° so they read
+            correctly when the card is flipped. */}
+        <RentColumn color={bot} rotated />
+        {/* Active color rents on the RIGHT, right-side up. */}
+        <RentColumn color={top} rotated={false} />
       </div>
       <ColorBand color={bot} position="bottom" />
     </>
