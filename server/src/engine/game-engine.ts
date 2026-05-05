@@ -86,6 +86,7 @@ export class GameEngine {
     }
 
     this.startTurn(state);
+    state.startedAt = Date.now();
     state.lastActivityAt = Date.now();
   }
 
@@ -123,6 +124,7 @@ export class GameEngine {
     }
 
     this.startTurn(state);
+    state.startedAt = Date.now();
     state.lastActivityAt = Date.now();
   }
 

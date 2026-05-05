@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { RoomManager } from "../rooms/room-manager.ts";
 import { toClientState } from "../models/types.ts";
+import { track } from "../analytics.ts";
 
 export function createApiRoutes(roomManager: RoomManager) {
   const api = new Hono();
 
   api.post("/rooms", (c) => {
     const game = roomManager.createRoom();
+    track("room_created");
     return c.json({ roomCode: game.id });
   });
 

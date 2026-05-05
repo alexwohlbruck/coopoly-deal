@@ -182,6 +182,7 @@ export interface GameState {
   winner: string | null;
   createdAt: number;
   lastActivityAt: number;
+  startedAt?: number;
   settings: GameSettings;
   gameEndedBroadcasted?: boolean;
 }

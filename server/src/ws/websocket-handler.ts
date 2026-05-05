@@ -9,6 +9,22 @@ import { RoomManager } from "../rooms/room-manager.ts";
 import { BotPlayer } from "../engine/bot.ts";
 import { getRandomBotName } from "../utils/bot-names.ts";
 import { devTools } from "../dev-tools.ts";
+import { track } from "../analytics.ts";
+
+function gameSettingsData(game: import("../models/types.ts").GameState) {
+  const bots = game.players.filter((p) => p.isBot).length;
+  return {
+    players: game.players.length,
+    bots,
+    humans: game.players.length - bots,
+    max_hand_size: game.settings.maxHandSize,
+    turn_timer: game.settings.turnTimer,
+    allow_duplicate_sets: game.settings.allowDuplicateSets,
+    wildcard_flip_counts_as_move: game.settings.wildcardFlipCountsAsMove,
+    socialist_theme: game.settings.useSocialistTheme,
+    bot_speed: game.settings.botSpeed,
+  };
+}
 
 interface WSData {
   playerId: string | null;
@@ -242,6 +258,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
 
     const game = roomManager.getRoom(roomCode)!;
+    track("game_started", gameSettingsData(game));
     const currentPlayer = game.players[game.currentPlayerIndex]!;
     broadcastToRoom(roomCode, {
       type: "TURN_STARTED",
@@ -611,6 +628,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!game) throw new Error("Room not found");
 
     roomManager.getEngine().rematchGame(game);
+    track("rematch", gameSettingsData(game));
 
     broadcastToRoom(roomCode, { type: "GAME_STARTED" });
     sendStateToAll(roomCode);
@@ -633,11 +651,11 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
     roomManager.getEngine().resignPlayer(game, playerId);
     sendStateToAll(roomCode);
-    checkGameEnd(roomCode);
+    checkGameEnd(roomCode, "resign");
     checkBotTurn(roomCode);
   }
 
-  function checkGameEnd(roomCode: string): void {
+  function checkGameEnd(roomCode: string, endedBy: "win" | "resign" = "win"): void {
     const game = roomManager.getRoom(roomCode);
     if (!game) return;
     if (
@@ -653,6 +671,16 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           winnerId: game.winner,
           winnerName: winner?.name ?? "Unknown",
         },
+      });
+
+      const duration = game.startedAt
+        ? Math.round((Date.now() - game.startedAt) / 1000)
+        : 0;
+      track("game_ended", {
+        ...gameSettingsData(game),
+        duration_seconds: duration,
+        ended_by: endedBy,
+        winner_was_bot: winner?.isBot ?? false,
       });
     }
   }
