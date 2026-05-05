@@ -16,7 +16,17 @@ import { defineSound } from "@web-kits/audio";
 
 // ── Settings store ──────────────────────────────────────────────────
 
-export const SOUND_THEMES = ["classic", "soft", "arcade", "chiptune"] as const;
+export const SOUND_THEMES = [
+  "classic",
+  "soft",
+  "arcade",
+  "chiptune",
+  "bell",
+  "synthwave",
+  "pulse",
+  "hum",
+  "crispy",
+] as const;
 export type SoundTheme = (typeof SOUND_THEMES)[number];
 
 export const SOUND_THEME_LABEL: Record<SoundTheme, string> = {
@@ -24,13 +34,23 @@ export const SOUND_THEME_LABEL: Record<SoundTheme, string> = {
   soft: "Soft",
   arcade: "Arcade",
   chiptune: "Chiptune",
+  bell: "Bell",
+  synthwave: "Synthwave",
+  pulse: "Pulse",
+  hum: "Hum",
+  crispy: "Crispy",
 };
 
 export const SOUND_THEME_HINT: Record<SoundTheme, string> = {
-  classic: "Punchy square-wave clicks. The default.",
+  classic: "Punchy square-wave clicks — the default.",
   soft: "Mellow sine chimes for a quieter table.",
   arcade: "Aggressive saw-wave tones with bite.",
-  chiptune: "8-bit beeps and bloops — a console-game feel.",
+  chiptune: "8-bit beeps and bloops — console-game feel.",
+  bell: "Pure sine bells with FM resonance.",
+  synthwave: "Detuned saw waves with retro 80s flavor.",
+  pulse: "Minimal high-pitched pings — almost ambient.",
+  hum: "Low triangle drones with long fades.",
+  crispy: "Bright high-frequency clicks and snaps.",
 };
 
 interface SoundSettings {
@@ -341,11 +361,138 @@ const chiptune: Record<SoundEffect, SoundDef> = {
   tick: tone({ freqStart: 1047, decay: 0.02, gain: 0.1, type: "square" }),
 };
 
+// ── Theme: Bell (FM sine, long resonant decays) ─────────────────
+
+const bell: Record<SoundEffect, SoundDef> = {
+  cardPlay: tone({ freqStart: 1320, decay: 0.6, gain: 0.16 }),
+  cardDraw: tone({ freqStart: 880, decay: 0.5, gain: 0.16 }),
+  cardSlide: tone({ freqStart: 660, decay: 0.4, gain: 0.12 }),
+  turnStart: chime([523, 784, 1175], 0.18, 0.22, 0.5),
+  actionPlayed: chime([880, 1175], 0.14, 0.22, 0.5),
+  justSayNo: tone({ freqStart: 392, freqEnd: 196, decay: 0.7, gain: 0.18 }),
+  payment: chime([523, 784, 1047], 0.14, 0.2, 0.5),
+  setComplete: chime([523, 784, 1047, 1568], 0.16, 0.24, 0.55),
+  gameWin: chime([523, 659, 784, 1047, 1319, 1568, 2093], 0.16, 0.26, 0.6),
+  gameLose: tone({ freqStart: 392, freqEnd: 131, decay: 1.5, gain: 0.16 }),
+  error: chime([220, 175], 0.12, 0.18, 0.4),
+  buttonClick: tone({ freqStart: 1568, decay: 0.18, gain: 0.1 }),
+  playerJoin: chime([784, 1047], 0.14, 0.18, 0.5),
+  rent: chime([523, 392, 523], 0.14, 0.2, 0.45),
+  steal: chime([262, 392, 523, 784], 0.1, 0.2, 0.4),
+  tick: tone({ freqStart: 1568, decay: 0.12, gain: 0.08 }),
+};
+
+// ── Theme: Synthwave (detuned saws + retro 80s feel) ────────────
+
+const synthwave: Record<SoundEffect, SoundDef> = {
+  cardPlay: tone({ freqStart: 880, freqEnd: 660, decay: 0.18, gain: 0.18, type: "sawtooth" }),
+  cardDraw: tone({ freqStart: 440, freqEnd: 880, decay: 0.18, gain: 0.18, type: "sawtooth" }),
+  cardSlide: tone({ freqStart: 330, freqEnd: 220, decay: 0.14, gain: 0.16, type: "sawtooth" }),
+  turnStart: chime([392, 587, 784], 0.14, 0.22, 0.3),
+  actionPlayed: {
+    sequence: [
+      { player: tone({ freqStart: 440, decay: 0.18, gain: 0.22, type: "sawtooth" }), delay: 0 },
+      { player: tone({ freqStart: 660, decay: 0.18, gain: 0.22, type: "sawtooth" }), delay: 100 },
+    ],
+  },
+  justSayNo: tone({ freqStart: 220, freqEnd: 110, decay: 0.5, gain: 0.22, type: "sawtooth" }),
+  payment: chime([330, 415, 523], 0.12, 0.2, 0.3),
+  setComplete: chime([523, 659, 784, 1047], 0.14, 0.24, 0.35),
+  gameWin: chime([392, 523, 659, 784, 1047, 1319], 0.18, 0.28, 0.4),
+  gameLose: {
+    sequence: [
+      { player: tone({ freqStart: 330, decay: 0.5, gain: 0.22, type: "sawtooth" }), delay: 0 },
+      { player: tone({ freqStart: 220, decay: 0.6, gain: 0.18, type: "sawtooth" }), delay: 250 },
+      { player: tone({ freqStart: 110, decay: 0.9, gain: 0.16, type: "sawtooth" }), delay: 500 },
+    ],
+  },
+  error: tone({ freqStart: 175, freqEnd: 87, decay: 0.3, gain: 0.22, type: "sawtooth" }),
+  buttonClick: tone({ freqStart: 880, decay: 0.05, gain: 0.14, type: "sawtooth" }),
+  playerJoin: chime([392, 523, 784], 0.13, 0.2, 0.3),
+  rent: chime([330, 415, 523], 0.13, 0.22, 0.3),
+  steal: chime([165, 247, 330, 494], 0.1, 0.22, 0.3),
+  tick: tone({ freqStart: 660, decay: 0.05, gain: 0.1, type: "sawtooth" }),
+};
+
+// ── Theme: Pulse (minimal short pings, almost ambient) ──────────
+
+const pulse: Record<SoundEffect, SoundDef> = {
+  cardPlay: tone({ freqStart: 1568, decay: 0.05, gain: 0.1 }),
+  cardDraw: tone({ freqStart: 1175, decay: 0.05, gain: 0.1 }),
+  cardSlide: tone({ freqStart: 880, decay: 0.04, gain: 0.08 }),
+  turnStart: chime([1175, 1568], 0.08, 0.12, 0.1),
+  actionPlayed: chime([1568, 2093], 0.08, 0.14, 0.08),
+  justSayNo: chime([523, 392], 0.1, 0.14, 0.12),
+  payment: chime([1047, 1568], 0.06, 0.12, 0.08),
+  setComplete: chime([1175, 1568, 2093], 0.07, 0.14, 0.1),
+  gameWin: chime([1047, 1568, 2093, 2637], 0.08, 0.16, 0.12),
+  gameLose: chime([523, 392, 262], 0.18, 0.14, 0.18),
+  error: chime([262, 196], 0.06, 0.14, 0.08),
+  buttonClick: tone({ freqStart: 2093, decay: 0.02, gain: 0.08 }),
+  playerJoin: chime([1175, 1568], 0.08, 0.12, 0.08),
+  rent: chime([880, 1175, 880], 0.08, 0.12, 0.1),
+  steal: chime([523, 880, 1175], 0.06, 0.12, 0.08),
+  tick: tone({ freqStart: 2093, decay: 0.015, gain: 0.06 }),
+};
+
+// ── Theme: Hum (low triangle drones with long fades) ────────────
+
+const hum: Record<SoundEffect, SoundDef> = {
+  cardPlay: tone({ freqStart: 220, decay: 0.4, gain: 0.16, type: "triangle" }),
+  cardDraw: tone({ freqStart: 175, decay: 0.45, gain: 0.16, type: "triangle" }),
+  cardSlide: tone({ freqStart: 147, decay: 0.35, gain: 0.14, type: "triangle" }),
+  turnStart: chime([196, 247, 294], 0.18, 0.2, 0.4),
+  actionPlayed: chime([220, 277], 0.16, 0.2, 0.4),
+  justSayNo: tone({ freqStart: 196, freqEnd: 98, decay: 0.7, gain: 0.2, type: "triangle" }),
+  payment: chime([165, 196, 247], 0.16, 0.2, 0.4),
+  setComplete: chime([196, 247, 294, 392], 0.18, 0.22, 0.45),
+  gameWin: chime([196, 247, 294, 392, 494], 0.22, 0.24, 0.5),
+  gameLose: tone({ freqStart: 165, freqEnd: 65, decay: 1.4, gain: 0.18, type: "triangle" }),
+  error: chime([110, 87], 0.18, 0.2, 0.35),
+  buttonClick: tone({ freqStart: 330, decay: 0.1, gain: 0.1, type: "triangle" }),
+  playerJoin: chime([220, 294], 0.16, 0.18, 0.4),
+  rent: chime([196, 220, 196], 0.18, 0.2, 0.4),
+  steal: chime([110, 165, 220, 294], 0.13, 0.2, 0.35),
+  tick: tone({ freqStart: 392, decay: 0.08, gain: 0.08, type: "triangle" }),
+};
+
+// ── Theme: Crispy (bright high-freq snaps) ──────────────────────
+
+const crispy: Record<SoundEffect, SoundDef> = {
+  cardPlay: tone({ freqStart: 2637, freqEnd: 1568, decay: 0.04, gain: 0.14, type: "square" }),
+  cardDraw: tone({ freqStart: 1568, freqEnd: 2637, decay: 0.05, gain: 0.14, type: "square" }),
+  cardSlide: tone({ freqStart: 1175, decay: 0.04, gain: 0.12, type: "triangle" }),
+  turnStart: chime([1568, 2093, 2637], 0.06, 0.2, 0.08),
+  actionPlayed: {
+    sequence: [
+      { player: tone({ freqStart: 2093, decay: 0.04, gain: 0.18, type: "square" }), delay: 0 },
+      { player: tone({ freqStart: 2637, decay: 0.04, gain: 0.18, type: "square" }), delay: 50 },
+      { player: tone({ freqStart: 3136, decay: 0.06, gain: 0.18, type: "square" }), delay: 100 },
+    ],
+  },
+  justSayNo: chime([1175, 880], 0.08, 0.2, 0.14),
+  payment: chime([1568, 2093, 2637], 0.05, 0.18, 0.06),
+  setComplete: chime([1568, 2093, 2637, 3136], 0.06, 0.22, 0.06),
+  gameWin: chime([1568, 2093, 2637, 3136, 3951], 0.08, 0.22, 0.08),
+  gameLose: chime([1175, 880, 660, 440], 0.12, 0.18, 0.16),
+  error: chime([523, 440], 0.08, 0.2, 0.1),
+  buttonClick: tone({ freqStart: 3136, decay: 0.02, gain: 0.12, type: "square" }),
+  playerJoin: chime([2093, 2637], 0.06, 0.18, 0.06),
+  rent: chime([1568, 2093, 2637], 0.06, 0.2, 0.06),
+  steal: chime([880, 1320, 2093, 2637], 0.06, 0.2, 0.06),
+  tick: tone({ freqStart: 3136, decay: 0.02, gain: 0.08, type: "square" }),
+};
+
 const THEMES: Record<SoundTheme, Record<SoundEffect, SoundDef>> = {
   classic,
   soft,
   arcade,
   chiptune,
+  bell,
+  synthwave,
+  pulse,
+  hum,
+  crispy,
 };
 
 // ── Background music (unchanged from before) ─────────────────────

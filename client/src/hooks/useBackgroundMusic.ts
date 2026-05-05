@@ -55,6 +55,54 @@ export function useBackgroundMusic() {
     }
   }, [volume]);
 
+  // Pause music when the page is hidden / loses focus, resume when
+  // it comes back — but only if the user had it playing before.
+  // Without this, a backgrounded tab keeps the audio element going
+  // (annoying when the user has muted their phone but audio still
+  // chews battery).
+  useEffect(() => {
+    const wasPlayingRef = { current: false };
+
+    const onHide = () => {
+      if (!audioRef.current) return;
+      if (!audioRef.current.paused) {
+        wasPlayingRef.current = true;
+        audioRef.current.pause();
+        setIsPlaying(false);
+      }
+    };
+    const onShow = () => {
+      if (!audioRef.current) return;
+      if (wasPlayingRef.current) {
+        wasPlayingRef.current = false;
+        audioRef.current.play().then(
+          () => setIsPlaying(true),
+          () => {
+            /* autoplay rejected — leave paused */
+          },
+        );
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) onHide();
+      else onShow();
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("blur", onHide);
+    window.addEventListener("focus", onShow);
+    // pagehide is fired on tab close + iOS Safari "swipe away"; pause
+    // there too so we don't leave a dangling audio object running.
+    window.addEventListener("pagehide", onHide);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("blur", onHide);
+      window.removeEventListener("focus", onShow);
+      window.removeEventListener("pagehide", onHide);
+    };
+  }, []);
+
   // Handle track changes (but not initial mount or play/pause changes)
   useEffect(() => {
     if (!isInitializedRef.current || !audioRef.current) return;

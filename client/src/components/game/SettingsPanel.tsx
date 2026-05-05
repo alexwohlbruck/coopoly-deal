@@ -131,73 +131,57 @@ export function SettingsPanel({
             </button>
           </label>
 
-          {/* Sound theme — disabled visually when sfx are off. Tap a
-              chip to switch theme AND preview the new sound. */}
+          {/* Sound theme — dropdown so we can list all 9 themes
+              compactly. Selecting also previews a representative
+              sound from that theme. Disabled when SFX is off. */}
           <div
             style={{
               marginTop: 10,
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 6,
               opacity: sfxEnabled ? 1 : 0.4,
               pointerEvents: sfxEnabled ? "auto" : "none",
             }}
           >
-            {SOUND_THEMES.map((id: SoundTheme) => {
-              const active = soundTheme === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => {
-                    setSoundTheme(id);
-                    // Preview using the EXPLICIT id we just clicked.
-                    // Going through the hook-based play() would use
-                    // the previous render's theme (stale closure).
-                    previewSound(id, "setComplete");
-                  }}
-                  style={{
-                    padding: "8px 10px",
-                    borderRadius: 8,
-                    background: active
-                      ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
-                      : "rgba(255,255,255,0.05)",
-                    border: "1px solid",
-                    borderColor: active
-                      ? "transparent"
-                      : "rgba(255,255,255,0.08)",
-                    color: active ? "#1a1208" : "rgba(245,234,208,0.78)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    boxShadow: active
-                      ? "inset 0 1px 0 rgba(255,255,255,0.4)"
-                      : "none",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontWeight: 700,
-                      fontSize: 12,
-                      letterSpacing: "-0.005em",
-                    }}
-                  >
-                    {SOUND_THEME_LABEL[id]}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 9,
-                      letterSpacing: "0.04em",
-                      opacity: 0.85,
-                      marginTop: 2,
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {SOUND_THEME_HINT[id]}
-                  </div>
-                </button>
-              );
-            })}
+            <select
+              value={soundTheme}
+              onChange={(e) => {
+                const id = e.target.value as SoundTheme;
+                setSoundTheme(id);
+                // Preview via the non-hook path (avoids the stale
+                // closure that would play the previously-selected
+                // theme).
+                previewSound(id, "setComplete");
+              }}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 8,
+                fontFamily: "var(--font-display)",
+                fontWeight: 600,
+                fontSize: 13,
+                letterSpacing: "-0.005em",
+                color: "#f5ead0",
+                background:
+                  "linear-gradient(180deg, rgba(28,22,20,0.9) 0%, rgba(16,10,8,0.96) 100%)",
+                border: "1px solid rgba(245,234,208,0.12)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+                cursor: "pointer",
+                appearance: "none",
+                // Caret on the right, drawn as a CSS arrow so it
+                // matches the cream/accent palette better than the
+                // browser default.
+                backgroundImage:
+                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23f0c14a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+                backgroundRepeat: "no-repeat",
+                backgroundPosition: "right 14px center",
+                paddingRight: 32,
+              }}
+            >
+              {SOUND_THEMES.map((id: SoundTheme) => (
+                <option key={id} value={id}>
+                  {SOUND_THEME_LABEL[id]} — {SOUND_THEME_HINT[id]}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
