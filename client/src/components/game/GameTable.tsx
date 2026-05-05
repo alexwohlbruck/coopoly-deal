@@ -403,7 +403,7 @@ export function GameTable({
   return (
     <div
       ref={headerRef}
-      className={`h-screen ${themeData.feltClass} felt-surface flex flex-col overflow-hidden touch-pan-x relative`}
+      className={`h-screen h-dvh ${themeData.feltClass} felt-surface flex flex-col overflow-hidden touch-pan-x relative`}
       style={{ overscrollBehavior: "none" }}
     >
       <TopBar

@@ -1058,7 +1058,7 @@ export function EndGameSummary({
 
   return (
     <div
-      className={`min-h-screen ${themeData.feltClass} felt-surface overflow-y-auto`}
+      className={`min-h-screen min-h-dvh ${themeData.feltClass} felt-surface overflow-y-auto`}
       style={{ position: "relative" }}
     >
       <ConfettiLayer count={isCompact ? 36 : 70} seed={11} />
