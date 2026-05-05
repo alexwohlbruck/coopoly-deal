@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
+import { RulesButton } from "../common/RulesButton";
+import { IconButton } from "../common/IconButton";
 import { SettingsPanel } from "../game/SettingsPanel";
 import { useSoundSettings } from "../../hooks/useSoundManager";
 
@@ -48,32 +50,25 @@ export function LobbyScreen({
     <div
       className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
-      {/* Music + settings — top right */}
-      {musicControls && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-          <button
-            onClick={() => setShowSettings(true)}
-            className="bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white p-2 rounded-lg transition-colors border border-white/20"
-            title="Settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+      {/* Top-right chrome: settings gear + music. Same IconButton-
+          based components used by the waiting room for consistency. */}
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <IconButton onClick={() => setShowSettings(true)} title="Settings">
+          <Settings className="w-4 h-4" />
+        </IconButton>
+        {musicControls && (
           <MusicControls
             isPlaying={musicControls.isPlaying}
             onToggle={musicControls.onToggle}
             onNext={musicControls.onNext}
           />
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Rules — top left */}
-      <button
-        onClick={() => setShowRules(true)}
-        className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-lg text-white px-4 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/20"
-      >
-        <BookOpen className="w-4 h-4" />
-        <span className="font-semibold">Rules</span>
-      </button>
+      {/* Top-left rules pill — shared component matches waiting room. */}
+      <div className="fixed top-4 left-4 z-50">
+        <RulesButton onClick={() => setShowRules(true)} />
+      </div>
 
       <GameRulesModal isOpen={showRules} onClose={() => setShowRules(false)} />
 

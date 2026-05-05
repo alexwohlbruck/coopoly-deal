@@ -306,8 +306,8 @@ export function GameSettingsPanel({
                 },
                 {
                   key: "useSocialistTheme" as const,
-                  label: "Socialist Theme",
-                  hint: "Use alternate card names and quirky dialogs",
+                  label: "Commune Mode",
+                  hint: "Reframe the deal: comrades, levies, and expropriation in place of players, rent, and theft.",
                 },
               ].map(({ key, label, hint }) => (
                 <div

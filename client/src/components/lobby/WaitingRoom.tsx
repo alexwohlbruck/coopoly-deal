@@ -5,10 +5,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, BookOpen } from "lucide-react";
+import { X } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
+import { RulesButton } from "../common/RulesButton";
 import { GameSettingsPanel } from "./GameSettingsPanel";
 import { type GameSettings } from "../../types/game";
 import { useI18n } from "../../i18n";
@@ -75,7 +76,7 @@ export function WaitingRoom({
         padding: isCompact ? "70px 12px 56px" : "92px 24px 68px",
       }}
     >
-      {/* Music + settings — top right */}
+      {/* Top-right music — shared chrome with the home lobby. */}
       {musicControls && (
         <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
           <MusicControls
@@ -86,20 +87,10 @@ export function WaitingRoom({
         </div>
       )}
 
-      {/* Rules — top left */}
-      <button
-        onClick={() => setShowRules(true)}
-        className="fixed top-4 left-4 z-50 bg-white/10 hover:bg-white/15 backdrop-blur-lg text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2 border border-white/15"
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 11,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-        }}
-      >
-        <BookOpen className="w-4 h-4" />
-        <span>Rules</span>
-      </button>
+      {/* Top-left rules pill — shared component matches the home lobby. */}
+      <div className="fixed top-4 left-4 z-50">
+        <RulesButton onClick={() => setShowRules(true)} />
+      </div>
 
       <GameRulesModal
         isOpen={showRules}

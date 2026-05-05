@@ -325,8 +325,8 @@ export function GameRulesModal({
                 }}
                 title={
                   useSocialistTheme
-                    ? "Switch to standard wording"
-                    : "Switch to socialist wording"
+                    ? "Switch back to standard wording"
+                    : "Read these rules in Commune Mode"
                 }
               >
                 <span
@@ -360,7 +360,7 @@ export function GameRulesModal({
                     }}
                   />
                 </span>
-                Socialist Wording
+                Commune Mode
               </button>
             </div>
             <button

@@ -6,8 +6,6 @@ WORKDIR /app/client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY client/ ./
-ARG VITE_UMAMI_SCRIPT_URL
-ARG VITE_UMAMI_WEBSITE_ID
 RUN bun run build
 
 # -- Build server --
