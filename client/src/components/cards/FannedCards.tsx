@@ -401,23 +401,41 @@ export type TouchDropSpec =
   | { kind: "bank" }
   | { kind: "set"; color: string };
 
-/** Find the topmost [data-touch-drop] ancestor at the given page point. */
+/** Find the topmost [data-touch-drop] ancestor at the given page point.
+ *  Uses elementsFromPoint (plural) and walks the entire z-stack so we
+ *  don't get stuck on the lifted card that follows the finger at
+ *  z-index 200 — that card has no data-touch-drop, but it would block
+ *  the simpler elementFromPoint hit-test from ever reaching the
+ *  bank/property-set zones beneath. */
 function findDropZoneAt(
   clientX: number,
   clientY: number,
 ): { el: HTMLElement; spec: TouchDropSpec } | null {
-  const hit = document.elementFromPoint(clientX, clientY) as HTMLElement | null;
-  let el: HTMLElement | null = hit;
-  while (el) {
-    const raw = el.getAttribute?.("data-touch-drop");
-    if (raw) {
-      if (raw === "bank") return { el, spec: { kind: "bank" } };
-      if (raw.startsWith("set:")) {
-        return { el, spec: { kind: "set", color: raw.slice(4) } };
+  const stack =
+    typeof (
+      document as unknown as { elementsFromPoint?: unknown }
+    ).elementsFromPoint === "function"
+      ? (document as Document & {
+          elementsFromPoint: (x: number, y: number) => Element[];
+        }).elementsFromPoint(clientX, clientY)
+      : ([document.elementFromPoint(clientX, clientY)].filter(
+          Boolean,
+        ) as Element[]);
+  for (const hit of stack) {
+    let el: HTMLElement | null = hit as HTMLElement;
+    while (el) {
+      const raw = el.getAttribute?.("data-touch-drop");
+      if (raw) {
+        if (raw === "bank") return { el, spec: { kind: "bank" } };
+        if (raw.startsWith("set:")) {
+          return { el, spec: { kind: "set", color: raw.slice(4) } };
+        }
+        // Found a [data-touch-drop] but unknown spec — try the next
+        // element down the stack rather than bailing.
+        break;
       }
-      return null;
+      el = el.parentElement;
     }
-    el = el.parentElement;
   }
   return null;
 }
@@ -505,18 +523,26 @@ export function DragPeekHand({
   //   it. State enters "pending".
   //
   //   touchmove: until the gesture exceeds AXIS_DECISION_PX, we wait.
-  //     • horizontal-dominant → "horizontal" (cross-card peek scrub)
-  //     • vertical-up dominant past LIFT_THRESHOLD → "lift" (card
-  //       detaches and follows the finger in any direction; we hit-
-  //       test [data-touch-drop] zones for highlight + drop)
+  //   At the threshold we commit immediately based on dominant axis:
+  //     • |dx| > |dy| → "horizontal" (peek-scrub)
+  //     • |dy| > |dx| AND dy < 0 → "lift" (card detaches and follows
+  //       the finger in any direction; we hit-test [data-touch-drop]
+  //       zones via elementsFromPoint for highlight + drop)
+  //     • |dy| > |dx| AND dy > 0 → "horizontal" (downward isn't
+  //       useful — drop zones are above the hand)
   //
   //   touchend:
   //     • lift over a drop zone → onTouchDrop(item, spec)
   //     • lift not over a zone → return card; treat as cancelled
   //     • horizontal → no action; peek remains sticky
   //     • pending → no movement; native onClick fires (= tap to play)
-  const LIFT_THRESHOLD = 26;
-  const AXIS_DECISION_PX = 8;
+  //
+  // Earlier versions had a separate LIFT_THRESHOLD that required
+  // dy < -26 to enter lift, but the axis decision triggered at
+  // |movement| > 8 so we always committed to horizontal before
+  // hitting -26 → drag was never reachable. Decide at the threshold
+  // based purely on dominant axis.
+  const AXIS_DECISION_PX = 10;
   const swipeRef = useRef<{
     idx: number;
     startX: number;
@@ -582,10 +608,10 @@ export function DragPeekHand({
       const adx = Math.abs(s.dx);
       const ady = Math.abs(s.dy);
       if (adx > AXIS_DECISION_PX || ady > AXIS_DECISION_PX) {
-        // Vertical-up dominant past LIFT_THRESHOLD → enter lift. This
-        // is the cue that the user wants to drag the card off the rail
-        // toward a drop zone (rather than scrub between cards).
-        if (s.dy < -LIFT_THRESHOLD && ady > adx) {
+        // Commit based on dominant axis at the decision point.
+        // Upward-vertical dominance → lift. Anything else → horizontal
+        // peek scrub.
+        if (ady > adx && s.dy < 0) {
           s.kind = "lift";
           const item = items[s.idx];
           if (item) onTouchDragStart?.(item);
