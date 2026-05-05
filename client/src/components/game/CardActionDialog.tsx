@@ -16,6 +16,10 @@ import { calculateRent } from "../../utils/rent-calculator";
 import { BottomSheet } from "../common/BottomSheet";
 import { PrimaryButton } from "../ui/Button";
 import { RENT_VALUES } from "../../types/game";
+import {
+  WildcardColorOption,
+  rentGainFor,
+} from "./WildcardColorOption";
 
 /**
  * Card + caption tile used in steal / swap pickers. Shows the card
@@ -781,7 +785,9 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             {activeCard.type === CardType.RentDual || activeCard.type === CardType.RentWild
               ? settings.useSocialistTheme ? "Select a color to charge levy:" : "Select a color to charge rent:"
-              : "Select a color:"}
+              : activeCard.type === CardType.PropertyWildcard
+                ? "Pick a color. Each tile shows your current set count and the rent ladder — the highlighted row is where this card lands."
+                : "Select a color:"}
           </p>
           {(rentMultiplier > 1 || selectedDtrCardIds.length > 0) &&
             (activeCard.type === CardType.RentDual ||
@@ -792,11 +798,99 @@ export function CardActionDialog({
                 </p>
               </div>
             )}
-          {/* For rent cards, compute the highest-rent color so we can
-              flag it as "BEST" — same idea as the wildcard color
-              picker. Skipped for property-wildcard color choice
-              (no rent comparison there). */}
-          {(() => {
+
+          {/* Property wildcard play: use the same set-preview tile UI
+              as the WildcardFlipDialog / WildcardAssignmentPrompt so
+              the player gets the same useful info (set count, rent
+              ladder, BEST badge) when CHOOSING a color to play into. */}
+          {activeCard.type === CardType.PropertyWildcard && (() => {
+            const colors = availableColors.filter((c) => c !== PC.Unassigned);
+            const gains = colors.map((c) => ({
+              color: c,
+              gain: rentGainFor(c, player),
+            }));
+            const maxGain = gains.reduce((m, g) => Math.max(m, g.gain), 0);
+            const bestColor =
+              maxGain > 0 ? gains.find((g) => g.gain === maxGain)?.color : undefined;
+            const isMulti =
+              activeCard.colors && activeCard.colors.length > 2;
+            return (
+              <>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 10,
+                  }}
+                >
+                  {colors.map((color) => (
+                    <WildcardColorOption
+                      key={color}
+                      color={color}
+                      player={player}
+                      isBest={color === bestColor}
+                      onClick={() => {
+                        markDispatchedAndClose();
+                        onPlayToProperty(activeCard.id, color);
+                        onClose();
+                      }}
+                      useSocialistTheme={settings.useSocialistTheme}
+                    />
+                  ))}
+                </div>
+                {/* For multi-color (rainbow) wildcards: optional
+                    "Unassigned / I'll decide later" rainbow button. */}
+                {isMulti &&
+                  !settings.wildcardFlipCountsAsMove &&
+                  availableColors.includes(PC.Unassigned) && (
+                    <button
+                      onClick={() => {
+                        markDispatchedAndClose();
+                        onPlayToProperty(activeCard.id, PC.Unassigned);
+                        onClose();
+                      }}
+                      style={{
+                        marginTop: 10,
+                        width: "100%",
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        fontFamily: "var(--font-display)",
+                        fontWeight: 800,
+                        fontSize: 14,
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                        color: "#fff",
+                        textShadow: "0 2px 4px rgba(0,0,0,0.8)",
+                        background: `linear-gradient(90deg, ${Object.values(
+                          PROPERTY_COLOR_HEX,
+                        )
+                          .map((c, i, arr) => {
+                            const a = (i / arr.length) * 100;
+                            const b = ((i + 1) / arr.length) * 100;
+                            return `${c} ${a}%, ${c} ${b}%`;
+                          })
+                          .join(", ")})`,
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        cursor: "pointer",
+                        boxShadow: "var(--sh-object)",
+                      }}
+                    >
+                      I'll decide later
+                    </button>
+                  )}
+              </>
+            );
+          })()}
+
+          {/* Non-wildcard color picker (rent cards, house/hotel
+              placement) keeps the simpler colored-button grid below.
+              Property wildcards short-circuit above with the tile UI. */}
+          {activeCard.type !== CardType.PropertyWildcard &&
+            /* For rent cards, compute the highest-rent color so we can
+               flag it as "BEST" — same idea as the wildcard color
+               picker. Skipped for property-wildcard color choice
+               (handled by the tile UI above). */
+            (() => {
             const isRentCard =
               activeCard.type === CardType.RentDual ||
               activeCard.type === CardType.RentWild;
