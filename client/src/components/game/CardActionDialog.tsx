@@ -788,16 +788,39 @@ export function CardActionDialog({
                 </p>
               </div>
             )}
+          {/* For rent cards, compute the highest-rent color so we can
+              flag it as "BEST" — same idea as the wildcard color
+              picker. Skipped for property-wildcard color choice
+              (no rent comparison there). */}
+          {(() => {
+            const isRentCard =
+              activeCard.type === CardType.RentDual ||
+              activeCard.type === CardType.RentWild;
+            const combinedMultiplier =
+              rentMultiplier * Math.pow(2, selectedDtrCardIds.length);
+            const rentByColor: Record<string, number> = {};
+            if (isRentCard) {
+              for (const c of availableColors) {
+                rentByColor[c] = calculateRent(player, c) * combinedMultiplier;
+              }
+            }
+            const maxRent = isRentCard
+              ? Math.max(0, ...Object.values(rentByColor))
+              : 0;
+            // "BEST" only makes sense if there's a non-zero choice
+            // AND a unique max — multiple ties would be confusing.
+            const bestColor =
+              isRentCard && maxRent > 0 &&
+              Object.values(rentByColor).filter((v) => v === maxRent).length === 1
+                ? Object.entries(rentByColor).find(([, v]) => v === maxRent)?.[0]
+                : undefined;
+            return (
           <div className="grid grid-cols-2 gap-2">
             {availableColors.map((color) => {
-              const baseRent =
-                activeCard.type === CardType.RentDual ||
-                activeCard.type === CardType.RentWild
-                  ? calculateRent(player, color)
-                  : null;
-              const combinedMultiplier = rentMultiplier * Math.pow(2, selectedDtrCardIds.length);
+              const baseRent = isRentCard ? calculateRent(player, color) : null;
               const finalRent =
                 baseRent !== null ? baseRent * combinedMultiplier : null;
+              const isBest = isRentCard && color === bestColor;
 
               return (
                 <button
@@ -813,6 +836,7 @@ export function CardActionDialog({
                   }}
                   className="rounded-lg flex flex-col items-center justify-center transition-transform hover:-translate-y-0.5"
                   style={{
+                    position: "relative",
                     padding: "10px 12px",
                     background: `linear-gradient(180deg, ${PROPERTY_COLOR_HEX[color]} 0%, color-mix(in oklab, ${PROPERTY_COLOR_HEX[color]} 78%, #000) 100%)`,
                     color:
@@ -827,11 +851,33 @@ export function CardActionDialog({
                     letterSpacing: "0.06em",
                     textTransform: "uppercase",
                     border: "none",
-                    boxShadow:
-                      "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 8px -2px rgba(0,0,0,0.4)",
+                    boxShadow: isBest
+                      ? "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.18), 0 0 0 2px var(--accent, #f0c14a), 0 4px 12px -2px rgba(0,0,0,0.5)"
+                      : "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 8px -2px rgba(0,0,0,0.4)",
                     cursor: "pointer",
                   }}
                 >
+                  {isBest && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 4,
+                        right: 4,
+                        background: "var(--accent, #f0c14a)",
+                        color: "#1a1208",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 8,
+                        letterSpacing: "0.16em",
+                        fontWeight: 800,
+                        padding: "1px 5px",
+                        borderRadius: 4,
+                        textTransform: "uppercase",
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+                      }}
+                    >
+                      Best
+                    </span>
+                  )}
                   <span>
                     {getPropertyColorLabel(color, settings.useSocialistTheme)}
                   </span>
@@ -906,12 +952,28 @@ export function CardActionDialog({
                 </button>
               )}
           </div>
+            );
+          })()}
         </div>
       )}
 
       {step === "selectTarget" && (
         <div>
-          <p className="text-gray-300 text-sm mb-2">{settings.useSocialistTheme ? "Select a comrade:" : "Select a player:"}</p>
+          <p className="text-gray-300 text-sm mb-2">
+            {settings.useSocialistTheme ? "Select a comrade:" : "Select a player:"}
+          </p>
+          <p
+            style={{
+              color: "rgba(245,234,208,0.5)",
+              fontSize: 11,
+              fontFamily: "var(--font-mono)",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Each row shows their bank, hand size, and complete sets.
+          </p>
           <div className="space-y-2">
             {(() => {
               let validOpponents = opponents;
@@ -920,16 +982,142 @@ export function CardActionDialog({
               } else if (activeCard.type === CardType.SlyDeal || activeCard.type === CardType.ForceDeal) {
                 validOpponents = opponents.filter(opp => opp.properties.some(s => !isSetComplete(s) && s.cards.length > 0));
               }
-              
-              return validOpponents.map((opp) => (
-                <button
-                  key={opp.id}
-                  onClick={() => handleSelectTarget(opp)}
-                  className="w-full py-2.5 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-lg transition-colors text-sm text-left px-4"
-                >
-                  {opp.name}
-                </button>
-              ));
+
+              return validOpponents.map((opp) => {
+                const bankTotal = opp.bank.reduce((s, c) => s + c.value, 0);
+                const handCount = opp.hand?.length ?? 0;
+                // Group complete sets by color so we can render colored
+                // pip indicators alongside the count.
+                const completeSets = opp.properties.filter(isSetComplete);
+                // Partial sets (anything with 1+ card that isn't complete)
+                // — useful for Sly/Force Deal targets too.
+                const partialSets = opp.properties.filter(
+                  (s) => !isSetComplete(s) && s.cards.length > 0,
+                );
+                return (
+                  <button
+                    key={opp.id}
+                    onClick={() => handleSelectTarget(opp)}
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      background:
+                        "linear-gradient(180deg, rgba(28,22,20,0.85) 0%, rgba(16,10,8,0.92) 100%)",
+                      color: "#f5ead0",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 6,
+                      textAlign: "left",
+                      boxShadow: "var(--sh-object)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: "var(--font-display)",
+                          fontWeight: 700,
+                          fontSize: 14,
+                          letterSpacing: "-0.01em",
+                        }}
+                      >
+                        {opp.name}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 11,
+                          color: "#7adb88",
+                          fontVariantNumeric: "tabular-nums",
+                          fontWeight: 700,
+                        }}
+                      >
+                        ${bankTotal}M
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 10,
+                        color: "rgba(245,234,208,0.6)",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      <span>
+                        {handCount} card{handCount === 1 ? "" : "s"}
+                      </span>
+                      <span style={{ color: "rgba(245,234,208,0.25)" }}>·</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ color: "var(--accent, #f0c14a)" }}>
+                          {completeSets.length} complete
+                        </span>
+                        {completeSets.length > 0 && (
+                          <span style={{ display: "inline-flex", gap: 2 }}>
+                            {completeSets.map((s, i) => (
+                              <span
+                                key={i}
+                                title={s.color}
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: 1,
+                                  background:
+                                    PROPERTY_COLOR_HEX[s.color] ?? "#888",
+                                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.3)",
+                                }}
+                              />
+                            ))}
+                          </span>
+                        )}
+                      </span>
+                      {partialSets.length > 0 && (
+                        <>
+                          <span style={{ color: "rgba(245,234,208,0.25)" }}>
+                            ·
+                          </span>
+                          <span
+                            style={{ display: "flex", alignItems: "center", gap: 4 }}
+                          >
+                            <span style={{ color: "rgba(245,234,208,0.5)" }}>
+                              {partialSets.length} partial
+                            </span>
+                            <span style={{ display: "inline-flex", gap: 2 }}>
+                              {partialSets.map((s, i) => (
+                                <span
+                                  key={i}
+                                  title={`${s.color} ${s.cards.length}`}
+                                  style={{
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: 1,
+                                    background:
+                                      PROPERTY_COLOR_HEX[s.color] ?? "#888",
+                                    opacity: 0.55,
+                                    boxShadow:
+                                      "inset 0 1px 0 rgba(255,255,255,0.2)",
+                                  }}
+                                />
+                              ))}
+                            </span>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                );
+              });
             })()}
           </div>
         </div>

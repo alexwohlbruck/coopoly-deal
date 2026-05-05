@@ -96,7 +96,8 @@ export function WildcardColorOption({
         minHeight: 124,
       }}
     >
-      {/* Color band header */}
+      {/* Color band header. BEST badge (when applicable) sits as the
+          first item so it doesn't overlap the count chip on the right. */}
       <div
         style={{
           background: bandHex,
@@ -110,11 +111,48 @@ export function WildcardColorOption({
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 6,
           boxShadow:
             "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)",
         }}
       >
-        <span>{getPropertyColorLabel(color, useSocialistTheme)}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            minWidth: 0,
+          }}
+        >
+          {isBest && !isCurrent && (
+            <span
+              style={{
+                background: "var(--accent, #f0c14a)",
+                color: "#1a1208",
+                fontFamily: "var(--font-mono)",
+                fontSize: 8,
+                letterSpacing: "0.16em",
+                fontWeight: 800,
+                padding: "1px 5px",
+                borderRadius: 4,
+                textTransform: "uppercase",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+                flexShrink: 0,
+              }}
+            >
+              Best
+            </span>
+          )}
+          <span
+            style={{
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {getPropertyColorLabel(color, useSocialistTheme)}
+          </span>
+        </div>
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -123,6 +161,7 @@ export function WildcardColorOption({
             padding: "1px 6px",
             borderRadius: 999,
             fontVariantNumeric: "tabular-nums",
+            flexShrink: 0,
           }}
         >
           {currentCount}/{setSize}
@@ -203,27 +242,6 @@ export function WildcardColorOption({
             : `Add → ${currentCount + 1}/${setSize}`}
       </div>
 
-      {isBest && !isCurrent && (
-        <div
-          style={{
-            position: "absolute",
-            top: 4,
-            right: 4,
-            background: "var(--accent, #f0c14a)",
-            color: "#1a1208",
-            fontFamily: "var(--font-mono)",
-            fontSize: 8,
-            letterSpacing: "0.18em",
-            fontWeight: 800,
-            padding: "1px 5px",
-            borderRadius: 4,
-            textTransform: "uppercase",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
-          }}
-        >
-          Best
-        </div>
-      )}
     </button>
   );
 }
