@@ -806,7 +806,7 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select a property from {selectedTarget.name}:
           </p>
-          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
+          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
             {selectedTarget.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
@@ -828,7 +828,7 @@ export function CardActionDialog({
           <p className="text-gray-300 text-sm mb-2">
             Select your property to swap:
           </p>
-          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto pb-2 justify-center">
+          <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
             {player.properties
               .filter((s) => !isSetComplete(s))
               .flatMap((s) => s.cards)
@@ -920,7 +920,7 @@ export function CardActionDialog({
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2 max-h-[35vh] overflow-y-auto py-2 justify-center w-full px-2">
+          <div className="flex flex-wrap gap-2 max-h-[35vh] overflow-y-auto p-2 justify-center w-full">
             {player.hand
               ?.filter(
                 (c) =>

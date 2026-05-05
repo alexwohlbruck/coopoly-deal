@@ -231,11 +231,14 @@ export function GameTableCompact({
             justifyContent: "flex-start",
             overflowX: "auto",
             overflowY: "hidden",
+            // Inner padding so card drop shadows + selection rings
+            // don't get sliced off at the overflow boundary.
+            padding: "8px 4px",
           }}
           className="scrollbar-hide"
         >
           {activeOpp ? (
-            <div style={{ margin: "0 auto", padding: "0 4px" }}>
+            <div style={{ margin: "0 auto" }}>
               <PlayerBoard
                 player={activeOpp}
                 isYou={false}
@@ -341,7 +344,12 @@ export function GameTableCompact({
               "linear-gradient(180deg, rgba(184,142,72,0.22) 0%, rgba(120,86,38,0.32) 50%, rgba(70,46,18,0.4) 100%)",
             boxShadow:
               "inset 0 1px 0 rgba(255,225,170,0.18), inset 0 -1px 0 rgba(0,0,0,0.3), inset 0 0 0 1px rgba(212,168,96,0.18), 0 1px 0 rgba(0,0,0,0.4)",
-            maxHeight: 200,
+            // Tall enough to hold the BANK badge + a 5-card stack + the
+            // property row at compact card width without clipping the
+            // top/bottom of cards or their drop shadows. The redesign
+            // bumped the bank stack height; the prior 200px max sliced
+            // the topmost card.
+            maxHeight: 280,
             overflow: "hidden",
             display: "flex",
             flexDirection: "column",
@@ -369,10 +377,14 @@ export function GameTableCompact({
               display: "flex",
               alignItems: "center",
               justifyContent: "flex-start",
+              // Padding inside the scroll container so the cards' drop
+              // shadows + selection rings don't get clipped at the
+              // overflow boundary (overflow-x:auto also clips y).
+              padding: "8px 4px",
             }}
             className="scrollbar-hide"
           >
-            <div style={{ margin: "0 auto", padding: "0 4px" }}>
+            <div style={{ margin: "0 auto" }}>
               <PlayerBoard
                 player={me}
                 isYou

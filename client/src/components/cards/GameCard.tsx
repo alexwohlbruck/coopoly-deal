@@ -827,8 +827,14 @@ export function GameCard({
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
-          transform: orientation === "bottom" ? "rotate(180deg)" : undefined,
-          transformOrigin: "center center",
+          // NB: the outer card stays right-side-up at all orientations.
+          // For 2-color wildcards, WildcardPropertyContent reorders the
+          // top/bot color bands based on `orientation`, and only the
+          // inactive (bottom) band is rotated 180° internally so it
+          // reads correctly when the card is physically flipped.
+          // Earlier this rotated the WHOLE card when orientation ===
+          // "bottom" — which conflicted with the band reorder and net-
+          // resulted in the INACTIVE color appearing visually on top.
           boxShadow: selected
             ? `0 0 0 3px var(--accent, #f0c14a), ${liftedShadow}`
             : baseShadow,
