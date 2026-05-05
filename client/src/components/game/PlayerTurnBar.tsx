@@ -3,7 +3,6 @@ import { TurnPhase, isPlayerWaitingForAction } from "../../types/game";
 import { CardBack } from "../cards/GameCard";
 import { CardHand } from "./CardHand";
 import { useI18n } from "../../i18n";
-import { useGameStore } from "../../hooks/useGameStore";
 import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
