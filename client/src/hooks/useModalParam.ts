@@ -1,8 +1,14 @@
+import { useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 
-export type ModalKind = "settings" | "rules" | "credits";
+export type ModalKind = "settings" | "rules" | "credits" | "share";
 
-const VALID_MODALS: readonly ModalKind[] = ["settings", "rules", "credits"];
+const VALID_MODALS: readonly ModalKind[] = [
+  "settings",
+  "rules",
+  "credits",
+  "share",
+];
 
 export function useModalParam() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,11 +23,23 @@ export function useModalParam() {
     setSearchParams(next);
   };
 
-  const close = () => {
+  const close = useCallback(() => {
     const next = new URLSearchParams(searchParams);
     next.delete("modal");
     setSearchParams(next);
-  };
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (!modal) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [modal, close]);
 
   return { modal, open, close };
 }

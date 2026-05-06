@@ -3,8 +3,9 @@
 // Contents are split into named sections with a small accent rule.
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { Github } from "lucide-react";
 import { useI18n } from "../../i18n";
+import { ModalCloseButton } from "./ModalCloseButton";
 
 interface CreditsModalProps {
   isOpen: boolean;
@@ -149,25 +150,7 @@ export function CreditsModal({ isOpen, onClose }: CreditsModalProps) {
                 {t.credits.title}
               </h2>
             </div>
-            <button
-              onClick={onClose}
-              aria-label={t.rules.close}
-              style={{
-                flexShrink: 0,
-                width: 32,
-                height: 32,
-                borderRadius: 999,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "rgba(245,234,208,0.7)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <ModalCloseButton onClick={onClose} ariaLabel={t.rules.close} />
           </div>
 
           {/* Body */}
@@ -180,7 +163,20 @@ export function CreditsModal({ isOpen, onClose }: CreditsModalProps) {
             }}
           >
             <Section caption={t.credits.dedicatedTo}>
-              <p style={{ margin: 0 }}>{t.credits.dedicatedToBody}</p>
+              <div style={{ margin: 0 }}>
+                <div style={{ fontWeight: 600, color: "#f5ead0" }}>
+                  {t.credits.dedicatedToName}
+                </div>
+                <div
+                  style={{
+                    fontStyle: "italic",
+                    color: "rgba(245,234,208,0.65)",
+                    marginTop: 2,
+                  }}
+                >
+                  {t.credits.dedicatedToBody}
+                </div>
+              </div>
             </Section>
 
             <Section caption={t.credits.originalGame}>
@@ -269,10 +265,36 @@ export function CreditsModal({ isOpen, onClose }: CreditsModalProps) {
             </Section>
 
             <Section caption={t.credits.madeBy}>
-              <p style={{ margin: 0 }}>
+              <p
+                style={{
+                  margin: 0,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                  gap: "4px 10px",
+                }}
+              >
                 <ExternalLink href="https://alex.wohlbruck.com">
                   Alex Wohlbruck
                 </ExternalLink>
+                <span style={{ color: "rgba(245,234,208,0.35)" }}>·</span>
+                <a
+                  href="https://github.com/alexwohlbruck/coopoly-deal"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    color: "var(--accent, #f0c14a)",
+                    textDecoration: "none",
+                    borderBottom: "1px dotted rgba(240,193,74,0.4)",
+                  }}
+                  aria-label={t.common.sourceCode}
+                >
+                  <Github size={13} />
+                  <span>{t.common.sourceCode}</span>
+                </a>
               </p>
             </Section>
           </div>

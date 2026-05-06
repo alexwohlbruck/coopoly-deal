@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { ModalCloseButton } from "./ModalCloseButton";
 import {
   PropertyColor,
   PROPERTY_COLOR_HEX,
@@ -365,25 +365,7 @@ export function GameRulesModal({
                 {t.rules.dialecticalLens}
               </button>
             </div>
-            <button
-              onClick={onClose}
-              aria-label={t.rules.close}
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                color: "rgba(245,234,208,0.7)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                flexShrink: 0,
-              }}
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <ModalCloseButton onClick={onClose} ariaLabel={t.rules.close} />
           </div>
 
           {/* Content */}

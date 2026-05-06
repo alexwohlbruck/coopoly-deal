@@ -11,11 +11,11 @@
 // Backdrop is clickable (close on outside-tap), and ESC closes too.
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
 import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { useSoundManager } from "../../hooks/useSoundManager";
 import { useLayout } from "../../hooks/useLayout";
+import { ModalCloseButton } from "./ModalCloseButton";
 
 interface BottomSheetProps {
   isOpen: boolean;
@@ -101,25 +101,7 @@ export function BottomSheet({
           </>
         )}
       </div>
-      {closable && (
-        <button
-          onClick={onClose}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "rgba(255,255,255,0.55)",
-            cursor: "pointer",
-            padding: 4,
-            borderRadius: 6,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-          aria-label="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      )}
+      {closable && <ModalCloseButton onClick={onClose} />}
     </div>
   );
 
