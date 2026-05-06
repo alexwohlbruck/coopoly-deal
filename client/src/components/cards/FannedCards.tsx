@@ -282,21 +282,15 @@ export function HoverFanHand({
 
   const sideMargin = 12;
   const effective = Math.max(240, railW - 2 * sideMargin);
-  // Reserve enough horizontal headroom for the peek shove. We need to
-  // push neighbors aside by AT LEAST cardWidth/2 + a comfort gap so the
-  // peeked card doesn't overlap with its immediate neighbors.
-  const pushHeadroom = Math.min(cardWidth * 0.7, effective * 0.18);
+  const pushHeadroom = Math.min(cardWidth * 0.45, effective * 0.12);
   const fitSpread =
     n <= 1 ? 0 : (effective - cardWidth - pushHeadroom * 2) / (n - 1);
   const fallbackSpread = Math.max(34, 96 - n * 5);
   const requested = spread != null ? spread : fallbackSpread;
   const baseSpread = Math.max(20, Math.min(requested, fitSpread));
   const tiltStep = 2.2;
-  // The neighbor immediately next to the peeked card needs to clear
-  // cardWidth/2 minus baseSpread (because base position is already
-  // baseSpread away). Use that as the floor; bump up for comfort.
-  const minPush = Math.max(0, cardWidth / 2 - baseSpread + 14);
-  const pushAmount = Math.max(minPush, Math.min(baseSpread * 1.2 + 22, pushHeadroom));
+  const minPush = Math.max(0, cardWidth * 0.3 - baseSpread + 8);
+  const pushAmount = Math.max(minPush, Math.min(baseSpread * 0.9 + 12, pushHeadroom));
   const cardLift = (fanHeight - cardHeight) / 2 + 6;
 
   const onMove = (e: React.MouseEvent) => {
@@ -342,9 +336,7 @@ export function HoverFanHand({
             } else {
               const dist = i - hovered;
               const sign = dist > 0 ? 1 : -1;
-              // Sharper falloff: only the immediate neighbor on each
-              // side gets a strong push; further cards barely move.
-              const falloff = Math.pow(0.45, Math.abs(dist) - 1);
+              const falloff = 1 / Math.max(1, Math.abs(dist) * 0.6);
               x += sign * pushAmount * falloff;
             }
           } else if (selectedId === item.id) {
@@ -535,7 +527,7 @@ export function DragPeekHand({
   }, []);
 
   const effective = Math.max(220, railW - 2 * sideMargin);
-  const pushHeadroom = Math.min(36, effective * 0.08);
+  const pushHeadroom = Math.min(cardWidth * 0.45, effective * 0.12);
   const overlap =
     n <= 1
       ? 0
@@ -547,7 +539,8 @@ export function DragPeekHand({
   const railHeight = cardHeight + 24;
   const cardLift = (railHeight - cardHeight) / 2;
   const tiltStep = 1.6;
-  const pushAmount = Math.min(overlap * 0.8 + 8, pushHeadroom);
+  const minPush = Math.max(0, cardWidth * 0.3 - overlap + 8);
+  const pushAmount = Math.max(minPush, Math.min(overlap * 0.9 + 12, pushHeadroom));
 
   // ─── Touch gesture state machine ──────────────────────────────────
   // HTML5 drag is disabled (kills the ghost during peek scrubs) and we
@@ -746,7 +739,7 @@ export function DragPeekHand({
             } else {
               const dist = i - hovered;
               const sign = dist > 0 ? 1 : -1;
-              const falloff = 1 / Math.max(1, Math.abs(dist) * 0.55);
+              const falloff = 1 / Math.max(1, Math.abs(dist) * 0.6);
               x += sign * pushAmount * falloff;
             }
           } else if (selectedId === item.id) {
