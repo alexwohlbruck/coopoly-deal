@@ -270,12 +270,11 @@ export function GameTableDesktop({
             display: "flex",
             flexDirection: "column",
             gap: 12,
-            padding: "12px 12px 8px",
+            padding: "12px 12px 12px",
             borderRadius: 14,
             background: "rgba(0,0,0,0.28)",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
             minHeight: 0,
-            overflow: "hidden",
           }}
         >
           <div
