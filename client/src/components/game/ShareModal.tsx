@@ -48,7 +48,7 @@ interface ShareModalProps {
   };
 }
 
-const SHARE_URL = "https://coopoly-deal.com";
+const SHARE_URL = "https://coopoly.deal";
 
 // ─── Emoji squares for the plain-text version ───────────────────
 // (These ship in the actual posted text. The visual on-screen tiles
@@ -244,7 +244,11 @@ export function ShareModal({
   // bucket. So a 3rd-place comrade reading "Played a fair game.
   // Capitalism didn't." in their card sees the exact same line in their
   // share post.
-  const playerRank = getPlayerRank(gameState.players, playerId, gameState.winner);
+  const playerRank = getPlayerRank(
+    gameState.players,
+    playerId,
+    gameState.winner,
+  );
   const quipSeed = gameState.startedAt ?? gameState.id;
   const quip = quipForRank(playerRank, true, playerId, quipSeed);
   const streak = sessionStats?.streak ?? 0;
