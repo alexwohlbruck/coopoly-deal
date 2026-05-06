@@ -609,6 +609,10 @@ function YourTableGrid({
           minWidth: 0,
           display: "flex",
           flexDirection: "column",
+          borderRadius: 14,
+          background: "rgba(0,0,0,0.12)",
+          boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.04)",
+          overflow: "hidden",
         }}
       >
         {bottomBar}
