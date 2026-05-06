@@ -223,7 +223,11 @@ function AppMain() {
 
   const handleResign = useCallback(() => {
     send({ type: "RESIGN" });
-  }, [send]);
+    disconnect();
+    reset();
+    navigate("/");
+    setTimeout(() => connect(), 100);
+  }, [send, disconnect, reset, navigate, connect]);
 
   const handleDevInjectCard = useCallback(
     (cardType: unknown, targetPlayerId: string, colors?: unknown[]) => {
