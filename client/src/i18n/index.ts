@@ -85,7 +85,17 @@ export interface Translations {
     losses: string;
     streak: string;
     rematch: string;
+    changePlayers: string;
     leave: string;
+    share: string;
+    shareCopied: string;
+    shareTitle: string;
+    sharePreviewLabel: string;
+    shareOnX: string;
+    shareOnBluesky: string;
+    shareOnThreads: string;
+    shareCopy: string;
+    shareNative: string;
   };
   settings: {
     title: string;
@@ -103,6 +113,7 @@ export interface Translations {
   credits: {
     title: string;
     dedicatedTo: string;
+    dedicatedToName: string;
     dedicatedToBody: string;
     originalGame: string;
     originalGameBody: string;
@@ -144,6 +155,7 @@ export interface Translations {
     sets: string;
     turn: string;
     next: string;
+    sourceCode: string;
   };
 }
 
