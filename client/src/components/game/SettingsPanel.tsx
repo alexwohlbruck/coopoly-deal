@@ -12,6 +12,7 @@ import {
   type SoundTheme,
 } from "../../hooks/useSoundManager";
 import { previewHaptic } from "../../hooks/useHaptics";
+import { useModalParam } from "../../hooks/useModalParam";
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -45,6 +46,7 @@ export function SettingsPanel({
   const setSoundTheme = useSoundSettings((s) => s.setSoundTheme);
   const hapticsEnabled = useSoundSettings((s) => s.hapticsEnabled);
   const toggleHaptics = useSoundSettings((s) => s.toggleHaptics);
+  const { open: openModal } = useModalParam();
 
   const handleSave = () => {
     onUpdateSettings?.({ maxHandSize: handLimit });
@@ -189,17 +191,7 @@ export function SettingsPanel({
         <div>
           <label className="flex items-center justify-between text-gray-300 text-sm">
             <span>
-              <span className="font-medium">Haptic Feedback</span>
-              <span
-                style={{
-                  display: "block",
-                  fontSize: 11,
-                  color: "rgba(245,234,208,0.5)",
-                  marginTop: 2,
-                }}
-              >
-                Vibration on cards, errors, and wins (mobile only)
-              </span>
+              <span className="font-medium">{t.settings.haptics}</span>
             </span>
             <button
               onClick={() => {
@@ -232,7 +224,7 @@ export function SettingsPanel({
                   onClick={musicControls.onNext}
                   className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
                 >
-                  Next
+                  {t.common.next}
                 </button>
                 <button
                   onClick={musicControls.onToggle}
@@ -255,7 +247,7 @@ export function SettingsPanel({
         {canEdit && onUpdateSettings && (
           <div>
             <label className="text-gray-300 text-sm font-medium mb-2 block">
-              Hand Limit
+              {t.settings.handLimit}
             </label>
             <input
               type="number"
@@ -293,8 +285,36 @@ export function SettingsPanel({
           }}
         >
           <span aria-hidden="true">☕</span>
-          <span>Buy me a coffee</span>
+          <span>{t.lobby.buyMeACoffee}</span>
         </a>
+
+        {/* Credits — opens the credits modal. Closes this panel as a
+            side effect (mutually-exclusive ?modal= URL state) which is
+            fine; user can close credits to return to the underlying
+            screen. */}
+        <button
+          onClick={() => openModal("credits")}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            width: "100%",
+            padding: "10px 12px",
+            borderRadius: 10,
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: "rgba(245,234,208,0.6)",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(245,234,208,0.08)",
+            cursor: "pointer",
+          }}
+        >
+          <span aria-hidden="true">✦</span>
+          <span>{t.settings.credits}</span>
+        </button>
 
         {/* Author credit. Same component as the lobby for consistency. */}
         <div
@@ -307,11 +327,11 @@ export function SettingsPanel({
             marginTop: -4,
           }}
         >
-          Made with{" "}
+          {t.lobby.madeWithLoveBy.split("♥")[0]}
           <span aria-hidden="true" style={{ color: "#e26a6a" }}>
             ♥
-          </span>{" "}
-          by{" "}
+          </span>
+          {t.lobby.madeWithLoveBy.split("♥")[1]}{" "}
           <a
             href="https://alex.wohlbruck.com"
             target="_blank"

@@ -15,6 +15,7 @@ import {
   getPropertyColorLabel,
 } from "../../types/game";
 import { PrimaryButton } from "../ui/Button";
+import { useI18n } from "../../i18n";
 
 interface GameRulesModalProps {
   isOpen: boolean;
@@ -220,6 +221,7 @@ export function GameRulesModal({
   useSocialistTheme: defaultSocialistTheme = false,
   onClose,
 }: GameRulesModalProps) {
+  const { t } = useI18n();
   // Local toggle for the "comrades / levies / directives" wording.
   // Initialized from the prop (which reflects the current room
   // setting) but the user can flip it independently while reading
@@ -278,7 +280,7 @@ export function GameRulesModal({
                   marginBottom: 2,
                 }}
               >
-                How to play
+                {t.rules.eyebrow}
               </div>
               <h2
                 style={{
@@ -291,7 +293,7 @@ export function GameRulesModal({
                   lineHeight: 1.05,
                 }}
               >
-                Co-Opoly Deal · Rules
+                {t.rules.title}
               </h2>
               {/* Theme toggle — flip the wording between standard
                   ("players, rent, action cards") and the socialist
@@ -325,8 +327,8 @@ export function GameRulesModal({
                 }}
                 title={
                   useSocialistTheme
-                    ? "Switch back to standard wording"
-                    : "View through the Dialectical Lens"
+                    ? t.rules.dialecticalLensSwitchOff
+                    : t.rules.dialecticalLensSwitchOn
                 }
               >
                 <span
@@ -360,12 +362,12 @@ export function GameRulesModal({
                     }}
                   />
                 </span>
-                Dialectical Lens
+                {t.rules.dialecticalLens}
               </button>
             </div>
             <button
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t.rules.close}
               style={{
                 width: 32,
                 height: 32,
@@ -401,7 +403,7 @@ export function GameRulesModal({
           >
             {/* Overview */}
             <section>
-              <SectionHeading>Overview</SectionHeading>
+              <SectionHeading>{t.rules.overview}</SectionHeading>
               <p style={{ margin: 0 }}>
                 Co-Opoly Deal is a card game for 2–6{" "}
                 {useSocialistTheme ? "comrades" : "players"}. The goal is to be
@@ -422,7 +424,7 @@ export function GameRulesModal({
 
             {/* Setup */}
             <section>
-              <SectionHeading>Setup</SectionHeading>
+              <SectionHeading>{t.rules.setup}</SectionHeading>
               <ol
                 style={{
                   listStyle: "none",
@@ -462,19 +464,19 @@ export function GameRulesModal({
 
             {/* Turn Structure */}
             <section>
-              <SectionHeading>Turn Structure</SectionHeading>
+              <SectionHeading>{t.rules.turnStructure}</SectionHeading>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <SubCard title="1. Draw Phase">
+                <SubCard title={t.rules.drawPhase}>
                   Draw <Hi>2 cards</Hi> from the draw pile. If you have{" "}
                   <Hi>0 cards</Hi> in hand at the start of your turn, draw{" "}
                   <Hi>5 cards</Hi> instead.
                 </SubCard>
-                <SubCard title="2. Play Phase">
+                <SubCard title={t.rules.playPhase}>
                   Play <Hi>up to 3 cards</Hi> from your hand. Cards can go to
                   your bank, your property area, or be played as{" "}
                   {useSocialistTheme ? "directive" : "action"} cards.
                 </SubCard>
-                <SubCard title="3. Discard Phase">
+                <SubCard title={t.rules.discardPhase}>
                   You may have{" "}
                   <Hi>
                     no more than{" "}
@@ -490,7 +492,7 @@ export function GameRulesModal({
 
             {/* Winning */}
             <section>
-              <SectionHeading>Winning the Game</SectionHeading>
+              <SectionHeading>{t.rules.winning}</SectionHeading>
               <p style={{ margin: 0 }}>
                 The first {useSocialistTheme ? "comrade" : "player"} to have{" "}
                 <Hi>3 complete property sets</Hi> on the table wins immediately.
@@ -501,7 +503,7 @@ export function GameRulesModal({
 
             {/* Property Sets table */}
             <section>
-              <SectionHeading>Property Sets</SectionHeading>
+              <SectionHeading>{t.rules.propertySets}</SectionHeading>
               <div
                 style={{
                   background: "rgba(0,0,0,0.22)",
@@ -581,7 +583,9 @@ export function GameRulesModal({
             {/* Action cards */}
             <section>
               <SectionHeading>
-                Key {useSocialistTheme ? "Directive" : "Action"} Cards
+                {useSocialistTheme
+                  ? t.rules.keyDirectiveCards
+                  : t.rules.keyActionCards}
               </SectionHeading>
               <div
                 style={{
@@ -629,7 +633,7 @@ export function GameRulesModal({
 
             {/* Payment Rules */}
             <section>
-              <SectionHeading>Payment Rules</SectionHeading>
+              <SectionHeading>{t.rules.paymentRules}</SectionHeading>
               <ul
                 style={{
                   listStyle: "none",
@@ -681,7 +685,7 @@ export function GameRulesModal({
 
             {/* Wildcards */}
             <section>
-              <SectionHeading>Property Wildcards</SectionHeading>
+              <SectionHeading>{t.rules.propertyWildcards}</SectionHeading>
               <ul
                 style={{
                   listStyle: "none",
@@ -734,7 +738,7 @@ export function GameRulesModal({
             }}
           >
             <PrimaryButton onClick={onClose} fullWidth size="md">
-              Got it
+              {t.rules.gotIt}
             </PrimaryButton>
           </div>
         </motion.div>

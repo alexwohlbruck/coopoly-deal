@@ -15,6 +15,7 @@ import { RainbowGroupDialog } from "./RainbowGroupDialog";
 import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
+import { CreditsModal } from "../common/CreditsModal";
 import { useModalParam } from "../../hooks/useModalParam";
 import { TopBar } from "./layout/Chrome";
 import { GameTableDesktop } from "./layout/GameTableDesktop";
@@ -556,6 +557,8 @@ export function GameTable({
         )}
 
       {/* Settings Panel */}
+      <CreditsModal isOpen={modal === "credits"} onClose={closeModal} />
+
       <SettingsPanel
         isOpen={showSettings}
         onClose={closeModal}

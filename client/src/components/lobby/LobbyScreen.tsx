@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
+import { CreditsModal } from "../common/CreditsModal";
 import { RulesButton } from "../common/RulesButton";
 import { IconButton } from "../common/IconButton";
 import { SettingsPanel } from "../game/SettingsPanel";
@@ -53,7 +54,7 @@ export function LobbyScreen({
       {/* Top-right chrome: settings gear + music. Same IconButton-
           based components used by the waiting room for consistency. */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
-        <IconButton onClick={() => open("settings")} title="Settings">
+        <IconButton onClick={() => open("settings")} title={t.settings.title}>
           <Settings className="w-4 h-4" />
         </IconButton>
         {musicControls && (
@@ -71,6 +72,8 @@ export function LobbyScreen({
       </div>
 
       <GameRulesModal isOpen={modal === "rules"} onClose={close} />
+
+      <CreditsModal isOpen={modal === "credits"} onClose={close} />
 
       <SettingsPanel
         isOpen={modal === "settings"}
@@ -99,7 +102,9 @@ export function LobbyScreen({
               textTransform: "uppercase",
             }}
           >
-            Welcome back{savedPlayerName ? `, ${savedPlayerName}` : ""}
+            {savedPlayerName
+              ? t.lobby.welcomeBackName.replace("{name}", savedPlayerName)
+              : t.lobby.welcomeBack}
           </div>
           <h1
             style={{
@@ -112,7 +117,7 @@ export function LobbyScreen({
               margin: 0,
             }}
           >
-            Co-Opoly Deal
+            {t.lobby.title}
           </h1>
           <p
             style={{
@@ -170,7 +175,7 @@ export function LobbyScreen({
                   "linear-gradient(90deg, transparent, rgba(245,234,208,0.18), transparent)",
               }}
             />
-            <span>or join</span>
+            <span>{t.lobby.orJoin}</span>
             <div
               style={{
                 flex: 1,
@@ -187,7 +192,7 @@ export function LobbyScreen({
               type="text"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="Room code · 6 digits"
+              placeholder={t.lobby.roomCodePlaceholder}
               maxLength={6}
               inputMode="numeric"
               style={{
@@ -255,7 +260,7 @@ export function LobbyScreen({
           }}
         >
           <span aria-hidden="true">☕</span>
-          <span>Buy me a coffee</span>
+          <span>{t.lobby.buyMeACoffee}</span>
         </a>
 
         {/* Author credit. Tiny, centered under everything. */}
@@ -269,11 +274,11 @@ export function LobbyScreen({
             color: "rgba(245,234,208,0.4)",
           }}
         >
-          Made with{" "}
+          {t.lobby.madeWithLoveBy.split("♥")[0]}
           <span aria-hidden="true" style={{ color: "#e26a6a" }}>
             ♥
-          </span>{" "}
-          by{" "}
+          </span>
+          {t.lobby.madeWithLoveBy.split("♥")[1]}{" "}
           <a
             href="https://alex.wohlbruck.com"
             target="_blank"
@@ -293,6 +298,30 @@ export function LobbyScreen({
           >
             Alex Wohlbruck
           </a>
+          {" · "}
+          <button
+            onClick={() => open("credits")}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgba(245,234,208,0.7)",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+              letterSpacing: "inherit",
+              borderBottom: "1px dotted rgba(245,234,208,0.3)",
+              transition: "color var(--d-quick) var(--ease-out-soft)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--accent, #f0c14a)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "rgba(245,234,208,0.7)";
+            }}
+          >
+            {t.lobby.credits}
+          </button>
         </div>
       </motion.div>
     </div>

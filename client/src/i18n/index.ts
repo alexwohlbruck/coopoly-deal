@@ -8,12 +8,19 @@ export interface Translations {
   lobby: {
     title: string;
     subtitle: string;
+    welcomeBack: string;
+    welcomeBackName: string; // "Welcome back, {name}" — uses {name} placeholder
     createRoom: string;
     joinRoom: string;
     enterCode: string;
     enterName: string;
     join: string;
     back: string;
+    orJoin: string;
+    roomCodePlaceholder: string;
+    buyMeACoffee: string;
+    madeWithLoveBy: string;
+    credits: string;
   };
   waiting: {
     roomCode: string;
@@ -87,8 +94,47 @@ export interface Translations {
     language: string;
     soundEffects: string;
     backgroundMusic: string;
+    haptics: string;
+    soundTheme: string;
     unlimited: string;
     save: string;
+    credits: string;
+  };
+  credits: {
+    title: string;
+    dedicatedTo: string;
+    dedicatedToBody: string;
+    originalGame: string;
+    originalGameBody: string;
+    music: string;
+    musicBody: string;
+    openSource: string;
+    frontend: string;
+    backend: string;
+    analytics: string;
+    iconsBy: string; // small caption appended to lucide-react entry
+    madeBy: string;
+  };
+  rules: {
+    eyebrow: string;
+    title: string;
+    close: string;
+    gotIt: string;
+    dialecticalLens: string;
+    dialecticalLensSwitchOn: string;
+    dialecticalLensSwitchOff: string;
+    overview: string;
+    setup: string;
+    turnStructure: string;
+    drawPhase: string;
+    playPhase: string;
+    discardPhase: string;
+    winning: string;
+    propertySets: string;
+    keyActionCards: string;
+    keyDirectiveCards: string;
+    paymentRules: string;
+    propertyWildcards: string;
   };
   common: {
     you: string;
@@ -97,6 +143,7 @@ export interface Translations {
     cards: string;
     sets: string;
     turn: string;
+    next: string;
   };
 }
 
