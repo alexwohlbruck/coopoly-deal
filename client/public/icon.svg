@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="felt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#22854a"/>
+      <stop offset="100%" stop-color="#1a5c2e"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff8e7"/>
+      <stop offset="100%" stop-color="#fbf6e9"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="url(#felt)"/>
+  <!-- Inner border ring -->
+  <circle cx="256" cy="256" r="230" fill="none" stroke="#14472a" stroke-width="6" opacity="0.5"/>
+  <!-- Card stack - back card -->
+  <rect x="155" y="130" width="160" height="220" rx="12" fill="#14472a" opacity="0.3" transform="rotate(-8 235 240)"/>
+  <!-- Card stack - middle card -->
+  <rect x="165" y="125" width="160" height="220" rx="12" fill="#14472a" opacity="0.3" transform="rotate(4 245 235)"/>
+  <!-- Card stack - front card -->
+  <rect x="175" y="120" width="160" height="220" rx="12" fill="url(#card)" stroke="#e0d5c0" stroke-width="2"/>
+  <!-- Dollar sign on card -->
+  <text x="255" y="265" text-anchor="middle" font-family="'Bricolage Grotesque', system-ui, sans-serif" font-weight="800" font-size="120" fill="#2f8f5e">$</text>
+  <!-- "DEAL" text -->
+  <text x="256" y="410" text-anchor="middle" font-family="'Bricolage Grotesque', system-ui, sans-serif" font-weight="800" font-size="60" fill="#fff" letter-spacing="6" opacity="0.95">DEAL</text>
+</svg>
