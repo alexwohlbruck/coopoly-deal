@@ -215,10 +215,12 @@ function AppMain() {
   }, [send]);
 
   const handleGoHome = useCallback(() => {
-    navigate("/");
-    disconnect();
-    reset();
-    setTimeout(() => connect(), 100);
+    navigate("/", { replace: true });
+    setTimeout(() => {
+      disconnect();
+      reset();
+      setTimeout(() => connect(), 100);
+    }, 0);
   }, [disconnect, reset, connect, navigate]);
 
   const handleResign = useCallback(() => {
