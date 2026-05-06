@@ -1256,46 +1256,6 @@ export function EndGameSummary({
           </motion.div>
         )}
 
-        {/* Action buttons — right below the winner name, no card chrome.
-            Per design feedback: rematch/leave buttons sit at the top
-            below the winner without a dark background container. */}
-        {(onRematch || onGoHome) && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.15 }}
-            style={{
-              display: "flex",
-              gap: 10,
-              flexShrink: 0,
-              flexDirection: isCompact ? "column" : "row",
-              justifyContent: isCompact ? "stretch" : "center",
-              alignItems: "stretch",
-            }}
-          >
-            {onRematch && (
-              <PrimaryButton
-                onClick={onRematch}
-                size="md"
-                fullWidth={isCompact}
-                style={!isCompact ? { minWidth: 200 } : undefined}
-              >
-                ↻ Rematch
-              </PrimaryButton>
-            )}
-            {onGoHome && (
-              <SecondaryButton
-                onClick={onGoHome}
-                size="md"
-                fullWidth={isCompact}
-                style={!isCompact ? { minWidth: 200 } : undefined}
-              >
-                Leave to Lobby
-              </SecondaryButton>
-            )}
-          </motion.div>
-        )}
-
         {/* Final Standings ledger */}
         <div
           style={{
@@ -1383,10 +1343,53 @@ export function EndGameSummary({
           })}
         </div>
 
-        {/* Mobile sticky action bar */}
-        {/* Sticky bottom action bar removed — buttons now sit at top
-            below the winner row per design feedback. */}
+        {/* Spacer for fixed bottom bar */}
+        {(onRematch || onGoHome) && <div style={{ height: isCompact ? 100 : 80 }} />}
       </div>
+
+      {/* Fixed bottom action bar */}
+      {(onRematch || onGoHome) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 20,
+            padding: isCompact ? "14px 14px max(14px, env(safe-area-inset-bottom))" : "16px 36px",
+            display: "flex",
+            gap: 10,
+            flexDirection: isCompact ? "column" : "row",
+            justifyContent: "center",
+            alignItems: "stretch",
+            background: "linear-gradient(0deg, rgba(16,10,8,0.95) 60%, transparent 100%)",
+          }}
+        >
+          {onRematch && (
+            <PrimaryButton
+              onClick={onRematch}
+              size="md"
+              fullWidth={isCompact}
+              style={!isCompact ? { minWidth: 200 } : undefined}
+            >
+              ↻ Rematch
+            </PrimaryButton>
+          )}
+          {onGoHome && (
+            <SecondaryButton
+              onClick={onGoHome}
+              size="md"
+              fullWidth={isCompact}
+              style={!isCompact ? { minWidth: 200 } : undefined}
+            >
+              Leave to Lobby
+            </SecondaryButton>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }
