@@ -654,28 +654,6 @@ export function OpponentRail({
           />
         ))}
       </div>
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: compact ? 40 : 200,
-          height: "100%",
-          background: "linear-gradient(90deg, rgba(0,0,0,0.5), transparent)",
-          pointerEvents: "none",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          width: compact ? 40 : 200,
-          height: "100%",
-          background: "linear-gradient(270deg, rgba(0,0,0,0.5), transparent)",
-          pointerEvents: "none",
-        }}
-      />
       {showArrows && (
         <>
           <button

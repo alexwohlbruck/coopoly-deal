@@ -369,6 +369,7 @@ export function GameTable({
         winnerId={gameState.winner}
         currentPlayerId={playerId}
         settings={gameState.settings}
+        gameSeed={gameState.startedAt ?? gameState.id}
         sessionStats={sessionStats}
         onRematch={onRematch}
         onGoHome={onGoHome}

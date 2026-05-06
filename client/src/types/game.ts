@@ -148,6 +148,7 @@ export interface ClientGameState {
   winner: string | null;
   createdAt: number;
   lastActivityAt: number;
+  startedAt?: number;
   settings: GameSettings;
 }
 

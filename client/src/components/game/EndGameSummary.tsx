@@ -19,6 +19,12 @@ interface EndGameSummaryProps {
   winnerId: string | null;
   currentPlayerId: string;
   settings: GameSettings;
+  /**
+   * Per-game seed used to vary the end-screen quips. Should change every
+   * game (including rematches) so players don't see the same line twice.
+   * Typically `gameState.startedAt ?? gameState.id`.
+   */
+  gameSeed: string | number;
   sessionStats?: {
     wins: number;
     losses: number;
@@ -523,9 +529,10 @@ const QUIPS: Record<number, string[]> = {
   ],
 };
 
-/** Random index — uses card.id-style randomness based on the player
- *  id + game-end count so the same quip doesn't show every game but
- *  it's stable within a single end-screen render. */
+/** Deterministic pick — hashes the seed and indexes into the array.
+ *  Stable within a single end-screen render so the quip doesn't shuffle
+ *  if React re-renders, but the seed (playerId + per-game token) means
+ *  it varies every game (including rematches). */
 function pickQuip(arr: readonly string[], seed: string): string {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -535,8 +542,14 @@ function pickQuip(arr: readonly string[], seed: string): string {
   return arr[idx] ?? arr[0]!;
 }
 
-function quipFor(rank: number, isYou: boolean, seed: string): string {
+function quipFor(
+  rank: number,
+  isYou: boolean,
+  playerId: string,
+  gameSeed: string | number,
+): string {
   const arr = QUIPS[rank] ?? QUIPS[4]!;
+  const seed = `${playerId}:${gameSeed}`;
   // YOU at rank ≥ 3 still pulls from rank 3's "loser framing" pool —
   // but pick a random one rather than always the first.
   if (isYou && rank >= 3) {
@@ -551,11 +564,13 @@ function HeroPlaque({
   isYouWinner,
   bankTotal,
   completeSets,
+  gameSeed,
 }: {
   winner: ClientPlayer;
   isYouWinner: boolean;
   bankTotal: number;
   completeSets: number;
+  gameSeed: string | number;
 }) {
   return (
     <div
@@ -661,7 +676,7 @@ function HeroPlaque({
             marginTop: 2,
           }}
         >
-          “{quipFor(1, isYouWinner, winner.id)}”
+          “{quipFor(1, isYouWinner, winner.id, gameSeed)}”
         </div>
       </div>
 
@@ -705,6 +720,7 @@ function StandingsRow({
   bankTotal,
   completeSets,
   settings,
+  gameSeed,
 }: {
   player: ClientPlayer;
   rank: number;
@@ -713,6 +729,7 @@ function StandingsRow({
   bankTotal: number;
   completeSets: number;
   settings: GameSettings;
+  gameSeed: string | number;
 }) {
   return (
     <div
@@ -884,7 +901,7 @@ function StandingsRow({
                 color: isYou ? "#f5ead0" : "rgba(245,234,208,0.65)",
               }}
             >
-              “{quipFor(rank, isYou, player.id)}”
+              “{quipFor(rank, isYou, player.id, gameSeed)}”
             </div>
           </div>
         </div>
@@ -1100,6 +1117,7 @@ export function EndGameSummary({
   winnerId,
   currentPlayerId,
   settings,
+  gameSeed,
   onRematch,
   onGoHome,
 }: EndGameSummaryProps) {
@@ -1249,6 +1267,7 @@ export function EndGameSummary({
               isYouWinner={isYouWinner}
               bankTotal={winnerBank}
               completeSets={winnerSets}
+              gameSeed={gameSeed}
             />
           </motion.div>
         )}
@@ -1372,6 +1391,7 @@ export function EndGameSummary({
                     bankTotal={bankTotal}
                     completeSets={completeSets}
                     settings={settings}
+                    gameSeed={gameSeed}
                   />
                 )}
               </motion.div>
