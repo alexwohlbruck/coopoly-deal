@@ -127,34 +127,18 @@ function WinnerSeal({ size = 92 }: { size?: number }) {
           borderRadius: "50%",
           border: "2px dashed rgba(60,40,10,0.55)",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           color: "#3a2810",
           fontFamily: "var(--font-display)",
           fontWeight: 800,
+          fontSize: size * 0.18,
+          letterSpacing: "0.06em",
+          lineHeight: 1,
           textShadow: "0 1px 0 rgba(255,235,180,0.4)",
         }}
       >
-        <div
-          style={{
-            fontSize: size * 0.22,
-            letterSpacing: "0.08em",
-            lineHeight: 1,
-          }}
-        >
-          WIN
-        </div>
-        <div
-          style={{
-            fontSize: size * 0.085,
-            letterSpacing: "0.08em",
-            marginTop: 3,
-            opacity: 0.7,
-          }}
-        >
-          NER
-        </div>
+        WINNER
       </div>
     </div>
   );
