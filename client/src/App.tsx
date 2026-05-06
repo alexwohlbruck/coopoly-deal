@@ -119,6 +119,12 @@ function AppMain() {
           );
           break;
 
+        case "RETURNED_TO_LOBBY":
+          if (gameState?.id) {
+            navigate(`/room/${gameState.id}`, { replace: true });
+          }
+          break;
+
         case "ERROR":
           play("error");
           haptic("error");
@@ -227,6 +233,10 @@ function AppMain() {
 
   const handleResign = useCallback(() => {
     send({ type: "RESIGN" });
+  }, [send]);
+
+  const handleReturnToLobby = useCallback(() => {
+    send({ type: "RETURN_TO_LOBBY" });
   }, [send]);
 
   const handleDevInjectCard = useCallback(
@@ -414,6 +424,7 @@ function AppMain() {
                 }}
                 onAcceptAction={() => send({ type: "ACCEPT_ACTION" })}
                 onRematch={handleRematch}
+                onReturnToLobby={handleReturnToLobby}
                 onGoHome={handleGoHome}
                 onResign={handleResign}
                 musicControls={musicProps}

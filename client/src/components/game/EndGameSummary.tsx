@@ -2,6 +2,7 @@
 // Mirrors mockup-gameover.jsx from the design bundle.
 
 import { motion } from "framer-motion";
+import { Share2 } from "lucide-react";
 import type { ClientPlayer, GameSettings, PropertySet } from "../../types/game";
 import {
   isSetComplete,
@@ -9,10 +10,12 @@ import {
   PROPERTY_COLOR_HEX,
 } from "../../types/game";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 import { getTheme } from "../../theme/colors";
 import { useLayout } from "../../hooks/useLayout";
 import { PrimaryButton, SecondaryButton } from "../ui/Button";
 import { PropertySetsRow } from "./layout/TableObjects";
+import { quipForRank, sortPlayersByRank } from "../../utils/endGameQuips";
 
 interface EndGameSummaryProps {
   players: ClientPlayer[];
@@ -25,6 +28,8 @@ interface EndGameSummaryProps {
    * Typically `gameState.startedAt ?? gameState.id`.
    */
   gameSeed: string | number;
+  /** When the game started; used to compute duration for the share text. */
+  gameStartedAt?: number;
   sessionStats?: {
     wins: number;
     losses: number;
@@ -32,7 +37,11 @@ interface EndGameSummaryProps {
     gamesPlayed: number;
   };
   onRematch?: () => void;
+  onReturnToLobby?: () => void;
   onGoHome?: () => void;
+  /** Opens the ShareModal — owned by the parent so the modal lives at
+   *  the page level alongside the other ?modal= URL-based modals. */
+  onShare?: () => void;
 }
 
 // ─── Confetti fall over the felt ─────────────────────────────────
@@ -452,95 +461,9 @@ function neededFor(color: PropertyColor): number {
   }
 }
 
-// ─── Quips per rank ──────────────────────────────────────────────
-// Lots of variants in a Marxist-tinged tone — picked at game end so
-// the end-screen reads differently each time you finish a match.
-const QUIPS: Record<number, string[]> = {
-  1: [
-    "Sole owner of three city blocks. The board complies.",
-    "Built a property empire in 14 turns.",
-    "The first to three. Rent is, as ever, theft.",
-    "History will absolve them — for now.",
-    "Late capitalism, early dinner.",
-    "Vanguard of the parcel.",
-    "Means of production: secured.",
-    "The deeds are signed. Comrades, take note.",
-    "Primitive accumulation, completed in record time.",
-    "Three sets, one ruling class.",
-    "The board has spoken. Ownership is destiny.",
-    "Capital begets capital. The cycle continues.",
-    "A new bourgeoisie is born.",
-  ],
-  2: [
-    "One set short. The Boardwalk awaits.",
-    "Came up a deed shy. Rematch?",
-    "Silver medal, gilded edges.",
-    "So close to vanguard. Cadre status confirmed.",
-    "Surplus value extracted, but not enough.",
-    "Held the line. The line moved.",
-    "Almost — the dialectic isn't finished.",
-    "Runner-up in the great game of Monopoly Capital.",
-    "A footnote in the next edition of Capital.",
-    "The petite bourgeoisie's finest hour.",
-    "Second place: the most painful place.",
-    "Theory was sound. Practice fell short.",
-  ],
-  3: [
-    "Built things. Lost things. Mostly built.",
-    "Held the middle. The middle held back.",
-    "Petit bourgeois pretender, foiled.",
-    "Lumpenproletariat with property.",
-    "A slow descent into bourgeois mediocrity.",
-    "Played a fair game. Capitalism didn't.",
-    "Third-place revolutionary wears no laurels.",
-    "Some accumulated, some alienated. Net: middling.",
-    "Mid-cadre. Useful to the cause, statistically.",
-    "Class consciousness intact, holdings depleted.",
-  ],
-  4: [
-    "Honored to participate.",
-    "Last place, first principles.",
-    "Lumpenproletariat. No deeds, no chains.",
-    "Lost the means, kept the consciousness.",
-    "The wretched of the earth — and this board.",
-    "Even Marx didn't win on his first try.",
-    "Reading Capital between turns.",
-    "Nothing to lose but their cards.",
-    "A specter haunts the board — the specter of last place.",
-    "The expropriators were expropriated.",
-    "Solidarity forever. Money, never.",
-    "Last shall be first, eventually. Not this game.",
-  ],
-};
-
-/** Deterministic pick — hashes the seed and indexes into the array.
- *  Stable within a single end-screen render so the quip doesn't shuffle
- *  if React re-renders, but the seed (playerId + per-game token) means
- *  it varies every game (including rematches). */
-function pickQuip(arr: readonly string[], seed: string): string {
-  let h = 0;
-  for (let i = 0; i < seed.length; i++) {
-    h = (h * 31 + seed.charCodeAt(i)) | 0;
-  }
-  const idx = Math.abs(h) % arr.length;
-  return arr[idx] ?? arr[0]!;
-}
-
-function quipFor(
-  rank: number,
-  isYou: boolean,
-  playerId: string,
-  gameSeed: string | number,
-): string {
-  const arr = QUIPS[rank] ?? QUIPS[4]!;
-  const seed = `${playerId}:${gameSeed}`;
-  // YOU at rank ≥ 3 still pulls from rank 3's "loser framing" pool —
-  // but pick a random one rather than always the first.
-  if (isYou && rank >= 3) {
-    return pickQuip(QUIPS[3]!, seed);
-  }
-  return pickQuip(arr, seed);
-}
+// Quips moved to ../../utils/endGameQuips so the share modal can use
+// the same pool (and same seed) — players see matching quotes between
+// the standings rows and the post they share.
 
 // ─── HeroPlaque (desktop spotlight) ──────────────────────────────
 function HeroPlaque({
@@ -660,7 +583,7 @@ function HeroPlaque({
             marginTop: 2,
           }}
         >
-          “{quipFor(1, isYouWinner, winner.id, gameSeed)}”
+          “{quipForRank(1, isYouWinner, winner.id, gameSeed)}”
         </div>
       </div>
 
@@ -885,7 +808,7 @@ function StandingsRow({
                 color: isYou ? "#f5ead0" : "rgba(245,234,208,0.65)",
               }}
             >
-              “{quipFor(rank, isYou, player.id, gameSeed)}”
+              “{quipForRank(rank, isYou, player.id, gameSeed)}”
             </div>
           </div>
         </div>
@@ -1103,28 +1026,18 @@ export function EndGameSummary({
   settings,
   gameSeed,
   onRematch,
+  onReturnToLobby,
   onGoHome,
+  onShare,
 }: EndGameSummaryProps) {
   const { theme } = useGameStore();
+  const { t } = useI18n();
   const themeData = getTheme(theme);
   const layout = useLayout();
   const isCompact = layout === "compact";
 
   const winner = players.find((p) => p.id === winnerId) ?? players[0];
-  const sortedPlayers = [...players].sort((a, b) => {
-    if (a.id === winnerId) return -1;
-    if (b.id === winnerId) return 1;
-    const aSets = a.properties.filter(isSetComplete).length;
-    const bSets = b.properties.filter(isSetComplete).length;
-    if (aSets !== bSets) return bSets - aSets;
-    const aValue =
-      a.bank.reduce((sum, c) => sum + c.value, 0) +
-      a.properties.flatMap((s) => s.cards).reduce((sum, c) => sum + c.value, 0);
-    const bValue =
-      b.bank.reduce((sum, c) => sum + c.value, 0) +
-      b.properties.flatMap((s) => s.cards).reduce((sum, c) => sum + c.value, 0);
-    return bValue - aValue;
-  });
+  const sortedPlayers = sortPlayersByRank(players, winnerId);
 
   const winnerBank = winner.bank.reduce((s, c) => s + c.value, 0);
   const winnerSets = winner.properties.filter(isSetComplete).length;
@@ -1253,6 +1166,71 @@ export function EndGameSummary({
               completeSets={winnerSets}
               gameSeed={gameSeed}
             />
+          </motion.div>
+        )}
+
+        {/* Action buttons — right below the winner name, no card chrome.
+            Per design feedback: rematch/leave buttons sit at the top
+            below the winner without a dark background container. */}
+        {(onRematch || onGoHome) && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.15 }}
+            style={{
+              display: "flex",
+              gap: 10,
+              flexShrink: 0,
+              flexDirection: isCompact ? "column" : "row",
+              justifyContent: isCompact ? "stretch" : "center",
+              alignItems: "stretch",
+            }}
+          >
+            {onRematch && (
+              <PrimaryButton
+                onClick={onRematch}
+                size="md"
+                fullWidth={isCompact}
+                style={!isCompact ? { minWidth: 200 } : undefined}
+              >
+                ↻ {t.finished.rematch}
+              </PrimaryButton>
+            )}
+            {onShare && (
+            <SecondaryButton
+              onClick={onShare}
+              size="md"
+              fullWidth={isCompact}
+              style={
+                !isCompact
+                  ? { minWidth: 160, display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
+                  : { display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
+              }
+            >
+              <Share2 className="w-4 h-4" />
+              {t.finished.share}
+            </SecondaryButton>
+            )}
+            {onReturnToLobby && (
+              <SecondaryButton
+                onClick={onReturnToLobby}
+                size="md"
+                fullWidth={isCompact}
+                style={!isCompact ? { minWidth: 200 } : undefined}
+              >
+                {t.finished.changePlayers}
+              </SecondaryButton>
+            )}
+            {onGoHome && (
+              <SecondaryButton
+                onClick={onGoHome}
+                size="md"
+                fullWidth={isCompact}
+                style={!isCompact ? { minWidth: 200 } : undefined}
+              >
+                {t.finished.leave}
+              </SecondaryButton>
+            )}
           </motion.div>
         )}
 

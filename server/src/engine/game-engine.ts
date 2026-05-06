@@ -128,6 +128,25 @@ export class GameEngine {
     state.lastActivityAt = Date.now();
   }
 
+  returnToLobby(state: GameState): void {
+    state.phase = GamePhase.Waiting;
+    state.deck = [];
+    state.discardPile = [];
+    state.turn = null;
+    state.winner = null;
+    state.gameEndedBroadcasted = false;
+    state.currentPlayerIndex = 0;
+
+    for (const player of state.players) {
+      player.hand = [];
+      player.bank = [];
+      player.properties = [];
+      player.connected = true;
+    }
+
+    state.lastActivityAt = Date.now();
+  }
+
   // -- Turn management --
 
   private startTurn(state: GameState): void {

@@ -395,4 +395,5 @@ export type ServerMessage =
   | { type: "TURN_STARTED"; payload: { playerId: string } }
   | { type: "ACTION_REQUIRED"; payload: { action: PendingAction } }
   | { type: "GAME_ENDED"; payload: { winnerId: string; winnerName: string } }
-  | { type: "REMATCH_STARTED"; payload: { state: ClientGameState } };
+  | { type: "REMATCH_STARTED"; payload: { state: ClientGameState } }
+  | { type: "RETURNED_TO_LOBBY" };

@@ -16,6 +16,7 @@ import { WildcardAssignmentPrompt } from "./WildcardAssignmentPrompt";
 import { DevTools } from "../dev/DevTools";
 import { SettingsPanel } from "./SettingsPanel";
 import { CreditsModal } from "../common/CreditsModal";
+import { ShareModal } from "./ShareModal";
 import { useModalParam } from "../../hooks/useModalParam";
 import { TopBar } from "./layout/Chrome";
 import { GameTableDesktop } from "./layout/GameTableDesktop";
@@ -51,6 +52,7 @@ interface GameTableProps {
   onJustSayNo: () => void;
   onAcceptAction: () => void;
   onRematch?: () => void;
+  onReturnToLobby?: () => void;
   onGoHome?: () => void;
   onResign?: () => void;
   musicControls?: {
@@ -82,6 +84,7 @@ export function GameTable({
   onJustSayNo,
   onAcceptAction,
   onRematch,
+  onReturnToLobby,
   onGoHome,
   onResign,
   musicControls,
@@ -365,16 +368,28 @@ export function GameTable({
 
   if (gameState.phase === GamePhase.Finished) {
     return (
-      <EndGameSummary
-        players={gameState.players}
-        winnerId={gameState.winner}
-        currentPlayerId={playerId}
-        settings={gameState.settings}
-        gameSeed={gameState.startedAt ?? gameState.id}
-        sessionStats={sessionStats}
-        onRematch={onRematch}
-        onGoHome={onGoHome}
-      />
+      <>
+        <EndGameSummary
+          players={gameState.players}
+          winnerId={gameState.winner}
+          currentPlayerId={playerId}
+          settings={gameState.settings}
+          gameSeed={gameState.startedAt ?? gameState.id}
+          gameStartedAt={gameState.startedAt}
+          sessionStats={sessionStats}
+          onRematch={onRematch}
+          onReturnToLobby={onReturnToLobby}
+          onGoHome={onGoHome}
+          onShare={() => openModal("share")}
+        />
+        <ShareModal
+          isOpen={modal === "share"}
+          onClose={closeModal}
+          gameState={gameState}
+          playerId={playerId}
+          sessionStats={sessionStats}
+        />
+      </>
     );
   }
 

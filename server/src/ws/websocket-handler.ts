@@ -166,6 +166,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleRematch(ws);
           break;
 
+        case "RETURN_TO_LOBBY":
+          handleReturnToLobby(ws);
+          break;
+
         case "ADD_BOT":
           handleAddBot(ws);
           break;
@@ -671,6 +675,18 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     });
 
     checkBotTurn(roomCode);
+  }
+
+  function handleReturnToLobby(ws: GameWebSocket): void {
+    const { roomCode } = ws.data;
+    if (!roomCode) throw new Error("Not in a room");
+
+    const game = roomManager.getRoom(roomCode);
+    if (!game) throw new Error("Room not found");
+
+    roomManager.getEngine().returnToLobby(game);
+    broadcastToRoom(roomCode, { type: "RETURNED_TO_LOBBY" });
+    sendStateToAll(roomCode);
   }
 
   function handleResign(ws: GameWebSocket): void {

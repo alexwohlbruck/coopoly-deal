@@ -81,7 +81,17 @@ export const es: Translations = {
     losses: "Derrotas",
     streak: "Racha",
     rematch: "Revancha",
+    changePlayers: "Cambiar Jugadores",
     leave: "Salir",
+    share: "Compartir",
+    shareCopied: "Copiado al portapapeles",
+    shareTitle: "Comparte tu partida",
+    sharePreviewLabel: "Vista previa",
+    shareOnX: "Publicar en X",
+    shareOnBluesky: "Bluesky",
+    shareOnThreads: "Threads",
+    shareCopy: "Copiar",
+    shareNative: "Más…",
   },
   settings: {
     title: "Configuración",
@@ -99,8 +109,9 @@ export const es: Translations = {
   credits: {
     title: "Créditos",
     dedicatedTo: "Dedicado a",
+    dedicatedToName: "Shobita Suresh",
     dedicatedToBody:
-      "Shobita Suresh — por hacer de este juego uno de mis pasatiempos favoritos.",
+      "por hacer de este juego uno de mis pasatiempos más entrañables",
     originalGame: "Juego original",
     originalGameBody:
       "Basado en Monopoly Deal, diseñado por Katharine Chapman, publicado por Hasbro. Esta es una adaptación no oficial y sin fines de lucro.",
@@ -142,5 +153,6 @@ export const es: Translations = {
     sets: "sets",
     turn: "turno",
     next: "Siguiente",
+    sourceCode: "Código fuente en GitHub",
   },
 };
