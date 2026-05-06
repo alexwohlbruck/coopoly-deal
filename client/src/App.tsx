@@ -183,11 +183,13 @@ function AppMain() {
 
       if (isHost) {
         setTimeout(() => {
-          const { preferredSettings } = useGameStore.getState();
-          send({
-            type: "UPDATE_SETTINGS",
-            payload: { settings: preferredSettings },
-          });
+          const { preferredSettings, gameState: gs } = useGameStore.getState();
+          if (gs?.phase === GamePhase.Waiting) {
+            send({
+              type: "UPDATE_SETTINGS",
+              payload: { settings: preferredSettings },
+            });
+          }
         }, 500);
       }
     },
