@@ -68,6 +68,19 @@ export class RoomManager {
   ): { game: GameState; player: Player } {
     const game = this.rooms.get(code);
     if (!game) throw new Error("Room not found");
+
+    // If game is in progress, try to reconnect a disconnected player with the same name
+    if (game.phase !== GamePhase.Waiting) {
+      const disconnected = game.players.find(
+        (p) => !p.connected && p.name === playerName,
+      );
+      if (disconnected) {
+        disconnected.connected = true;
+        game.lastActivityAt = Date.now();
+        return { game, player: disconnected };
+      }
+    }
+
     const player = this.engine.addPlayer(game, playerName);
     return { game, player };
   }
