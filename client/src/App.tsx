@@ -12,7 +12,6 @@ import { useGameStore } from "./hooks/useGameStore";
 import { useSoundManager } from "./hooks/useSoundManager";
 import { useHaptics } from "./hooks/useHaptics";
 import { useBackgroundMusic } from "./hooks/useBackgroundMusic";
-import { usePageviewTracking } from "./hooks/usePageviewTracking";
 import { LobbyScreen } from "./components/lobby/LobbyScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
 import { NameEntryDialog } from "./components/lobby/NameEntryDialog";
@@ -31,7 +30,6 @@ export default function App() {
 }
 
 function AppMain() {
-  usePageviewTracking();
   const navigate = useNavigate();
   const location = useLocation();
 

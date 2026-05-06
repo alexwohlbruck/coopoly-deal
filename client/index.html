@@ -4,10 +4,26 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Co-Opoly Deal</title>
+    <script>
+      // Collapse per-game URLs (/game/123456, /room/123456, /join/123456)
+      // into a single :code placeholder before Umami sends them. Runs for
+      // both auto-tracked pageviews and any explicit umami.track() calls.
+      // Must be defined before the deferred Umami script fires.
+      window.umamiBeforeSend = function (_type, payload) {
+        if (payload && typeof payload.url === "string") {
+          payload.url = payload.url.replace(
+            /^\/(game|room|join)\/[^/?#]+/,
+            "/$1/:code",
+          );
+        }
+        return payload;
+      };
+    </script>
     <script
       defer
       src="https://cloud.umami.is/script.js"
       data-website-id="55098436-d592-4e49-b350-9b9b9a09d07b"
+      data-before-send="umamiBeforeSend"
     ></script>
   </head>
   <body>
