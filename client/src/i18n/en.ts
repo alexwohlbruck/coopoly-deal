@@ -103,7 +103,7 @@ export const en: Translations = {
       "Shobita Suresh — for making this game one of my favorite pastimes.",
     originalGame: "Original game",
     originalGameBody:
-      "Based on Monopoly Deal, designed by Vincent & Joey Matamoros, published by Hasbro. This is an unofficial, non-commercial fan adaptation.",
+      "Based on Monopoly Deal, designed by Katharine Chapman, published by Hasbro. This is an unofficial, non-commercial fan adaptation.",
     music: "Music",
     musicBody: "Background tracks by Casino VIP Music via Pixabay (royalty-free).",
     openSource: "Open source software",
