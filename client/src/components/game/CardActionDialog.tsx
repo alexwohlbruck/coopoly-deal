@@ -894,6 +894,9 @@ export function CardActionDialog({
             const isRentCard =
               activeCard.type === CardType.RentDual ||
               activeCard.type === CardType.RentWild;
+            const isHouseHotel =
+              activeCard.type === CardType.House ||
+              activeCard.type === CardType.Hotel;
             const combinedMultiplier =
               rentMultiplier * Math.pow(2, selectedDtrCardIds.length);
             const rentByColor: Record<string, number> = {};
@@ -905,8 +908,6 @@ export function CardActionDialog({
             const maxRent = isRentCard
               ? Math.max(0, ...Object.values(rentByColor))
               : 0;
-            // "BEST" only makes sense if there's a non-zero choice
-            // AND a unique max — multiple ties would be confusing.
             const bestColor =
               isRentCard && maxRent > 0 &&
               Object.values(rentByColor).filter((v) => v === maxRent).length === 1
@@ -989,6 +990,15 @@ export function CardActionDialog({
                       )}
                     </span>
                   )}
+                  {isHouseHotel && (() => {
+                    const currentRent = calculateRent(player, color);
+                    const bonus = activeCard.type === CardType.House ? 3 : 4;
+                    return (
+                      <span className="text-xs mt-1 opacity-90">
+                        ${currentRent}M → ${currentRent + bonus}M {settings.useSocialistTheme ? "levy" : "rent"}
+                      </span>
+                    );
+                  })()}
                 </button>
               );
             })}
