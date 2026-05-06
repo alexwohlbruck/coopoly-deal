@@ -588,10 +588,12 @@ export function DragPeekHand({
     activeZone: HTMLElement | null;
   } | null>(null);
 
-  // Reactive state for lift mode — drives the full re-render so the
-  // peeked card visibly tracks the finger. Stored as the absolute
-  // translate offsets relative to the card's resting (peek) position.
-  const [liftXY, setLiftXY] = useState<{ x: number; y: number } | null>(null);
+  // Lift position tracked via ref + direct DOM mutation for 60fps
+  // drag without React re-renders. The `liftActive` state triggers
+  // a single re-render on lift start/end to apply z-index/filter.
+  const liftXYRef = useRef<{ x: number; y: number } | null>(null);
+  const [liftActive, setLiftActive] = useState(false);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   const setActiveZone = (next: HTMLElement | null) => {
     const cur = swipeRef.current?.activeZone ?? null;
@@ -632,7 +634,7 @@ export function DragPeekHand({
     // to a different card later.
     setHovered(i);
     lastHapticIdx.current = i;
-    setLiftXY(null);
+    liftXYRef.current = null;
   };
 
   const onCardTouchMove = (e: React.TouchEvent) => {
@@ -646,11 +648,9 @@ export function DragPeekHand({
       const adx = Math.abs(s.dx);
       const ady = Math.abs(s.dy);
       if (adx > AXIS_DECISION_PX || ady > AXIS_DECISION_PX) {
-        // Commit based on dominant axis at the decision point.
-        // Upward-vertical dominance → lift. Anything else → horizontal
-        // peek scrub.
         if (ady > adx && s.dy < 0) {
           s.kind = "lift";
+          setLiftActive(true);
           const item = items[s.idx];
           if (item) onTouchDragStart?.(item);
         } else {
@@ -660,16 +660,22 @@ export function DragPeekHand({
     }
 
     if (s.kind === "lift") {
-      // Card now follows the finger freely. Update lift offset and
-      // hit-test the [data-touch-drop] zone under the finger.
-      setLiftXY({ x: s.dx, y: s.dy });
+      // Direct DOM mutation for smooth 60fps drag
+      liftXYRef.current = { x: s.dx, y: s.dy };
+      const el = cardRefs.current[s.idx];
+      if (el) {
+        const off = s.idx - mid;
+        const x = off * overlap;
+        const y = -(cardLift) + Math.abs(off) * 1.5;
+        el.style.transform = `translateX(calc(-50% + ${x + s.dx}px)) translateY(${y + s.dy}px) rotate(0deg)`;
+        el.style.transition = "none";
+      }
       const zone = findDropZoneAt(t.clientX, t.clientY);
       setActiveZone(zone?.el ?? null);
       if (e.cancelable) e.preventDefault();
     } else if (s.kind === "horizontal") {
-      // Peek-scrub: rail decides which card under the finger is peeked.
       peekFromClientX(t.clientX);
-      setLiftXY(null);
+      liftXYRef.current = null;
     }
   };
 
@@ -677,18 +683,19 @@ export function DragPeekHand({
     const s = swipeRef.current;
     if (!s) return;
     if (s.kind === "lift") {
-      // Use the last-known finger position from changedTouches if
-      // available; fall back to start + dx/dy.
       const t = e?.changedTouches?.[0];
       const px = t?.clientX ?? s.startX + s.dx;
       const py = t?.clientY ?? s.startY + s.dy;
       const zone = findDropZoneAt(px, py);
       setActiveZone(null);
+      // Reset the DOM element's inline style so CSS transition takes over
+      const el = cardRefs.current[s.idx];
+      if (el) {
+        el.style.transform = "";
+        el.style.transition = "";
+      }
       if (zone) {
         const item = items[s.idx];
-        // Defer to next microtask so React commits any in-flight state
-        // updates before the parent (which often unmounts the card on
-        // play) tears down the gesture's DOM nodes.
         if (item) {
           const itemRef = item;
           const specRef = zone.spec;
@@ -698,7 +705,8 @@ export function DragPeekHand({
       onTouchDragEnd?.();
     }
     swipeRef.current = null;
-    setLiftXY(null);
+    liftXYRef.current = null;
+    setLiftActive(false);
   };
 
   return (
@@ -745,39 +753,27 @@ export function DragPeekHand({
             y -= cardLift * 0.6;
           }
 
-          // Lift mode: only the card actively being lifted gets the
-          // finger-follow transform + boosted z-index + heavy shadow.
-          // Cards in the rail before the gesture entered lift (i.e.
-          // during pending/horizontal scrub) DO NOT get this treatment
-          // — the previous bug was using `swipeRef.current?.idx === i`
-          // alone, which kept the original card lifted through the
-          // whole gesture even after horizontal scrubbing moved peek
-          // elsewhere. Gate strictly on liftXY != null.
-          const isLifted = liftXY != null && swipeRef.current?.idx === i;
-          const liftDx = isLifted ? liftXY!.x : 0;
-          const liftDy = isLifted ? liftXY!.y : 0;
+          // Lift mode: the actively-lifted card gets boosted z-index +
+          // heavy shadow. Position is handled by direct DOM mutation in
+          // touchmove for performance — no React re-render per frame.
+          const isLifted = liftActive && swipeRef.current?.idx === i;
 
           return (
             <div
               key={item.id}
+              ref={(el) => { cardRefs.current[i] = el; }}
               onMouseEnter={() => setHovered(i)}
               onTouchStart={(e) => onCardTouchStart(e, i)}
               onTouchMove={onCardTouchMove}
               onTouchEnd={(e) => onCardTouchEnd(e)}
               onTouchCancel={(e) => onCardTouchEnd(e)}
-              // HTML5 drag is desktop-only and emits a translucent ghost
-              // when started by touch. Disable it here; touch handlers
-              // above are the touch equivalent.
               draggable={false}
               onClick={item.onClick}
               style={{
                 position: "absolute",
                 bottom: 0,
                 left: "50%",
-                // Lifted card: clear the rest tilt and follow finger
-                // straight (a tilt looks weird while user is positioning
-                // over a drop zone).
-                transform: `translateX(calc(-50% + ${x + liftDx}px)) translateY(${y + liftDy}px) rotate(${isLifted ? 0 : tilt + extraTilt}deg)`,
+                transform: `translateX(calc(-50% + ${x}px)) translateY(${y}px) rotate(${isLifted ? 0 : tilt + extraTilt}deg)`,
                 transformOrigin: "bottom center",
                 zIndex: isLifted ? 200 : z,
                 transition: isLifted
