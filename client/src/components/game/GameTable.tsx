@@ -485,9 +485,23 @@ export function GameTable({
           />
           {gameState.turn && gameState.turn.rentMultiplier > 1 && (
             <div className="absolute top-32 left-1/2 transform -translate-x-1/2 z-10">
-              <div className="bg-yellow-500 text-black px-4 py-2 rounded-lg shadow-lg font-bold text-sm animate-pulse">
-                🎯 {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
-                Doubled! ({gameState.turn.rentMultiplier}x)
+              <div
+                style={{
+                  background: "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
+                  border: "1px solid rgba(240,193,74,0.3)",
+                  boxShadow: "0 0 24px -4px rgba(240,193,74,0.35), 0 8px 16px -4px rgba(0,0,0,0.5)",
+                  borderRadius: 10,
+                  padding: "8px 16px",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  color: "#f0c14a",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
+                {gameState.turn.rentMultiplier}×
               </div>
             </div>
           )}
