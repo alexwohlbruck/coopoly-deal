@@ -206,14 +206,18 @@ export class BotPlayer {
       if (hasJSN && this.shouldCounterJustSayNo(action)) {
         try {
           this.engine.respondJustSayNo(state, botPlayerId);
-        } catch {}
+        } catch (e) {
+          console.error(`[Bot] respondJustSayNo (chain) failed:`, e);
+        }
         return;
       }
 
       // Otherwise accept the JSN
       try {
         this.engine.respondAcceptAction(state, botPlayerId);
-      } catch {}
+      } catch (e) {
+        console.error(`[Bot] respondAcceptAction (chain) failed:`, e);
+      }
       return;
     }
 
@@ -230,7 +234,12 @@ export class BotPlayer {
       const cardIds = this.selectPaymentCards(player, amountDue);
       try {
         this.engine.respondPayWithCards(state, botPlayerId, cardIds);
-      } catch {}
+      } catch (e) {
+        console.error(`[Bot] respondPayWithCards failed:`, e);
+        try {
+          this.engine.respondAcceptAction(state, botPlayerId);
+        } catch {}
+      }
       return;
     }
 
@@ -238,13 +247,20 @@ export class BotPlayer {
     if (hasJSN && this.shouldUseJustSayNo(action)) {
       try {
         this.engine.respondJustSayNo(state, botPlayerId);
-      } catch {}
+      } catch (e) {
+        console.error(`[Bot] respondJustSayNo failed:`, e);
+        try {
+          this.engine.respondAcceptAction(state, botPlayerId);
+        } catch {}
+      }
       return;
     }
 
     try {
       this.engine.respondAcceptAction(state, botPlayerId);
-    } catch {}
+    } catch (e) {
+      console.error(`[Bot] respondAcceptAction failed:`, e);
+    }
   }
 
   private decideBestAction(state: GameState, player: Player): BotAction | null {

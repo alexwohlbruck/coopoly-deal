@@ -421,6 +421,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   const botPlayer = new BotPlayer(roomManager.getEngine());
 
+  const botTurnLocks = new Map<string, boolean>();
+
   function handleAddBot(ws: GameWebSocket): void {
     const { roomCode } = ws.data;
     if (!roomCode) throw new Error("Not in a room");
@@ -469,6 +471,17 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   async function checkBotTurn(roomCode: string): Promise<void> {
+    if (botTurnLocks.get(roomCode)) return;
+    botTurnLocks.set(roomCode, true);
+
+    try {
+      await runBotTurnLoop(roomCode);
+    } finally {
+      botTurnLocks.delete(roomCode);
+    }
+  }
+
+  async function runBotTurnLoop(roomCode: string): Promise<void> {
     const MAX_ITERATIONS = 50;
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -499,11 +512,15 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
           const color = assignment.availableColors[0];
           if (color) {
-            roomManager
-              .getEngine()
-              .assignReceivedWildcard(game, bot.id, assignment.cardId, color);
-            sendStateToAll(roomCode);
-            checkGameEnd(roomCode);
+            try {
+              roomManager
+                .getEngine()
+                .assignReceivedWildcard(game, bot.id, assignment.cardId, color);
+              sendStateToAll(roomCode);
+              checkGameEnd(roomCode);
+            } catch (e) {
+              console.error(`[Bot] wildcard assignment failed for ${bot.name}:`, e);
+            }
           }
           continue;
         }
@@ -542,26 +559,32 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
         if (botsToRespond.length === 0) return;
 
-        await Promise.all(
-          botsToRespond.map(async (bot) => {
-            if (!bot) return;
+        for (const bot of botsToRespond) {
+          if (!bot) continue;
+          if (game.phase !== GamePhase.Playing) return;
 
-            const botSpeed = game.settings?.botSpeed ?? "normal";
-            if (botSpeed !== "instant") {
-              const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
-              let delay = baseDelay + Math.random() * 600;
-              if (botSpeed === "slow") delay *= 2;
-              if (botSpeed === "fast") delay *= 0.5;
-              await new Promise((resolve) => setTimeout(resolve, delay));
-            }
+          const botSpeed = game.settings?.botSpeed ?? "normal";
+          if (botSpeed !== "instant") {
+            const baseDelay = Math.max(600, 1800 - (playerCount - 2) * 300);
+            let delay = baseDelay + Math.random() * 600;
+            if (botSpeed === "slow") delay *= 2;
+            if (botSpeed === "fast") delay *= 0.5;
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
 
-            if (game.phase !== GamePhase.Playing) return;
+          if (game.phase !== GamePhase.Playing) return;
 
+          try {
             botPlayer.respondToAction(game, bot.id);
-            sendStateToAll(roomCode);
-            checkGameEnd(roomCode);
-          }),
-        );
+          } catch (e) {
+            console.error(`[Bot] respondToAction failed for ${bot.name}:`, e);
+            try {
+              roomManager.getEngine().respondAcceptAction(game, bot.id);
+            } catch {}
+          }
+          sendStateToAll(roomCode);
+          checkGameEnd(roomCode);
+        }
 
         continue;
       }
@@ -581,10 +604,17 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
       if (game.phase !== GamePhase.Playing) return;
 
-      await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
-        sendStateToAll(roomCode);
-        checkGameEnd(roomCode);
-      });
+      try {
+        await botPlayer.playTurnAsync(game, currentPlayer.id, () => {
+          sendStateToAll(roomCode);
+          checkGameEnd(roomCode);
+        });
+      } catch (e) {
+        console.error(`[Bot] playTurnAsync failed for ${currentPlayer.name}:`, e);
+        try {
+          roomManager.getEngine().endTurn(game, currentPlayer.id);
+        } catch {}
+      }
 
       sendStateToAll(roomCode);
       checkGameEnd(roomCode);
