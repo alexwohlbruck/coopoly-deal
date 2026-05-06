@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
 
 /* Tailwind theme tokens (kept for property-color utility classes).
    Values MUST match PROPERTY_COLOR_HEX in client/src/types/game.ts —
@@ -34,9 +34,9 @@
 
 :root {
   /* Type */
-  --font-display: "Bricolage Grotesque", "Inter Tight", system-ui, sans-serif;
-  --font-ui: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-ui: "DM Sans", system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SF Mono", monospace;
 
   --t-display-xl: 56px;
   --t-display-l: 36px;
