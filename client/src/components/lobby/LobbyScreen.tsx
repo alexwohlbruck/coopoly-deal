@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings } from "lucide-react";
+import { Settings, Github } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { CreditsModal } from "../common/CreditsModal";
@@ -51,9 +51,14 @@ export function LobbyScreen({
     <div
       className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
-      {/* Top-right chrome: settings gear + music. Same IconButton-
-          based components used by the waiting room for consistency. */}
+      {/* Top-right chrome: source-code link + settings gear + music. */}
       <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <IconButton
+          href="https://github.com/alexwohlbruck/coopoly-deal"
+          title={t.common.sourceCode}
+        >
+          <Github className="w-4 h-4" />
+        </IconButton>
         <IconButton onClick={() => open("settings")} title={t.settings.title}>
           <Settings className="w-4 h-4" />
         </IconButton>

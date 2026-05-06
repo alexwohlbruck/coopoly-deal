@@ -8,6 +8,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useHaptics, type HapticEvent } from "../../hooks/useHaptics";
+import { useButtonStates } from "../../hooks/useButtonStates";
 
 interface ButtonProps {
   children: ReactNode;
@@ -60,6 +61,9 @@ export function PrimaryButton({
 }: ButtonProps) {
   const s = SIZES[size];
   const { haptic } = useHaptics();
+  const { handlers, transform, filter, transition } = useButtonStates({
+    disabled,
+  });
   return (
     <button
       type={type}
@@ -67,6 +71,7 @@ export function PrimaryButton({
       disabled={disabled}
       title={title}
       className={className}
+      {...handlers}
       style={{
         padding: s.padding,
         fontFamily: "var(--font-display)",
@@ -85,6 +90,9 @@ export function PrimaryButton({
           : "inset 0 1px 0 rgba(255,255,255,0.4), inset 0 -1px 0 rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 10px -2px rgba(0,0,0,0.5)",
         cursor: disabled ? "not-allowed" : "pointer",
         width: fullWidth ? "100%" : undefined,
+        transform,
+        filter,
+        transition,
         ...style,
       }}
     >
@@ -106,6 +114,9 @@ export function SecondaryButton({
 }: Omit<ButtonProps, "tone" | "accent">) {
   const s = SIZES[size];
   const { haptic } = useHaptics();
+  const { handlers, transform, filter, transition } = useButtonStates({
+    disabled,
+  });
   return (
     <button
       type={type}
@@ -113,6 +124,7 @@ export function SecondaryButton({
       disabled={disabled}
       title={title}
       className={className}
+      {...handlers}
       style={{
         padding: s.padding,
         fontFamily: "var(--font-display)",
@@ -128,6 +140,9 @@ export function SecondaryButton({
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
         cursor: disabled ? "not-allowed" : "pointer",
         width: fullWidth ? "100%" : undefined,
+        transform,
+        filter,
+        transition,
         ...style,
       }}
     >
@@ -149,6 +164,9 @@ export function DangerButton({
 }: Omit<ButtonProps, "tone" | "accent">) {
   const s = SIZES[size];
   const { haptic } = useHaptics();
+  const { handlers, transform, filter, transition } = useButtonStates({
+    disabled,
+  });
   return (
     <button
       type={type}
@@ -156,6 +174,7 @@ export function DangerButton({
       disabled={disabled}
       title={title}
       className={className}
+      {...handlers}
       style={{
         padding: s.padding,
         fontFamily: "var(--font-display)",
@@ -174,6 +193,9 @@ export function DangerButton({
           : "inset 0 1px 0 rgba(255,200,200,0.18), 0 1px 0 rgba(0,0,0,0.5), 0 4px 8px -2px rgba(0,0,0,0.5)",
         cursor: disabled ? "not-allowed" : "pointer",
         width: fullWidth ? "100%" : undefined,
+        transform,
+        filter,
+        transition,
         ...style,
       }}
     >

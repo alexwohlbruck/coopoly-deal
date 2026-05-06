@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Github } from "lucide-react";
 import { useI18n, type Locale } from "../../i18n";
 import { useGameStore } from "../../hooks/useGameStore";
 import { THEME_IDS, themes, type ThemeName } from "../../theme/colors";
@@ -260,61 +261,99 @@ export function SettingsPanel({
           </div>
         )}
 
-        {/* Tip jar — same component as the lobby for consistency. */}
-        <a
-          href="https://buymeacoffee.com/alexwohlbruck"
-          target="_blank"
-          rel="noopener noreferrer"
+        {/* Footer action group — tip jar + Credits + Source code.
+            Tighter gap than the surrounding `space-y-6` settings rows
+            since these three pills read as one block of "about / where
+            to find more". */}
+        <div
           style={{
             marginTop: 4,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 10,
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "rgba(245,234,208,0.6)",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(245,234,208,0.08)",
-            textDecoration: "none",
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
           }}
         >
-          <span aria-hidden="true">☕</span>
-          <span>{t.lobby.buyMeACoffee}</span>
-        </a>
+          <a
+            href="https://buymeacoffee.com/alexwohlbruck"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(245,234,208,0.6)",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(245,234,208,0.08)",
+              textDecoration: "none",
+            }}
+          >
+            <span aria-hidden="true">☕</span>
+            <span>{t.lobby.buyMeACoffee}</span>
+          </a>
 
-        {/* Credits — opens the credits modal. Closes this panel as a
-            side effect (mutually-exclusive ?modal= URL state) which is
-            fine; user can close credits to return to the underlying
-            screen. */}
-        <button
-          onClick={() => openModal("credits")}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            width: "100%",
-            padding: "10px 12px",
-            borderRadius: 10,
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            color: "rgba(245,234,208,0.6)",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(245,234,208,0.08)",
-            cursor: "pointer",
-          }}
-        >
-          <span aria-hidden="true">✦</span>
-          <span>{t.settings.credits}</span>
-        </button>
+          {/* Credits — opens the credits modal. Closes this panel as a
+              side effect (mutually-exclusive ?modal= URL state) which
+              is fine; user can close credits to return to the
+              underlying screen. */}
+          <button
+            onClick={() => openModal("credits")}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(245,234,208,0.6)",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(245,234,208,0.08)",
+              cursor: "pointer",
+            }}
+          >
+            <span aria-hidden="true">✦</span>
+            <span>{t.settings.credits}</span>
+          </button>
+
+          {/* Source code link — same shape as the credits button. */}
+          <a
+            href="https://github.com/alexwohlbruck/coopoly-deal"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 10,
+              fontFamily: "var(--font-mono)",
+              fontSize: 11,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(245,234,208,0.6)",
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(245,234,208,0.08)",
+              textDecoration: "none",
+            }}
+          >
+            <Github className="w-3.5 h-3.5" />
+            <span>{t.common.sourceCode}</span>
+          </a>
+        </div>
 
         {/* Author credit. Same component as the lobby for consistency. */}
         <div

@@ -8,9 +8,15 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useHaptics } from "../../hooks/useHaptics";
+import { useButtonStates } from "../../hooks/useButtonStates";
 
 interface IconButtonProps {
   onClick?: () => void;
+  /** When set, renders as an external <a> link instead of a button.
+   *  onClick still fires (after the haptic tap) so callers can layer
+   *  analytics on top — but the navigation is native, so right-click
+   *  / cmd-click "open in new tab" works as expected. */
+  href?: string;
   title?: string;
   ariaLabel?: string;
   /** Optional label rendered to the right of the icon, in mono caps. */
@@ -25,6 +31,7 @@ interface IconButtonProps {
 
 export function IconButton({
   onClick,
+  href,
   title,
   ariaLabel,
   label,
@@ -34,22 +41,32 @@ export function IconButton({
   style,
 }: IconButtonProps) {
   const { haptic } = useHaptics();
-  return (
-    <button
-      type="button"
-      onClick={
-        onClick
-          ? () => {
-              // Chrome icon buttons sit at the bottom of the haptic
-              // tier — barely-there tick rather than the full tap.
-              haptic("micro");
-              onClick();
-            }
-          : undefined
+  const { handlers, transform, filter, transition } = useButtonStates({
+    disabled,
+  });
+  const handleClick = () => {
+    // Chrome icon buttons sit at the bottom of the haptic tier —
+    // barely-there tick rather than the full tap.
+    haptic("micro");
+    onClick?.();
+  };
+
+  const Tag: "a" | "button" = href ? "a" : "button";
+  const linkProps = href
+    ? {
+        href,
+        target: "_blank",
+        rel: "noopener noreferrer",
       }
+    : { type: "button" as const, disabled };
+
+  return (
+    <Tag
+      {...(linkProps as Record<string, unknown>)}
+      {...handlers}
+      onClick={onClick || href ? handleClick : undefined}
       title={title}
       aria-label={ariaLabel ?? title}
-      disabled={disabled}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -78,13 +95,15 @@ export function IconButton({
         letterSpacing: "0.06em",
         textTransform: "uppercase",
         fontWeight: 600,
-        transition:
-          "background var(--d-quick) var(--ease-out-soft), color var(--d-quick) var(--ease-out-soft), border-color var(--d-quick) var(--ease-out-soft)",
+        transform,
+        filter,
+        transition: `${transition}, background var(--d-quick) var(--ease-out-soft), color var(--d-quick) var(--ease-out-soft), border-color var(--d-quick) var(--ease-out-soft)`,
+        textDecoration: "none",
         ...style,
       }}
     >
       <span style={{ display: "inline-flex" }}>{children}</span>
       {label && <span>{label}</span>}
-    </button>
+    </Tag>
   );
 }
