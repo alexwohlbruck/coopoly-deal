@@ -41,6 +41,7 @@ export function WildcardAssignmentPrompt({
     <BottomSheet
       isOpen={true}
       onClose={() => {}}
+      closable={false}
       title="Assign Wildcard Color"
       height="h-auto"
       playSound={true}

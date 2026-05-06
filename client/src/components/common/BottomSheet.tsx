@@ -28,6 +28,8 @@ interface BottomSheetProps {
   /** Tailwind max-width class (e.g. "max-w-lg"). Honored on both variants. */
   maxWidth?: string;
   playSound?: boolean;
+  /** When false, hides the X button and disables ESC close. */
+  closable?: boolean;
 }
 
 export function BottomSheet({
@@ -39,6 +41,7 @@ export function BottomSheet({
   height = "h-80",
   maxWidth = "max-w-lg",
   playSound = false,
+  closable = true,
 }: BottomSheetProps) {
   const { play } = useSoundManager();
   const layout = useLayout();
@@ -48,15 +51,15 @@ export function BottomSheet({
     if (isOpen && playSound) play("buttonClick");
   }, [isOpen, playSound, play]);
 
-  // ESC closes
+  // ESC closes (only when closable)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !closable) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, closable]);
 
   // Shared header
   const header = (
@@ -98,23 +101,25 @@ export function BottomSheet({
           </>
         )}
       </div>
-      <button
-        onClick={onClose}
-        style={{
-          background: "transparent",
-          border: "none",
-          color: "rgba(255,255,255,0.55)",
-          cursor: "pointer",
-          padding: 4,
-          borderRadius: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        aria-label="Close"
-      >
-        <X className="w-4 h-4" />
-      </button>
+      {closable && (
+        <button
+          onClick={onClose}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "rgba(255,255,255,0.55)",
+            cursor: "pointer",
+            padding: 4,
+            borderRadius: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 
@@ -208,17 +213,6 @@ export function BottomSheet({
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Drag handle */}
-              <div
-                style={{
-                  width: 44,
-                  height: 4,
-                  background: "rgba(255,255,255,0.18)",
-                  borderRadius: 2,
-                  margin: "10px auto 0",
-                  flexShrink: 0,
-                }}
-              />
               {header}
               <div
                 style={{

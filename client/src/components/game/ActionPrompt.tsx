@@ -255,7 +255,8 @@ export function ActionPrompt({
   return (
     <BottomSheet
       isOpen={true}
-      onClose={() => {}} // No close button for action prompts - must respond
+      onClose={() => {}}
+      closable={false}
       title={settings.useSocialistTheme ? "Directive!" : "Action!"}
       height="h-auto"
       footer={footerButtons}
