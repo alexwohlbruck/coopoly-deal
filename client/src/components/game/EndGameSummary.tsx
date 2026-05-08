@@ -559,7 +559,7 @@ function HeroPlaque({
               lineHeight: 1,
             }}
           >
-            {isYouWinner ? `${winner.name} (You)` : winner.name}
+            {winner.name}
           </div>
           <CrownIcon size={28} />
           <span
@@ -830,13 +830,12 @@ function StandingsRow({
                 marginBottom: 8,
               }}
             >
-              FINAL TABLEAU · {completeSets} COMPLETE
+              {completeSets} COMPLETE {completeSets === 1 ? "SET" : "SETS"}
             </div>
             <div style={{ overflowX: "auto" }} className="scrollbar-hide">
               <PropertySetsRow
                 align="flex-start"
                 sets={player.properties}
-                bank={player.bank.map((c) => c.value)}
                 useSocialistTheme={settings.useSocialistTheme}
               />
             </div>
@@ -990,7 +989,7 @@ function MobileStandingsCard({
                   color: "rgba(245,234,208,0.55)",
                 }}
               >
-                FINAL TABLEAU
+                PROPERTIES
               </div>
             </div>
             <div
@@ -1000,7 +999,6 @@ function MobileStandingsCard({
               <PropertySetsRow
                 align="flex-start"
                 sets={player.properties}
-                bank={player.bank.map((c) => c.value)}
                 compact
                 useSocialistTheme={settings.useSocialistTheme}
               />
@@ -1127,7 +1125,7 @@ export function EndGameSummary({
                     textOverflow: "ellipsis",
                   }}
                 >
-                  {isYouWinner ? `${winner.name} (You)` : winner.name}
+                  {winner.name}
                 </div>
                 <CrownIcon size={18} />
               </div>
@@ -1321,53 +1319,7 @@ export function EndGameSummary({
           })}
         </div>
 
-        {/* Spacer for fixed bottom bar */}
-        {(onRematch || onGoHome) && <div style={{ height: isCompact ? 100 : 80 }} />}
       </div>
-
-      {/* Fixed bottom action bar */}
-      {(onRematch || onGoHome) && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: 20,
-            padding: isCompact ? "14px 14px max(14px, env(safe-area-inset-bottom))" : "16px 36px",
-            display: "flex",
-            gap: 10,
-            flexDirection: isCompact ? "column" : "row",
-            justifyContent: "center",
-            alignItems: "stretch",
-            background: "linear-gradient(0deg, rgba(16,10,8,0.95) 60%, transparent 100%)",
-          }}
-        >
-          {onRematch && (
-            <PrimaryButton
-              onClick={onRematch}
-              size="md"
-              fullWidth={isCompact}
-              style={!isCompact ? { minWidth: 200 } : undefined}
-            >
-              ↻ Rematch
-            </PrimaryButton>
-          )}
-          {onGoHome && (
-            <SecondaryButton
-              onClick={onGoHome}
-              size="md"
-              fullWidth={isCompact}
-              style={!isCompact ? { minWidth: 200 } : undefined}
-            >
-              Leave to Lobby
-            </SecondaryButton>
-          )}
-        </motion.div>
-      )}
     </div>
   );
 }
