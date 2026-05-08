@@ -42,15 +42,15 @@ export const SOUND_THEME_LABEL: Record<SoundTheme, string> = {
 };
 
 export const SOUND_THEME_HINT: Record<SoundTheme, string> = {
-  classic: "Punchy square-wave clicks — the default.",
-  soft: "Mellow sine chimes for a quieter table.",
-  arcade: "Aggressive saw-wave tones with bite.",
-  chiptune: "8-bit beeps and bloops — console-game feel.",
-  bell: "Pure sine bells with FM resonance.",
-  synthwave: "Detuned saw waves with retro 80s flavor.",
-  pulse: "Minimal high-pitched pings — almost ambient.",
-  hum: "Low triangle drones with long fades.",
-  crispy: "Bright high-frequency clicks and snaps.",
+  classic: "",
+  soft: "",
+  arcade: "",
+  chiptune: "",
+  bell: "",
+  synthwave: "",
+  pulse: "",
+  hum: "",
+  crispy: "",
 };
 
 interface SoundSettings {
@@ -75,7 +75,7 @@ export const useSoundSettings = create<SoundSettings>()(
       musicEnabled: false,
       sfxVolume: 0.5,
       musicVolume: 0.2,
-      soundTheme: "classic",
+      soundTheme: "hum",
       hapticsEnabled: true,
       toggleSfx: () => set((s) => ({ sfxEnabled: !s.sfxEnabled })),
       toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
