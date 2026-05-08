@@ -746,6 +746,19 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           payload: { playerId },
         });
         sendStateToAll(roomCode);
+
+        // End game if only bots remain
+        if (game.phase === GamePhase.Playing) {
+          const connectedHumans = game.players.filter(
+            (p) => p.connected && !p.isBot,
+          );
+          if (connectedHumans.length === 0) {
+            game.phase = GamePhase.Finished;
+            game.winner = game.players.find((p) => p.connected)?.id ?? null;
+            sendStateToAll(roomCode);
+            checkGameEnd(roomCode, "resign");
+          }
+        }
       }
     }
   }
