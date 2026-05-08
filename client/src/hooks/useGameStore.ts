@@ -81,7 +81,6 @@ export const useGameStore = create<GameStore>()(
       reset: () =>
         set({
           playerId: null,
-          playerName: null,
           roomCode: null,
           gameState: null,
           error: null,
