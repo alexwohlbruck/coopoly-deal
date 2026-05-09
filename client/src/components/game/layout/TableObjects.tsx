@@ -8,8 +8,8 @@ import type { ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PropertySetDisplay } from "../PropertySetDisplay";
 import { CardBack, GameCard } from "../../cards/GameCard";
-import { CardType } from "../../../types/game";
 import type { Card, PropertySet, PropertyColor } from "../../../types/game";
+import type { TouchDropSpec } from "../../../utils/drop-zone";
 
 // ────────────────────────────────────────────────────────────────────
 // BankStack — money cards displayed as an overlapped stack of REAL
@@ -20,22 +20,15 @@ import type { Card, PropertySet, PropertyColor } from "../../../types/game";
 // ────────────────────────────────────────────────────────────────────
 
 interface BankStackProps {
-  cards: number[]; // money values
+  cards: Card[]; // actual card objects (action cards keep their faces)
   compact?: boolean;
+  useSocialistTheme?: boolean;
 }
 
-// Build a minimal Card object for GameCard rendering. Bank cards
-// don't need stable ids since they're not interactive (the bank
-// wrapper handles drops); a stable-per-position id keeps React keys
-// happy.
-function moneyCardFromValue(value: number, key: string | number): Card {
-  return { id: `bank-${key}-${value}`, type: CardType.Money, value };
-}
-
-export function BankStack({ cards, compact = false }: BankStackProps) {
-  const total = cards.reduce((a, b) => a + b, 0);
+export function BankStack({ cards, compact = false, useSocialistTheme = false }: BankStackProps) {
+  const total = cards.reduce((a, b) => a + b.value, 0);
   // Sort descending so the largest denomination shows on top.
-  const sorted = [...cards].sort((a, b) => b - a);
+  const sorted = [...cards].sort((a, b) => b.value - a.value);
   const cardW = compact ? 76 : 88;
   // Real GameCard renders at 2:3 (width × 1.5), so the container
   // height has to match — earlier this used a hand-tuned 106/124
@@ -129,9 +122,9 @@ export function BankStack({ cards, compact = false }: BankStackProps) {
           </div>
         )}
         <AnimatePresence initial={false}>
-          {sorted.map((v, i) => (
+          {sorted.map((card, i) => (
             <motion.div
-              key={`${i}-${v}`}
+              key={card.id}
               initial={{ opacity: 0, y: -12, scale: 0.92 }}
               animate={{
                 opacity: 1,
@@ -148,9 +141,10 @@ export function BankStack({ cards, compact = false }: BankStackProps) {
               }}
             >
               <GameCard
-                card={moneyCardFromValue(v, i)}
+                card={card}
                 width={cardW}
                 disableHover
+                useSocialistTheme={useSocialistTheme}
               />
             </motion.div>
           ))}
@@ -403,7 +397,7 @@ export function MiniPile({ kind, count }: MiniPileProps) {
 
 export interface PropertySetsRowProps {
   sets: PropertySet[];
-  bank?: number[]; // money values; rendered as first cell when non-empty
+  bank?: Card[]; // bank card objects; rendered as first cell when non-empty
   maxWidth?: number;
   maxHeight?: number | null;
   align?: "flex-start" | "center";
@@ -415,8 +409,14 @@ export interface PropertySetsRowProps {
   onSetDragLeave?: (color: PropertyColor, e: React.DragEvent) => void;
   onSetDrop?: (color: PropertyColor, e: React.DragEvent) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
-  onCardDragStart?: (e: React.DragEvent, card: Card) => void;
-  onCardDragEnd?: () => void;
+  /** Fired when a wildcard is pointer-dragged onto a drop zone. */
+  onWildcardDrop?: (
+    card: Card,
+    sourceColor: PropertyColor,
+    targetSpec: TouchDropSpec,
+  ) => void;
+  /** Fired when wildcard drag starts/ends (for parent to track draggingCard). */
+  onDragActiveChange?: (isDragging: boolean, card: Card | null) => void;
   dragOverColor?: PropertyColor | null;
 }
 
@@ -453,8 +453,8 @@ export function PropertySetsRow({
   onSetDragLeave,
   onSetDrop,
   onWildcardClick,
-  onCardDragStart,
-  onCardDragEnd,
+  onWildcardDrop,
+  onDragActiveChange,
   dragOverColor,
   wrap = false,
   touchDropEnabled = false,
@@ -526,7 +526,7 @@ export function PropertySetsRow({
             flexShrink: 0,
           }}
         >
-          <BankStack cards={bank ?? []} compact={compact} />
+          <BankStack cards={bank ?? []} compact={compact} useSocialistTheme={useSocialistTheme} />
         </div>
       )}
       {sets.map((s, i) => (
@@ -550,8 +550,8 @@ export function PropertySetsRow({
             isDragOver={dragOverColor === s.color}
             useSocialistTheme={useSocialistTheme}
             onWildcardClick={onWildcardClick}
-            onDragStart={onCardDragStart}
-            onDragEnd={onCardDragEnd}
+            onWildcardDrop={onWildcardDrop}
+            onDragActiveChange={onDragActiveChange}
             cardWidth={cardWidth}
           />
         </div>

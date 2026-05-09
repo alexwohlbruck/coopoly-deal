@@ -21,6 +21,8 @@ export interface Translations {
     buyMeACoffee: string;
     madeWithLoveBy: string;
     credits: string;
+    scanQrTitle: string;
+    scanQrHint: string;
   };
   waiting: {
     roomCode: string;

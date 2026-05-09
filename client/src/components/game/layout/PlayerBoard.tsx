@@ -6,7 +6,7 @@
 // Replaces re-using <PlayerArea> for these slots, which carried the old
 // hand+bank+stats chrome we don't want here.
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type {
   ClientPlayer,
   Card,
@@ -15,6 +15,7 @@ import type {
 } from "../../../types/game";
 import { isSetComplete, CardType } from "../../../types/game";
 import { PropertySetsRow } from "./TableObjects";
+import type { TouchDropSpec } from "../../../utils/drop-zone";
 
 interface PlayerBoardProps {
   player: ClientPlayer;
@@ -26,8 +27,13 @@ interface PlayerBoardProps {
   onDropToProperty?: (cardId: string, color: PropertyColor) => void;
   onDropToRainbow?: (card: Card) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
-  onCardDragStart?: (e: React.DragEvent, card: Card) => void;
-  onCardDragEnd?: () => void;
+  onRearrangeProperty?: (
+    cardId: string,
+    toColor: PropertyColor,
+    createNewSet?: boolean,
+  ) => void;
+  /** Fired when wildcard drag starts/ends (for parent to track draggingCard). */
+  onDragActiveChange?: (isDragging: boolean, card: Card | null) => void;
   /** When true, sets render at the compact (smaller) scale. */
   compact?: boolean;
   /** When true, allow the row to wrap to multiple lines if it overflows.
@@ -45,8 +51,8 @@ export function PlayerBoard({
   onDropToProperty,
   onDropToRainbow,
   onWildcardClick,
-  onCardDragStart,
-  onCardDragEnd,
+  onRearrangeProperty,
+  onDragActiveChange,
   compact = false,
   wrap = false,
 }: PlayerBoardProps) {
@@ -55,7 +61,7 @@ export function PlayerBoard({
   );
   const [isDragOverBank, setIsDragOverBank] = useState(false);
 
-  const bankValues = player.bank.map((c) => c.value);
+  const bankCards = player.bank;
 
   // Drop handlers — only wired for "you" + onDrop*-handlers provided.
   const canDropProp = isYou && isCurrentTurn && !!onDropToProperty;
@@ -76,7 +82,16 @@ export function PlayerBoard({
     setDragOverColor(null);
     const cardId = e.dataTransfer.getData("cardId");
     const cardData = e.dataTransfer.getData("cardData");
+    const sourceColor = e.dataTransfer.getData("sourceColor");
     if (!cardId) return;
+
+    // If the card was dragged from an existing property set (sourceColor
+    // is present), this is a rearrange rather than a new play from hand.
+    if (sourceColor && onRearrangeProperty) {
+      onRearrangeProperty(cardId, color);
+      return;
+    }
+
     let card: Card | null = null;
     try {
       card = cardData ? (JSON.parse(cardData) as Card) : null;
@@ -107,6 +122,20 @@ export function PlayerBoard({
     if (cardId) onDropToBank?.(cardId);
   };
 
+  // ── Pointer-based wildcard rearrangement ────────────────────────
+  // When a wildcard is dragged from one property set to a drop zone,
+  // dispatch the appropriate action.
+  const handleWildcardDrop = useCallback(
+    (card: Card, _sourceColor: PropertyColor, targetSpec: TouchDropSpec) => {
+      if (targetSpec.kind === "set" && onRearrangeProperty) {
+        onRearrangeProperty(card.id, targetSpec.color as PropertyColor);
+      }
+      // "bank" and "new-set" targets are ignored for wildcard rearrangement —
+      // use the tap → dialog flow for those less common operations.
+    },
+    [onRearrangeProperty],
+  );
+
   // Bank cell drop overlay (we wrap PropertySetsRow's first cell with handlers
   // via a DOM listener — easier here is to just put a layered drop zone over
   // the whole row when dragging money. For now we attach to the row root.)
@@ -129,7 +158,7 @@ export function PlayerBoard({
     >
       <PropertySetsRow
         sets={player.properties}
-        bank={bankValues}
+        bank={bankCards}
         align="center"
         compact={compact}
         wrap={wrap}
@@ -140,8 +169,8 @@ export function PlayerBoard({
         onSetDragLeave={handleSetDragLeave}
         onSetDrop={handleSetDrop}
         onWildcardClick={onWildcardClick}
-        onCardDragStart={onCardDragStart}
-        onCardDragEnd={onCardDragEnd}
+        onWildcardDrop={handleWildcardDrop}
+        onDragActiveChange={onDragActiveChange}
         dragOverColor={dragOverColor}
         touchDropEnabled={canDropProp || canDropBank}
         // Show the "+ NEW" drop slot only while a drag is in flight

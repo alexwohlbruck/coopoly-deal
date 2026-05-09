@@ -17,6 +17,8 @@ export const es: Translations = {
     buyMeACoffee: "Invítame un café",
     madeWithLoveBy: "Hecho con ♥ por",
     credits: "Créditos",
+    scanQrTitle: "Escanear código QR",
+    scanQrHint: "Apunta tu cámara a un código QR de sala",
   },
   waiting: {
     roomCode: "Código de Sala",
@@ -81,7 +83,7 @@ export const es: Translations = {
     losses: "Derrotas",
     streak: "Racha",
     rematch: "Revancha",
-    changePlayers: "Cambiar Jugadores",
+    changePlayers: "Opciones de Juego",
     leave: "Salir",
     share: "Compartir",
     shareCopied: "Copiado al portapapeles",

@@ -35,6 +35,9 @@ type GameWebSocket = ServerWebSocket<WSData>;
 
 const playerSockets = new Map<string, GameWebSocket>();
 
+// Pending auto-end timers per room (cancelled if a human reconnects)
+const autoEndTimers = new Map<string, Timer>();
+
 export function createWebSocketHandlers(roomManager: RoomManager) {
   function send(ws: GameWebSocket, message: ServerMessage): void {
     ws.send(JSON.stringify(message));
@@ -182,6 +185,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleResign(ws);
           break;
 
+        case "UPDATE_PLAYER_NAME":
+          handleUpdatePlayerName(ws, msg.payload.playerName);
+          break;
+
         case "DEV_INJECT_CARD":
           handleDevInjectCard(
             ws,
@@ -232,6 +239,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     ws.data.roomCode = roomCode;
     playerSockets.set(player.id, ws);
 
+    // Cancel any pending auto-end timer (human reconnected)
+    const pendingEnd = autoEndTimers.get(roomCode);
+    if (pendingEnd) {
+      clearTimeout(pendingEnd);
+      autoEndTimers.delete(roomCode);
+    }
+
     send(ws, {
       type: "ROOM_JOINED",
       payload: {
@@ -250,6 +264,28 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       player.id,
     );
 
+    sendStateToAll(roomCode);
+  }
+
+  function handleUpdatePlayerName(
+    ws: GameWebSocket,
+    playerName: string,
+  ): void {
+    const { roomCode, playerId } = ws.data;
+    if (!roomCode || !playerId) throw new Error("Not in a room");
+
+    const trimmed = playerName.trim().slice(0, 20);
+    if (!trimmed) throw new Error("Name cannot be empty");
+
+    const game = roomManager.getRoom(roomCode);
+    if (!game) throw new Error("Room not found");
+    if (game.phase !== GamePhase.Waiting)
+      throw new Error("Cannot change name during a game");
+
+    const player = game.players.find((p) => p.id === playerId);
+    if (!player) throw new Error("Player not found");
+
+    player.name = trimmed;
     sendStateToAll(roomCode);
   }
 
@@ -747,16 +783,27 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
         });
         sendStateToAll(roomCode);
 
-        // End game if only bots remain
+        // End game if only bots remain (with grace period for reconnection)
         if (game.phase === GamePhase.Playing) {
           const connectedHumans = game.players.filter(
             (p) => p.connected && !p.isBot,
           );
-          if (connectedHumans.length === 0) {
-            game.phase = GamePhase.Finished;
-            game.winner = game.players.find((p) => p.connected)?.id ?? null;
-            sendStateToAll(roomCode);
-            checkGameEnd(roomCode, "resign");
+          if (connectedHumans.length === 0 && !autoEndTimers.has(roomCode)) {
+            const timer = setTimeout(() => {
+              autoEndTimers.delete(roomCode);
+              const g = roomManager.getRoom(roomCode);
+              if (!g || g.phase !== GamePhase.Playing) return;
+              const stillNoHumans = g.players.filter(
+                (p) => p.connected && !p.isBot,
+              );
+              if (stillNoHumans.length === 0) {
+                g.phase = GamePhase.Finished;
+                g.winner = g.players.find((p) => p.connected)?.id ?? null;
+                sendStateToAll(roomCode);
+                checkGameEnd(roomCode, "resign");
+              }
+            }, 5000);
+            autoEndTimers.set(roomCode, timer);
           }
         }
       }

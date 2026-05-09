@@ -3,12 +3,19 @@ import type { ServerMessage } from "../types/game";
 
 type MessageHandler = (message: ServerMessage) => void;
 
-export function useWebSocket(onMessage: MessageHandler) {
+export function useWebSocket(
+  onMessage: MessageHandler,
+  onOpen?: () => void,
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const handlersRef = useRef<MessageHandler>(onMessage);
+  const onOpenRef = useRef<(() => void) | undefined>(onOpen);
   useEffect(() => {
     handlersRef.current = onMessage;
   }, [onMessage]);
+  useEffect(() => {
+    onOpenRef.current = onOpen;
+  }, [onOpen]);
 
   const connectRef = useRef<() => void>(() => {});
 
@@ -17,6 +24,10 @@ export function useWebSocket(onMessage: MessageHandler) {
 
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+    ws.onopen = () => {
+      onOpenRef.current?.();
+    };
 
     ws.onmessage = (event) => {
       try {

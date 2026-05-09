@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Routes,
   Route,
@@ -14,11 +14,14 @@ import { useHaptics } from "./hooks/useHaptics";
 import { useBackgroundMusic } from "./hooks/useBackgroundMusic";
 import { LobbyScreen } from "./components/lobby/LobbyScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
-import { NameEntryDialog } from "./components/lobby/NameEntryDialog";
 import { GameTable } from "./components/game/GameTable";
 import { CardTestScreen } from "./components/dev/CardTestScreen";
 import { GamePhase, type ServerMessage } from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
+
+// Module-level flag: set by handleGoHome so DeepLinkRedirect sends us to "/"
+// instead of "/join/:code" during the leaving transition.
+let isLeaving = false;
 
 export default function App() {
   return (
@@ -50,6 +53,30 @@ function AppMain() {
     reset,
   } = useGameStore();
 
+  // Auto-rejoin: true on mount if we have persisted credentials and are on a
+  // game/room route. Read from localStorage directly because Zustand v5's
+  // persist middleware rehydrates asynchronously — getState() returns defaults
+  // (null roomCode) on the very first render before rehydration completes.
+  const [isReconnecting, setIsReconnecting] = useState(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem("coopoly-settings") ?? "{}",
+      );
+      const rc = stored?.state?.roomCode;
+      const pn = stored?.state?.playerName;
+      const path = window.location.pathname;
+      return !!(
+        rc &&
+        pn &&
+        (path.startsWith("/game/") || path.startsWith("/room/"))
+      );
+    } catch {
+      return false;
+    }
+  });
+
+  const sendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
+
   const { play } = useSoundManager();
   const { haptic } = useHaptics();
   const { isPlaying, toggleMusic, nextTrack, startMusic } =
@@ -62,7 +89,16 @@ function AppMain() {
           setPlayer(msg.payload.playerId, playerName ?? "Player");
           setRoomCode(msg.payload.roomCode);
           setGameState(msg.payload.state);
-          navigate(`/room/${msg.payload.roomCode}`, { replace: true });
+          setIsReconnecting(false);
+          // Navigate based on game phase (rejoin mid-game goes straight to game)
+          if (
+            msg.payload.state.phase === GamePhase.Playing ||
+            msg.payload.state.phase === GamePhase.Finished
+          ) {
+            navigate(`/game/${msg.payload.roomCode}`, { replace: true });
+          } else {
+            navigate(`/room/${msg.payload.roomCode}`, { replace: true });
+          }
           break;
 
         case "GAME_STATE_UPDATE":
@@ -129,6 +165,20 @@ function AppMain() {
           play("error");
           haptic("error");
           setError(msg.payload.message);
+          // If we were trying to rejoin (or are on a game/room route
+          // without an active session), redirect home instead of
+          // bouncing to the join screen where "game already started"
+          // would be shown.
+          if (
+            !useGameStore.getState().gameState &&
+            (window.location.pathname.startsWith("/game/") ||
+              window.location.pathname.startsWith("/room/"))
+          ) {
+            setIsReconnecting(false);
+            navigate("/", { replace: true });
+          } else {
+            setIsReconnecting(false);
+          }
           setTimeout(() => setError(null), 4000);
           break;
       }
@@ -152,12 +202,59 @@ function AppMain() {
     ],
   );
 
-  const { connect, send, disconnect } = useWebSocket(handleMessage);
+  // Auto-rejoin on WebSocket open if we have persisted room credentials.
+  // Falls back to raw localStorage because Zustand v5 may not have
+  // finished async rehydration by the time the WebSocket opens.
+  const handleWsOpen = useCallback(() => {
+    let rc = useGameStore.getState().roomCode;
+    let pn = useGameStore.getState().playerName;
+    if (!rc || !pn) {
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem("coopoly-settings") ?? "{}",
+        );
+        rc = rc || stored?.state?.roomCode;
+        pn = pn || stored?.state?.playerName;
+      } catch {
+        // ignore
+      }
+    }
+    const path = window.location.pathname;
+    if (rc && pn && (path.startsWith("/room/") || path.startsWith("/game/"))) {
+      sendRef.current({ type: "JOIN_ROOM", payload: { roomCode: rc, playerName: pn } });
+    } else {
+      setIsReconnecting(false);
+    }
+  }, []);
+
+  const { connect, send, disconnect } = useWebSocket(handleMessage, handleWsOpen);
+
+  useEffect(() => {
+    sendRef.current = send;
+  }, [send]);
 
   useEffect(() => {
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
+
+  // Safety timeout: if reconnection takes too long, stop blocking the UI.
+  // Navigate home so DeepLinkRedirect doesn't send us to the join screen.
+  useEffect(() => {
+    if (isReconnecting) {
+      const t = setTimeout(() => {
+        setIsReconnecting(false);
+        if (
+          !useGameStore.getState().gameState &&
+          (window.location.pathname.startsWith("/game/") ||
+            window.location.pathname.startsWith("/room/"))
+        ) {
+          navigate("/", { replace: true });
+        }
+      }, 5000);
+      return () => clearTimeout(t);
+    }
+  }, [isReconnecting, navigate]);
 
   // Clear toast after delay
   useEffect(() => {
@@ -166,17 +263,6 @@ function AppMain() {
       return () => clearTimeout(t);
     }
   }, [toast, setToast]);
-
-  const handleCreateRoom = useCallback(async () => {
-    startMusic();
-    try {
-      const res = await fetch("/api/rooms", { method: "POST" });
-      const data = await res.json();
-      navigate(`/join/${data.roomCode}`);
-    } catch {
-      setError("Failed to create room");
-    }
-  }, [navigate, setError, startMusic]);
 
   const handleJoinRoom = useCallback(
     (code: string, name: string, isHost: boolean = false) => {
@@ -202,6 +288,17 @@ function AppMain() {
     [send, setPlayer, startMusic],
   );
 
+  const handleCreateRoom = useCallback(async (name: string) => {
+    startMusic();
+    try {
+      const res = await fetch("/api/rooms", { method: "POST" });
+      const data = await res.json();
+      handleJoinRoom(data.roomCode, name, true);
+    } catch {
+      setError("Failed to create room");
+    }
+  }, [setError, startMusic, handleJoinRoom]);
+
   const handleStartGame = useCallback(() => {
     startMusic();
     send({ type: "START_GAME" });
@@ -223,12 +320,18 @@ function AppMain() {
   }, [send]);
 
   const handleGoHome = useCallback(() => {
+    // Set leaving flag so DeepLinkRedirect sends us to "/" instead of
+    // "/join/:code" during the transition. Without this, disconnect() +
+    // reset() null out gameState while still on /game/:code, which triggers
+    // DeepLinkRedirect → /join/:code before navigate("/") takes effect.
+    isLeaving = true;
+    disconnect();
+    reset();
     navigate("/", { replace: true });
     setTimeout(() => {
-      disconnect();
-      reset();
-      setTimeout(() => connect(), 100);
-    }, 0);
+      isLeaving = false;
+      connect();
+    }, 100);
   }, [disconnect, reset, connect, navigate]);
 
   const handleResign = useCallback(() => {
@@ -333,16 +436,8 @@ function AppMain() {
           element={
             <LobbyScreen
               onCreateRoom={handleCreateRoom}
-              onJoinRoom={handleJoinRoom}
+              onJoinRoom={(code, name) => handleJoinRoom(code, name)}
               musicControls={musicProps}
-            />
-          }
-        />
-        <Route
-          path="/join/:code"
-          element={
-            <NameEntryRoute
-              onSubmit={(name, code) => handleJoinRoom(code, name, true)}
             />
           }
         />
@@ -362,8 +457,15 @@ function AppMain() {
                 }}
                 onAddBot={handleAddBot}
                 onRemovePlayer={handleRemovePlayer}
+                onUpdateName={(name) => {
+                  send({ type: "UPDATE_PLAYER_NAME", payload: { playerName: name } });
+                  useGameStore.getState().setPlayer(playerId, name);
+                }}
+                onLeave={handleGoHome}
                 musicControls={musicProps}
               />
+            ) : isReconnecting ? (
+              <ReconnectingScreen />
             ) : (
               <DeepLinkRedirect />
             )
@@ -432,6 +534,8 @@ function AppMain() {
                 onDevGiveCompleteSet={handleDevGiveCompleteSet}
                 onDevSetMoney={handleDevSetMoney}
               />
+            ) : isReconnecting ? (
+              <ReconnectingScreen />
             ) : (
               <DeepLinkRedirect />
             )
@@ -443,27 +547,38 @@ function AppMain() {
   );
 }
 
-// Direct visits to /room/:code or /game/:code without an active WS session
-// can't restore the game state, so bounce the user to the join flow for
-// that room (where they can enter a name and reconnect).
-function DeepLinkRedirect() {
-  const { code } = useParams();
-  return <Navigate to={code ? `/join/${code}` : "/"} replace />;
-}
-
-function NameEntryRoute({
-  onSubmit,
-}: {
-  onSubmit: (name: string, code: string) => void;
-}) {
-  const { code } = useParams();
-  const navigate = useNavigate();
-  if (!code) return <Navigate to="/" replace />;
+function ReconnectingScreen() {
   return (
-    <NameEntryDialog
-      roomCode={code}
-      onSubmit={(name) => onSubmit(name, code)}
-      onBack={() => navigate("/")}
-    />
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ background: "var(--bg-primary, #1a1412)" }}
+    >
+      <div className="text-center">
+        <div
+          className="animate-spin w-8 h-8 border-2 border-current border-t-transparent rounded-full mx-auto mb-4"
+          style={{ color: "var(--accent, #f0c14a)" }}
+        />
+        <p
+          style={{
+            color: "#f5ead0",
+            fontFamily: "var(--font-ui)",
+            fontSize: 14,
+            opacity: 0.7,
+          }}
+        >
+          Reconnecting…
+        </p>
+      </div>
+    </div>
   );
 }
+
+// Direct visits to /game/:code without an active WS session redirect to
+// /room/:code where the join gate handles name entry / auto-join.
+// When the user is intentionally leaving (handleGoHome), redirect to "/".
+function DeepLinkRedirect() {
+  const { code } = useParams();
+  if (isLeaving) return <Navigate to="/" replace />;
+  return <Navigate to={code ? `/room/${code}` : "/"} replace />;
+}
+

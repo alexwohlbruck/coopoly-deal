@@ -28,8 +28,12 @@ interface GameTableDesktopProps {
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
-  onWildcardDragStart?: (e: React.DragEvent, card: Card) => void;
-  onWildcardDragEnd?: () => void;
+  onRearrangeProperty?: (
+    cardId: string,
+    toColor: PropertyColor,
+    createNewSet?: boolean,
+  ) => void;
+  setDraggingCard: (card: Card | null) => void;
   /** Bottom-bar (turn pill, end turn, hand). Already handles hand interactions. */
   bottomBar: React.ReactNode;
 }
@@ -76,8 +80,8 @@ export function GameTableDesktop({
   onPlayToProperty,
   onRainbowDrop,
   onWildcardClick,
-  onWildcardDragStart,
-  onWildcardDragEnd,
+  onRearrangeProperty,
+  setDraggingCard,
   bottomBar,
 }: GameTableDesktopProps) {
   const opponents = useMemo(
@@ -433,8 +437,8 @@ export function GameTableDesktop({
             onPlayToProperty={onPlayToProperty}
             onRainbowDrop={onRainbowDrop}
             onWildcardClick={onWildcardClick}
-            onWildcardDragStart={onWildcardDragStart}
-            onWildcardDragEnd={onWildcardDragEnd}
+            onRearrangeProperty={onRearrangeProperty}
+            setDraggingCard={setDraggingCard}
             bottomBar={bottomBar}
           />
         </div>
@@ -534,8 +538,12 @@ interface YourTableGridProps {
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
-  onWildcardDragStart?: (e: React.DragEvent, card: Card) => void;
-  onWildcardDragEnd?: () => void;
+  onRearrangeProperty?: (
+    cardId: string,
+    toColor: PropertyColor,
+    createNewSet?: boolean,
+  ) => void;
+  setDraggingCard: (card: Card | null) => void;
   bottomBar: React.ReactNode;
 }
 
@@ -548,8 +556,8 @@ function YourTableGrid({
   onPlayToProperty,
   onRainbowDrop,
   onWildcardClick,
-  onWildcardDragStart,
-  onWildcardDragEnd,
+  onRearrangeProperty,
+  setDraggingCard,
   bottomBar,
 }: YourTableGridProps) {
   const setsColRef = useRef<HTMLDivElement | null>(null);
@@ -600,8 +608,10 @@ function YourTableGrid({
           }}
           onDropToRainbow={onRainbowDrop}
           onWildcardClick={onWildcardClick}
-          onCardDragStart={onWildcardDragStart}
-          onCardDragEnd={onWildcardDragEnd}
+          onRearrangeProperty={onRearrangeProperty}
+          onDragActiveChange={(isDragging, card) =>
+            setDraggingCard(isDragging ? card : null)
+          }
         />
       </div>
       <div

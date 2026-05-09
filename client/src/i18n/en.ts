@@ -17,6 +17,8 @@ export const en: Translations = {
     buyMeACoffee: "Buy me a coffee",
     madeWithLoveBy: "Made with ♥ by",
     credits: "Credits",
+    scanQrTitle: "Scan QR Code",
+    scanQrHint: "Point your camera at a room QR code",
   },
   waiting: {
     roomCode: "Room Code",
@@ -81,7 +83,7 @@ export const en: Translations = {
     losses: "Losses",
     streak: "Streak",
     rematch: "Rematch",
-    changePlayers: "Change Players",
+    changePlayers: "Game Options",
     leave: "Leave",
     share: "Share",
     shareCopied: "Copied to clipboard",

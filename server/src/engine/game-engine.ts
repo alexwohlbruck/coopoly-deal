@@ -775,6 +775,21 @@ export class GameEngine {
       action.justSayNoChain.targetPlayerId = playerId;
     }
 
+    // Auto-clear even-depth chains for payment actions so the client
+    // goes straight to the payment card selector (which already has a
+    // JSN button) instead of showing a redundant "Accept or JSN" prompt
+    // first.  Even depth means the original action-source successfully
+    // counter-blocked — the target's JSN was negated.
+    if (
+      action.justSayNoChain &&
+      action.justSayNoChain.depth % 2 === 0 &&
+      (action.type === "rent" ||
+        action.type === "debtCollector" ||
+        action.type === "birthday")
+    ) {
+      action.justSayNoChain = undefined;
+    }
+
     state.lastActivityAt = Date.now();
   }
 
@@ -807,12 +822,28 @@ export class GameEngine {
         state.lastActivityAt = Date.now();
         return;
       } else {
-        // Even depth: source counter-blocked, target is accepting that their block failed
-        // Action goes through against this target — fall through to normal resolution
+        // Even depth: source counter-blocked, target is accepting that
+        // their block failed — the original action goes through.
+        action.justSayNoChain = undefined;
+
+        // For payment actions (rent, debtCollector, birthday) we just
+        // clear the chain.  The target is still in targetPlayerIds and
+        // NOT in respondedPlayerIds, so the client will now show the
+        // normal payment-selection prompt to them.
+        if (
+          action.type === "rent" ||
+          action.type === "debtCollector" ||
+          action.type === "birthday"
+        ) {
+          state.lastActivityAt = Date.now();
+          return;
+        }
+
+        // Non-payment actions (slyDeal, forceDeal, dealBreaker) resolve
+        // immediately — there's no card-selection step.
         const targetId = action.targetPlayerIds.find(
           (id) => !action.respondedPlayerIds.includes(id),
         );
-        action.justSayNoChain = undefined;
         if (targetId) {
           this.resolveActionForPlayer(state, targetId);
           state.lastActivityAt = Date.now();

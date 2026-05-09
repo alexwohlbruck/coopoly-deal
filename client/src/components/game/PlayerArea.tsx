@@ -36,9 +36,9 @@ export function PlayerArea({
   isWaitingForAction,
   onDropToBank,
   onDropToProperty,
-  onRearrangeProperty,
+  onRearrangeProperty: _onRearrangeProperty,
   onDropWildcard,
-  onDropToRainbow,
+  onDropToRainbow: _onDropToRainbow,
   onWildcardClick,
   draggingCard,
 }: PlayerAreaProps) {
@@ -50,8 +50,7 @@ export function PlayerArea({
     : new Set(completeSetsList.map((s) => s.color)).size;
 
   const [isDragOverBank, setIsDragOverBank] = useState(false);
-  const [dragOverSetColor, setDragOverSetColor] =
-    useState<PropertyColor | null>(null);
+  const [dragOverSetColor] = useState<PropertyColor | null>(null);
 
   // Show drop zones when dragging
   const isDraggingProperty =
@@ -84,132 +83,6 @@ export function PlayerArea({
     const cardId = e.dataTransfer.getData("cardId");
     if (cardId) {
       onDropToBank(cardId);
-    }
-  };
-
-  const handleSetDragOver = (e: React.DragEvent, color: PropertyColor) => {
-    if (!isYou || !onDropToProperty) {
-      e.dataTransfer.dropEffect = "none";
-      return;
-    }
-
-    const cardData = e.dataTransfer.getData("cardData");
-    if (cardData) {
-      try {
-        const card = JSON.parse(cardData);
-
-        if (
-          card.type !== CardType.Property &&
-          card.type !== CardType.PropertyWildcard
-        ) {
-          e.dataTransfer.dropEffect = "none";
-          return;
-        }
-
-        if (card.type === CardType.Property) {
-          const cardColor = card.colors?.[0];
-          if (cardColor !== color) {
-            e.dataTransfer.dropEffect = "none";
-            return;
-          }
-        }
-
-        if (card.type === CardType.PropertyWildcard) {
-          if (
-            color !== PropertyColor.Unassigned &&
-            !card.colors?.includes(color)
-          ) {
-            e.dataTransfer.dropEffect = "none";
-            return;
-          }
-        }
-      } catch {
-        e.dataTransfer.dropEffect = "none";
-        return;
-      }
-    }
-
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverSetColor(color);
-  };
-
-  const handleSetDragLeave = (e: React.DragEvent) => {
-    e.stopPropagation();
-    setDragOverSetColor(null);
-  };
-
-  const handleSetDrop = (e: React.DragEvent, color: PropertyColor) => {
-    if (!isYou || !onDropToProperty) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverSetColor(null);
-    const cardId = e.dataTransfer.getData("cardId");
-    const sourceColor = e.dataTransfer.getData("sourceColor");
-    const cardData = e.dataTransfer.getData("cardData");
-
-    if (sourceColor && onRearrangeProperty) {
-      onRearrangeProperty(cardId, color);
-      return;
-    }
-
-    if (cardId && cardData) {
-      try {
-        const card = JSON.parse(cardData);
-
-        if (
-          card.type !== CardType.Property &&
-          card.type !== CardType.PropertyWildcard
-        ) {
-          return;
-        }
-
-        if (card.type === CardType.Property) {
-          const cardColor = card.colors?.[0];
-
-          const targetSet = player.properties.find((s) => s.color === color);
-          if (targetSet && cardColor && cardColor !== color) {
-            if (color === PropertyColor.Unassigned && onDropToRainbow) {
-              onDropToRainbow(card);
-              return;
-            }
-
-            const wildcards = targetSet.cards.filter(
-              (c) => c.type === CardType.PropertyWildcard,
-            );
-
-            onDropToProperty(cardId, cardColor);
-
-            if (onWildcardClick) {
-              for (const wildcard of wildcards) {
-                if (wildcard.colors?.includes(cardColor)) {
-                  setTimeout(() => {
-                    onWildcardClick(wildcard, cardColor);
-                  }, 100);
-                }
-              }
-            }
-            return;
-          }
-
-          if (cardColor !== color) {
-            return;
-          }
-        }
-
-        if (card.type === CardType.PropertyWildcard) {
-          if (color === PropertyColor.Unassigned) {
-            return;
-          } else if (!card.colors?.includes(color)) {
-            return;
-          }
-        }
-
-        onDropToProperty(cardId, color);
-      } catch {
-        return;
-      }
     }
   };
 
@@ -372,30 +245,6 @@ export function PlayerArea({
                         isYou={isYou}
                         isCurrentTurn={isCurrentTurn}
                         isDragOver={dragOverSetColor === set.color}
-                        onDragOver={
-                          onDropToProperty
-                            ? (e) => handleSetDragOver(e, set.color)
-                            : undefined
-                        }
-                        onDragLeave={
-                          onDropToProperty ? handleSetDragLeave : undefined
-                        }
-                        onDrop={
-                          onDropToProperty
-                            ? (e) => handleSetDrop(e, set.color)
-                            : undefined
-                        }
-                        onDragStart={(e, card) => {
-                          if (isYou && isCurrentTurn) {
-                            e.dataTransfer.setData("cardId", card.id);
-                            e.dataTransfer.setData(
-                              "cardData",
-                              JSON.stringify(card),
-                            );
-                            e.dataTransfer.setData("sourceColor", set.color);
-                            e.dataTransfer.effectAllowed = "move";
-                          }
-                        }}
                         useSocialistTheme={settings?.useSocialistTheme}
                         cardWidth={setsLayout.setWidth}
                       />

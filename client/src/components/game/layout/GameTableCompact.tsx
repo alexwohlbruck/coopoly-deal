@@ -78,8 +78,11 @@ interface GameTableCompactProps {
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
-  onWildcardDragStart?: (e: React.DragEvent, card: Card) => void;
-  onWildcardDragEnd?: () => void;
+  onRearrangeProperty?: (
+    cardId: string,
+    toColor: PropertyColor,
+    createNewSet?: boolean,
+  ) => void;
   onCardClick: (card: Card) => void;
   onEndTurn: () => void;
   setDraggingCard: (card: Card | null) => void;
@@ -97,8 +100,7 @@ export function GameTableCompact({
   onPlayToProperty,
   onRainbowDrop,
   onWildcardClick,
-  onWildcardDragStart,
-  onWildcardDragEnd,
+  onRearrangeProperty,
   onCardClick,
   onEndTurn,
   setDraggingCard,
@@ -526,8 +528,10 @@ export function GameTableCompact({
                 }}
                 onDropToRainbow={onRainbowDrop}
                 onWildcardClick={onWildcardClick}
-                onCardDragStart={onWildcardDragStart}
-                onCardDragEnd={onWildcardDragEnd}
+                onRearrangeProperty={onRearrangeProperty}
+                onDragActiveChange={(isDragging, card) =>
+                  setDraggingCard(isDragging ? card : null)
+                }
               />
             </div>
           </div>

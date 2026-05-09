@@ -1,13 +1,14 @@
 import { useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 
-export type ModalKind = "settings" | "rules" | "credits" | "share";
+export type ModalKind = "settings" | "rules" | "credits" | "share" | "qr-scan";
 
 const VALID_MODALS: readonly ModalKind[] = [
   "settings",
   "rules",
   "credits",
   "share",
+  "qr-scan",
 ];
 
 export function useModalParam() {

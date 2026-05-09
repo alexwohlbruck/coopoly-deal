@@ -3,13 +3,15 @@
 // host controls. Settings panel on the right at desktop, stacked
 // below at compact widths. Footer shows the share-code line.
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, ArrowLeft } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { RulesButton } from "../common/RulesButton";
 import { GameSettingsPanel } from "./GameSettingsPanel";
+import { RoomQrCode } from "./RoomQrCode";
 import { useModalParam } from "../../hooks/useModalParam";
 import { type GameSettings } from "../../types/game";
 import { useI18n } from "../../i18n";
@@ -25,6 +27,8 @@ interface WaitingRoomProps {
   onUpdateSettings: (settings: GameSettings) => void;
   onAddBot: () => void;
   onRemovePlayer?: (playerIdToRemove: string) => void;
+  onUpdateName?: (name: string) => void;
+  onLeave: () => void;
   musicControls?: {
     isPlaying: boolean;
     onToggle: () => void;
@@ -54,6 +58,8 @@ export function WaitingRoom({
   onUpdateSettings,
   onAddBot,
   onRemovePlayer,
+  onUpdateName,
+  onLeave,
   musicControls,
 }: WaitingRoomProps) {
   const { t } = useI18n();
@@ -63,6 +69,10 @@ export function WaitingRoom({
   const isCompact = layout === "compact";
   const { modal, open, close } = useModalParam();
 
+  const [qrEnlarged, setQrEnlarged] = useState(false);
+
+  const me = gameState.players.find((p) => p.id === playerId);
+  const [nameDraft, setNameDraft] = useState(me?.name ?? "");
   const isHost = gameState.players[0]?.id === playerId;
   const canStart = gameState.players.length >= 2;
 
@@ -70,10 +80,8 @@ export function WaitingRoom({
     <div
       className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-start justify-center`}
       style={{
-        // Push content down past the top chrome (Rules button + music
-        // controls). Bottom padding leaves room for the share-code
-        // footer line so it doesn't overlap the settings panel.
-        padding: isCompact ? "70px 12px 56px" : "92px 24px 68px",
+        // Push content down past the top chrome (Rules button + music controls).
+        padding: isCompact ? "70px 12px 24px" : "92px 24px 32px",
       }}
     >
       {/* Top-right music — shared chrome with the home lobby. */}
@@ -106,7 +114,7 @@ export function WaitingRoom({
         transition={{ duration: 0.32, ease: [0.22, 0.9, 0.32, 1] }}
         style={{
           width: "100%",
-          maxWidth: isCompact ? 460 : 740,
+          maxWidth: isCompact ? 460 : 760,
           display: "flex",
           flexDirection: isCompact ? "column" : "row",
           gap: isCompact ? 14 : 24,
@@ -117,8 +125,8 @@ export function WaitingRoom({
         {/* ── Players card ─────────────────────────────────────── */}
         <div
           style={{
-            flex: isCompact ? undefined : "0 0 380px",
-            width: isCompact ? "100%" : 380,
+            flex: isCompact ? undefined : "0 0 400px",
+            width: isCompact ? "100%" : 400,
             padding: isCompact ? 18 : 24,
             borderRadius: 16,
             background: PANEL_BG,
@@ -128,35 +136,108 @@ export function WaitingRoom({
         >
           <div
             style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.1em",
-              color: "rgba(245,234,208,0.55)",
-              textTransform: "uppercase",
-              marginBottom: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginBottom: 12,
             }}
           >
-            Waiting Room
+            <button
+              onClick={onLeave}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "rgba(245,234,208,0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "color var(--d-quick) var(--ease-out-soft)",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#f5ead0";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "rgba(245,234,208,0.4)";
+              }}
+              title="Leave room"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.1em",
+                color: "rgba(245,234,208,0.55)",
+                textTransform: "uppercase",
+              }}
+            >
+              Waiting Room
+            </div>
           </div>
           <div
             style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 24,
-              fontWeight: 700,
-              color: "#f5ead0",
-              letterSpacing: "-0.01em",
-              fontVariantNumeric: "tabular-nums",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+              paddingBottom: 16,
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              marginBottom: 14,
             }}
           >
-            Room {gameState.id}
+            <div
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: isCompact ? 40 : 48,
+                fontWeight: 800,
+                color: "#f5ead0",
+                letterSpacing: "0.08em",
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1,
+              }}
+            >
+              {gameState.id}
+            </div>
+            <button
+              onClick={() => setQrEnlarged(true)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                borderRadius: 8,
+                transition: "transform var(--d-quick) var(--ease-out-soft)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "scale(1.03)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "scale(1)";
+              }}
+              title="Click to enlarge"
+            >
+              <RoomQrCode roomCode={gameState.id} size={isCompact ? 140 : 180} />
+            </button>
+            <span
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                letterSpacing: "0.08em",
+                color: "rgba(245,234,208,0.4)",
+                textTransform: "uppercase",
+              }}
+            >
+              Scan to join · tap to enlarge
+            </span>
           </div>
 
           <div
             style={{
-              marginTop: 14,
-              padding: "14px 0",
-              borderTop: "1px solid rgba(255,255,255,0.06)",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              paddingBottom: 12,
             }}
           >
             <div
@@ -294,6 +375,52 @@ export function WaitingRoom({
             </AnimatePresence>
           </div>
 
+          {/* Your name */}
+          {onUpdateName && (
+            <div
+              style={{
+                borderTop: "1px solid rgba(255,255,255,0.06)",
+                paddingTop: 14,
+              }}
+            >
+              <label
+                style={{
+                  display: "block",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  color: "rgba(245,234,208,0.55)",
+                  textTransform: "uppercase",
+                  marginBottom: 6,
+                }}
+              >
+                Your Name
+              </label>
+              <input
+                type="text"
+                value={nameDraft}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNameDraft(val);
+                  const trimmed = val.trim();
+                  if (trimmed && onUpdateName) onUpdateName(trimmed);
+                }}
+                maxLength={20}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#f5ead0",
+                  fontFamily: "var(--font-ui)",
+                  fontSize: 14,
+                  outline: "none",
+                }}
+              />
+            </div>
+          )}
+
           {isHost ? (
             <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
               <SecondaryButton
@@ -341,40 +468,81 @@ export function WaitingRoom({
           style={{
             flex: isCompact ? undefined : "0 0 320px",
             width: isCompact ? "100%" : 320,
-            padding: isCompact ? 16 : 20,
-            borderRadius: 16,
-            background: PANEL_BG,
-            border: PANEL_BORDER,
-            boxShadow: "var(--sh-panel)",
           }}
         >
           <GameSettingsPanel
             isHost={isHost}
             settings={gameState.settings}
             onSettingsChange={onUpdateSettings}
+            defaultExpanded={!isCompact}
           />
         </div>
       </motion.div>
 
-      {/* Share-code footer */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 18,
-          left: "50%",
-          transform: "translateX(-50%)",
-          fontFamily: "var(--font-mono)",
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          color: "rgba(245,234,208,0.45)",
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-          pointerEvents: "none",
-          zIndex: 4,
-        }}
-      >
-        Share room code · {gameState.id.split("").join(" ")}
-      </div>
+      {/* Enlarged QR overlay */}
+      <AnimatePresence>
+        {qrEnlarged && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setQrEnlarged(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 100,
+              background: "rgba(0,0,0,0.85)",
+              backdropFilter: "blur(12px)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 20,
+              cursor: "pointer",
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              transition={{ duration: 0.2, ease: [0.22, 0.9, 0.32, 1] }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 16,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: 56,
+                  fontWeight: 800,
+                  color: "#f5ead0",
+                  letterSpacing: "0.1em",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                {gameState.id}
+              </div>
+              <RoomQrCode roomCode={gameState.id} size={Math.min(400, window.innerWidth - 80)} />
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  letterSpacing: "0.1em",
+                  color: "rgba(245,234,208,0.5)",
+                  textTransform: "uppercase",
+                }}
+              >
+                Scan to join · tap anywhere to close
+              </span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+

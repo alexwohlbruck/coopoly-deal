@@ -92,7 +92,7 @@ function getActionSubtitle(
     case CardType.DebtCollector:
       return "Pay 5M";
     case CardType.Birthday:
-      return "Everyone pays 2M";
+      return useSocialistTheme ? "All comrades contribute 2M" : "Everyone pays 2M";
     case CardType.PassGo:
       return "Draw 2 cards";
     case CardType.DoubleTheRent:

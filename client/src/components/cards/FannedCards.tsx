@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard, CardBack } from "./GameCard";
 import { useHaptics } from "../../hooks/useHaptics";
+import {
+  findDropZoneAt,
+  setActiveDropZone,
+  type TouchDropSpec,
+} from "../../utils/drop-zone";
 
 // ────────────────────────────────────────────────────────────────────
 // FannedCards — collapsed-by-default fan that expands on hover/tap.
@@ -389,51 +394,9 @@ export function HoverFanHand({
 // dispatches via onTouchDrop. Release elsewhere → tap → onClick.
 // ────────────────────────────────────────────────────────────────────
 
-/** Spec parsed from the [data-touch-drop] attribute on a drop zone. */
-export type TouchDropSpec =
-  | { kind: "bank" }
-  | { kind: "set"; color: string }
-  | { kind: "new-set" };
-
-/** Find the topmost [data-touch-drop] ancestor at the given page point.
- *  Uses elementsFromPoint (plural) and walks the entire z-stack so we
- *  don't get stuck on the lifted card that follows the finger at
- *  z-index 200 — that card has no data-touch-drop, but it would block
- *  the simpler elementFromPoint hit-test from ever reaching the
- *  bank/property-set zones beneath. */
-function findDropZoneAt(
-  clientX: number,
-  clientY: number,
-): { el: HTMLElement; spec: TouchDropSpec } | null {
-  const stack =
-    typeof (
-      document as unknown as { elementsFromPoint?: unknown }
-    ).elementsFromPoint === "function"
-      ? (document as Document & {
-          elementsFromPoint: (x: number, y: number) => Element[];
-        }).elementsFromPoint(clientX, clientY)
-      : ([document.elementFromPoint(clientX, clientY)].filter(
-          Boolean,
-        ) as Element[]);
-  for (const hit of stack) {
-    let el: HTMLElement | null = hit as HTMLElement;
-    while (el) {
-      const raw = el.getAttribute?.("data-touch-drop");
-      if (raw) {
-        if (raw === "bank") return { el, spec: { kind: "bank" } };
-        if (raw === "new-set") return { el, spec: { kind: "new-set" } };
-        if (raw.startsWith("set:")) {
-          return { el, spec: { kind: "set", color: raw.slice(4) } };
-        }
-        // Found a [data-touch-drop] but unknown spec — try the next
-        // element down the stack rather than bailing.
-        break;
-      }
-      el = el.parentElement;
-    }
-  }
-  return null;
-}
+// TouchDropSpec and findDropZoneAt are now in ../../utils/drop-zone.ts
+// Re-export TouchDropSpec for consumers that imported from here.
+export type { TouchDropSpec } from "../../utils/drop-zone";
 
 interface DragPeekHandProps {
   items: HandRenderItem[];
@@ -590,9 +553,7 @@ export function DragPeekHand({
 
   const setActiveZone = (next: HTMLElement | null) => {
     const cur = swipeRef.current?.activeZone ?? null;
-    if (cur === next) return;
-    if (cur) cur.removeAttribute("data-touch-drop-active");
-    if (next) next.setAttribute("data-touch-drop-active", "true");
+    setActiveDropZone(cur, next);
     if (swipeRef.current) swipeRef.current.activeZone = next;
   };
 

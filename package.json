@@ -1,6 +1,6 @@
 {
   "name": "coopoly-deal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && bun dev\" --names \"client,server\" --prefix-colors \"cyan,yellow\"",
@@ -10,7 +10,11 @@
     "docker:deploy:amd64": "docker buildx build --platform linux/amd64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-amd64 --push .",
     "docker:deploy:arm64": "docker buildx build --platform linux/arm64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-arm64 --push .",
     "docker:deploy:manifest": "docker buildx imagetools create -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-amd64 alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest}-arm64",
-    "docker:deploy:single": "docker buildx build --platform linux/amd64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} --push ."
+    "docker:deploy:single": "docker buildx build --platform linux/amd64 -t alexwohlbruck/coopoly-deal:${DOCKER_TAG:-latest} --push .",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

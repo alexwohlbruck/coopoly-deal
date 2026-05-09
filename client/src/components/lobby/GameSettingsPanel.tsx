@@ -12,6 +12,7 @@ interface GameSettingsPanelProps {
   isHost: boolean;
   settings: GameSettings;
   onSettingsChange: (settings: GameSettings) => void;
+  defaultExpanded?: boolean;
 }
 
 const LABEL_STYLE: React.CSSProperties = {
@@ -93,8 +94,9 @@ export function GameSettingsPanel({
   isHost,
   settings,
   onSettingsChange,
+  defaultExpanded = false,
 }: GameSettingsPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const updateSetting = <K extends keyof GameSettings>(
     key: K,

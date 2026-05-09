@@ -710,18 +710,6 @@ function StandingsRow({
             >
               {player.name}
             </span>
-            {isYou && (
-              <span
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 10,
-                  letterSpacing: "0.08em",
-                  color: "var(--accent, #f0c14a)",
-                }}
-              >
-                (YOU)
-              </span>
-            )}
             {rank === 1 && <CrownIcon size={18} />}
           </div>
           <div
@@ -855,7 +843,7 @@ function StandingsRow({
 function MobileStandingsCard({
   player,
   rank,
-  isYou,
+  isYou: _isYou,
   expanded,
   bankTotal,
   completeSets,
@@ -933,18 +921,6 @@ function MobileStandingsCard({
           >
             {player.name}
           </span>
-          {isYou && (
-            <span
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 9,
-                letterSpacing: "0.06em",
-                color: "var(--accent, #f0c14a)",
-              }}
-            >
-              YOU
-            </span>
-          )}
           {rank === 1 && <CrownIcon size={14} />}
           <div
             style={{
@@ -1167,77 +1143,15 @@ export function EndGameSummary({
           </motion.div>
         )}
 
-        {/* Action buttons — right below the winner name, no card chrome.
-            Per design feedback: rematch/leave buttons sit at the top
-            below the winner without a dark background container. */}
-        {(onRematch || onGoHome) && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.15 }}
-            style={{
-              display: "flex",
-              gap: 10,
-              flexShrink: 0,
-              flexDirection: isCompact ? "column" : "row",
-              justifyContent: isCompact ? "stretch" : "center",
-              alignItems: "stretch",
-            }}
-          >
-            {onRematch && (
-              <PrimaryButton
-                onClick={onRematch}
-                size="md"
-                fullWidth={isCompact}
-                style={!isCompact ? { minWidth: 200 } : undefined}
-              >
-                ↻ {t.finished.rematch}
-              </PrimaryButton>
-            )}
-            {onShare && (
-            <SecondaryButton
-              onClick={onShare}
-              size="md"
-              fullWidth={isCompact}
-              style={
-                !isCompact
-                  ? { minWidth: 160, display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
-                  : { display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
-              }
-            >
-              <Share2 className="w-4 h-4" />
-              {t.finished.share}
-            </SecondaryButton>
-            )}
-            {onReturnToLobby && (
-              <SecondaryButton
-                onClick={onReturnToLobby}
-                size="md"
-                fullWidth={isCompact}
-                style={!isCompact ? { minWidth: 200 } : undefined}
-              >
-                {t.finished.changePlayers}
-              </SecondaryButton>
-            )}
-            {onGoHome && (
-              <SecondaryButton
-                onClick={onGoHome}
-                size="md"
-                fullWidth={isCompact}
-                style={!isCompact ? { minWidth: 200 } : undefined}
-              >
-                {t.finished.leave}
-              </SecondaryButton>
-            )}
-          </motion.div>
-        )}
-
         {/* Final Standings ledger */}
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             gap: isCompact ? 8 : 10,
+            // Extra bottom padding so the last standings row isn't hidden
+            // behind the fixed action bar at the bottom.
+            paddingBottom: isCompact ? 100 : 80,
           }}
         >
           <div
@@ -1320,6 +1234,79 @@ export function EndGameSummary({
         </div>
 
       </div>
+
+      {/* Fixed bottom action bar */}
+      {(onRematch || onGoHome) && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+            padding: isCompact ? "12px 14px" : "14px 36px",
+            paddingBottom: isCompact
+              ? "max(12px, env(safe-area-inset-bottom))"
+              : "14px",
+            background:
+              "linear-gradient(180deg, rgba(16,10,8,0) 0%, rgba(16,10,8,0.85) 30%, rgba(16,10,8,0.96) 100%)",
+            display: "flex",
+            gap: 10,
+            flexDirection: isCompact ? "column" : "row",
+            justifyContent: isCompact ? "stretch" : "center",
+            alignItems: "stretch",
+          }}
+        >
+          {onRematch && (
+            <PrimaryButton
+              onClick={onRematch}
+              size="md"
+              fullWidth={isCompact}
+              style={!isCompact ? { minWidth: 200 } : undefined}
+            >
+              ↻ {t.finished.rematch}
+            </PrimaryButton>
+          )}
+          {onShare && (
+            <SecondaryButton
+              onClick={onShare}
+              size="md"
+              fullWidth={isCompact}
+              style={
+                !isCompact
+                  ? { minWidth: 160, display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
+                  : { display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }
+              }
+            >
+              <Share2 className="w-4 h-4" />
+              {t.finished.share}
+            </SecondaryButton>
+          )}
+          {onReturnToLobby && (
+            <SecondaryButton
+              onClick={onReturnToLobby}
+              size="md"
+              fullWidth={isCompact}
+              style={!isCompact ? { minWidth: 200 } : undefined}
+            >
+              {t.finished.changePlayers}
+            </SecondaryButton>
+          )}
+          {onGoHome && (
+            <SecondaryButton
+              onClick={onGoHome}
+              size="md"
+              fullWidth={isCompact}
+              style={!isCompact ? { minWidth: 200 } : undefined}
+            >
+              {t.finished.leave}
+            </SecondaryButton>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }

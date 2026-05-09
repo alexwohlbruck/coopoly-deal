@@ -6,6 +6,7 @@ WORKDIR /app/client
 COPY client/package.json client/bun.lock* ./
 RUN bun install --frozen-lockfile
 COPY client/ ./
+COPY package.json /app/package.json
 RUN bun run build
 
 # -- Build server --

@@ -91,7 +91,9 @@ export const useGameStore = create<GameStore>()(
       name: "coopoly-settings",
       partialize: (state) => ({
         theme: state.theme,
+        playerId: state.playerId,
         playerName: state.playerName,
+        roomCode: state.roomCode,
         preferredSettings: state.preferredSettings,
         sessionStats: state.sessionStats,
       }),

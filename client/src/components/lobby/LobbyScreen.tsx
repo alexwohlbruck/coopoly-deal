@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, Github } from "lucide-react";
+import { Settings, Github, ScanLine } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { CreditsModal } from "../common/CreditsModal";
 import { RulesButton } from "../common/RulesButton";
 import { IconButton } from "../common/IconButton";
 import { SettingsPanel } from "../game/SettingsPanel";
+import { QrScannerModal } from "./QrScannerModal";
 import { useSoundSettings } from "../../hooks/useSoundManager";
 import { useModalParam } from "../../hooks/useModalParam";
 
@@ -16,7 +17,7 @@ import { getTheme } from "../../theme/colors";
 import { PrimaryButton, SecondaryButton } from "../ui/Button";
 
 interface LobbyScreenProps {
-  onCreateRoom: () => void;
+  onCreateRoom: (name: string) => void;
   onJoinRoom: (code: string, name: string) => void;
   musicControls?: {
     isPlaying: boolean;
@@ -33,17 +34,18 @@ export function LobbyScreen({
   const { t } = useI18n();
   const { playerName: savedPlayerName, theme } = useGameStore();
   const [roomCode, setRoomCode] = useState("");
+  const [name, setName] = useState(savedPlayerName ?? "");
   const { modal, open, close } = useModalParam();
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const themeData = getTheme(theme);
 
-  const canJoin = roomCode.length === 6;
+  const hasName = !!name.trim();
+  const canJoin = roomCode.length === 6 && hasName;
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Server-side will prompt for name if not set; otherwise reuse stored.
     if (canJoin) {
-      onJoinRoom(roomCode.trim(), savedPlayerName || "");
+      onJoinRoom(roomCode.trim(), name.trim());
     }
   };
 
@@ -80,6 +82,15 @@ export function LobbyScreen({
 
       <CreditsModal isOpen={modal === "credits"} onClose={close} />
 
+      <QrScannerModal
+        isOpen={modal === "qr-scan"}
+        onClose={close}
+        onCodeScanned={(code) => {
+          setRoomCode(code);
+          if (name.trim()) onJoinRoom(code, name.trim());
+        }}
+      />
+
       <SettingsPanel
         isOpen={modal === "settings"}
         onClose={close}
@@ -107,9 +118,7 @@ export function LobbyScreen({
               textTransform: "uppercase",
             }}
           >
-            {savedPlayerName
-              ? t.lobby.welcomeBackName.replace("{name}", savedPlayerName)
-              : t.lobby.welcomeBack}
+            {t.lobby.welcomeBack}
           </div>
           <h1
             style={{
@@ -149,9 +158,45 @@ export function LobbyScreen({
             gap: 12,
           }}
         >
+          {/* Name input */}
+          <div>
+            <label
+              style={{
+                display: "block",
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                color: "rgba(245,234,208,0.55)",
+                textTransform: "uppercase",
+                marginBottom: 6,
+              }}
+            >
+              Your Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              maxLength={20}
+              style={{
+                width: "100%",
+                padding: "13px 14px",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#f5ead0",
+                fontFamily: "var(--font-ui)",
+                fontSize: 14,
+                outline: "none",
+              }}
+            />
+          </div>
+
           {/* Create — primary CTA */}
           <PrimaryButton
-            onClick={onCreateRoom}
+            onClick={() => onCreateRoom(name.trim())}
+            disabled={!hasName}
             fullWidth
             size="lg"
           >
@@ -191,7 +236,7 @@ export function LobbyScreen({
             />
           </div>
 
-          {/* Inline join form: code input + Join button side-by-side */}
+          {/* Inline join form: code input + scan + Join button */}
           <form onSubmit={handleJoin} style={{ display: "flex", gap: 8 }}>
             <input
               type="text"
@@ -214,6 +259,34 @@ export function LobbyScreen({
                 textAlign: "center",
               }}
             />
+            <button
+              type="button"
+              onClick={() => open("qr-scan")}
+              title={t.lobby.scanQrTitle ?? "Scan QR"}
+              style={{
+                padding: "0 12px",
+                borderRadius: 10,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(245,234,208,0.65)",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition:
+                  "color var(--d-quick) var(--ease-out-soft), background var(--d-quick) var(--ease-out-soft)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--accent, #f0c14a)";
+                e.currentTarget.style.background = "rgba(240,193,74,0.1)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "rgba(245,234,208,0.65)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+              }}
+            >
+              <ScanLine className="w-5 h-5" />
+            </button>
             <SecondaryButton
               type="submit"
               disabled={!canJoin}
@@ -327,6 +400,10 @@ export function LobbyScreen({
           >
             {t.lobby.credits}
           </button>
+          {" · "}
+          <span style={{ color: "rgba(245,234,208,0.3)" }}>
+            v{__APP_VERSION__}
+          </span>
         </div>
       </motion.div>
     </div>

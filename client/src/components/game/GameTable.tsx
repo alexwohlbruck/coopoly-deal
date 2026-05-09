@@ -464,13 +464,8 @@ export function GameTable({
           onPlayToProperty={onPlayToProperty}
           onRainbowDrop={(card) => setRainbowDropData({ card })}
           onWildcardClick={handleWildcardClick}
-          onWildcardDragStart={(e, card) => {
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("cardId", card.id);
-            e.dataTransfer.setData("cardData", JSON.stringify(card));
-            setDraggingCard(card);
-          }}
-          onWildcardDragEnd={() => setDraggingCard(null)}
+          onRearrangeProperty={onRearrangeProperty}
+          setDraggingCard={setDraggingCard}
           bottomBar={bottomBar}
         />
       ) : (
@@ -486,13 +481,7 @@ export function GameTable({
             onPlayToProperty={onPlayToProperty}
             onRainbowDrop={(card) => setRainbowDropData({ card })}
             onWildcardClick={handleWildcardClick}
-            onWildcardDragStart={(e, card) => {
-              e.dataTransfer.effectAllowed = "move";
-              e.dataTransfer.setData("cardId", card.id);
-              e.dataTransfer.setData("cardData", JSON.stringify(card));
-              setDraggingCard(card);
-            }}
-            onWildcardDragEnd={() => setDraggingCard(null)}
+            onRearrangeProperty={onRearrangeProperty}
             onCardClick={handleCardClick}
             onEndTurn={handleEndTurn}
             setDraggingCard={setDraggingCard}

@@ -101,10 +101,12 @@ export function ActionPrompt({
     return sum;
   }, 0);
 
+  // In a JSN chain, the responding player only gets Accept/JSN — never payment
   const needsPayment =
-    action.type === "rent" ||
-    action.type === "debtCollector" ||
-    action.type === "birthday";
+    !isJSNChain &&
+    (action.type === "rent" ||
+      action.type === "debtCollector" ||
+      action.type === "birthday");
   const amountDue = action.amount ?? 0;
 
   const totalTableValue = (() => {
@@ -162,7 +164,9 @@ export function ActionPrompt({
       case "debtCollector":
         return `${sourcePlayer?.name ?? "Someone"} demands ${amountDue}M!`;
       case "birthday":
-        return `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
+        return settings.useSocialistTheme
+          ? `Comrade ${sourcePlayer?.name ?? "someone"} demands a solidarity contribution of ${amountDue}M!`
+          : `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
       case "slyDeal":
         return `${sourcePlayer?.name ?? "Someone"} wants to ${settings.useSocialistTheme ? "expropriate" : "steal"} your property!`;
       case "forceDeal":
