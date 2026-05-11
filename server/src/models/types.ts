@@ -43,7 +43,6 @@ export interface GameSettings {
   turnTimer: number;
   allowDuplicateSets: boolean;
   wildcardFlipCountsAsMove: boolean;
-  useSocialistTheme: boolean;
   botSpeed: "slow" | "normal" | "fast" | "instant";
 }
 
@@ -52,7 +51,6 @@ export const DEFAULT_SETTINGS: GameSettings = {
   turnTimer: 30,
   allowDuplicateSets: true,
   wildcardFlipCountsAsMove: false,
-  useSocialistTheme: false,
   botSpeed: "normal",
 };
 

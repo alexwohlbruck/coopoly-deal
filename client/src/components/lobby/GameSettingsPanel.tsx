@@ -7,6 +7,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Settings } from "lucide-react";
 import { type GameSettings } from "../../types/game";
+import { Toggle } from "../ui/Toggle";
 
 interface GameSettingsPanelProps {
   isHost: boolean;
@@ -40,55 +41,8 @@ const ROW_HINT_STYLE: React.CSSProperties = {
   lineHeight: 1.3,
 };
 
-// Custom checkbox-as-pill: replaces the default browser checkbox with
-// a small framed switch matching the rest of the design.
-function CheckTile({
-  checked,
-  onChange,
-  disabled,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => !disabled && onChange(!checked)}
-      disabled={disabled}
-      style={{
-        width: 36,
-        height: 22,
-        borderRadius: 999,
-        background: checked
-          ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
-          : "rgba(255,255,255,0.08)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        position: "relative",
-        cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1,
-        transition: "background var(--d-quick) var(--ease-out-soft)",
-        flexShrink: 0,
-        padding: 0,
-      }}
-    >
-      <span
-        style={{
-          position: "absolute",
-          top: 2,
-          left: checked ? 16 : 2,
-          width: 16,
-          height: 16,
-          borderRadius: 999,
-          background: checked ? "#1a1208" : "rgba(245,234,208,0.85)",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.4)",
-          transition: "left var(--d-quick) var(--ease-out-soft)",
-        }}
-      />
-    </button>
-  );
-}
+// CheckTile is now the shared <Toggle> component from ui/Toggle.tsx.
+const CheckTile = Toggle;
 
 export function GameSettingsPanel({
   isHost,
@@ -305,11 +259,6 @@ export function GameSettingsPanel({
                   key: "wildcardFlipCountsAsMove" as const,
                   label: "Wildcard Flip Counts as Move",
                   hint: "Changing a wildcard's color uses one of your 3 moves (disables Rainbow set)",
-                },
-                {
-                  key: "useSocialistTheme" as const,
-                  label: "Dialectical Lens",
-                  hint: "Read the deal through Marxist dialectics — comrades, levies, and expropriation in place of players, rent, and theft.",
                 },
               ].map(({ key, label, hint }) => (
                 <div

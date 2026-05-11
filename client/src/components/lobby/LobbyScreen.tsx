@@ -32,7 +32,7 @@ export function LobbyScreen({
   musicControls,
 }: LobbyScreenProps) {
   const { t } = useI18n();
-  const { playerName: savedPlayerName, theme } = useGameStore();
+  const { playerName: savedPlayerName, theme, useSocialistTheme } = useGameStore();
   const [roomCode, setRoomCode] = useState("");
   const [name, setName] = useState(savedPlayerName ?? "");
   const { modal, open, close } = useModalParam();
@@ -108,18 +108,6 @@ export function LobbyScreen({
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              letterSpacing: "0.1em",
-              color: "rgba(245,234,208,0.55)",
-              marginBottom: 8,
-              textTransform: "uppercase",
-            }}
-          >
-            {t.lobby.welcomeBack}
-          </div>
           <h1
             style={{
               fontFamily: "var(--font-display)",
@@ -131,7 +119,7 @@ export function LobbyScreen({
               margin: 0,
             }}
           >
-            {t.lobby.title}
+            {useSocialistTheme ? "Co-Opoly Deal" : t.lobby.title}
           </h1>
           <p
             style={{
@@ -140,7 +128,7 @@ export function LobbyScreen({
               marginTop: 8,
             }}
           >
-            {t.lobby.subtitle}
+            {useSocialistTheme ? "The socialist card game" : t.lobby.subtitle}
           </p>
         </div>
 

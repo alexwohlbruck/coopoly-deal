@@ -11,6 +11,7 @@ import {
   WildcardColorOption,
   rentGainFor,
 } from "./WildcardColorOption";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface WildcardAssignmentPromptProps {
   assignment: PendingWildcardAssignment;
@@ -28,6 +29,7 @@ export function WildcardAssignmentPrompt({
   settings,
   onAssign,
 }: WildcardAssignmentPromptProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   // Determine the "best" choice — the color that yields the highest
   // rent gain. Skipped for the rainbow / unassigned option.
   const gains = assignment.availableColors
@@ -105,7 +107,7 @@ export function WildcardAssignmentPrompt({
               player={player}
               isBest={color === bestColor}
               onClick={() => onAssign(assignment.cardId, color)}
-              useSocialistTheme={settings.useSocialistTheme}
+              useSocialistTheme={useSocialistTheme}
             />
           );
         })}

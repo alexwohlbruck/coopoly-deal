@@ -3,6 +3,7 @@ import { TurnPhase, isPlayerWaitingForAction } from "../../types/game";
 import { CardBack } from "../cards/GameCard";
 import { CardHand } from "./CardHand";
 import { useI18n } from "../../i18n";
+import { useGameStore } from "../../hooks/useGameStore";
 import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -44,6 +45,7 @@ export function PlayerTurnBar({
   peekResetSignal = null,
 }: PlayerTurnBarProps) {
   const { t } = useI18n();
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
 
   const me = gameState.players.find((p) => p.id === playerId);
   const allPlayers = gameState.players;
@@ -122,7 +124,7 @@ export function PlayerTurnBar({
           <div className="relative">
             <CardBack
               width={64}
-              useSocialistTheme={gameState.settings.useSocialistTheme}
+              useSocialistTheme={useSocialistTheme}
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <span className="text-white text-xs font-bold drop-shadow-lg">
@@ -133,7 +135,7 @@ export function PlayerTurnBar({
           <div className="relative">
             <CardBack
               width={64}
-              useSocialistTheme={gameState.settings.useSocialistTheme}
+              useSocialistTheme={useSocialistTheme}
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-gray-200 text-[7px] font-bold drop-shadow">
@@ -182,7 +184,7 @@ export function PlayerTurnBar({
               <div className="flex items-center justify-center gap-1.5">
                 <p className="text-gray-300 text-xs">
                   {currentTurnPlayer?.name}'s{" "}
-                  {gameState.settings?.useSocialistTheme ? "shift" : "turn"}
+                  {useSocialistTheme ? "shift" : "turn"}
                 </p>
                 {timeLeft !== null && (
                   <span
@@ -273,7 +275,7 @@ export function PlayerTurnBar({
             onDragToBank={(card) => onPlayToBank(card.id)}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
-            useSocialistTheme={gameState.settings.useSocialistTheme}
+            useSocialistTheme={useSocialistTheme}
             fanMode={hideRedundantChrome ? "hover" : null}
             peekResetSignal={peekResetSignal}
           />

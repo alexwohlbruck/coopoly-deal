@@ -21,7 +21,6 @@ function gameSettingsData(game: import("../models/types.ts").GameState) {
     turn_timer: game.settings.turnTimer,
     allow_duplicate_sets: game.settings.allowDuplicateSets,
     wildcard_flip_counts_as_move: game.settings.wildcardFlipCountsAsMove,
-    socialist_theme: game.settings.useSocialistTheme,
     bot_speed: game.settings.botSpeed,
   };
 }

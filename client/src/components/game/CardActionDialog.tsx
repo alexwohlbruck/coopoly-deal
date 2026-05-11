@@ -20,6 +20,7 @@ import {
   WildcardColorOption,
   rentGainFor,
 } from "./WildcardColorOption";
+import { useGameStore } from "../../hooks/useGameStore";
 
 /**
  * Card + caption tile used in steal / swap pickers. Shows the card
@@ -156,6 +157,7 @@ export function CardActionDialog({
   onPlayToProperty,
   onPlayAction,
 }: CardActionDialogProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   console.log("[CardActionDialog] Component rendered", {
     cardType: card.type,
     cardId: card.id,
@@ -749,7 +751,7 @@ export function CardActionDialog({
             fullWidth
             size="lg"
           >
-            {settings.useSocialistTheme ? "Use Directive" : "Use Action"}
+            {useSocialistTheme ? "Use Directive" : "Use Action"}
           </PrimaryButton>
         )}
       </div>
@@ -770,7 +772,7 @@ export function CardActionDialog({
           eats vertical space the actual decision UI needs. */}
       {step === "choose" && (
         <div className="flex justify-center mb-3">
-          <GameCard card={activeCard} useSocialistTheme={settings.useSocialistTheme} />
+          <GameCard card={activeCard} useSocialistTheme={useSocialistTheme} />
         </div>
       )}
 
@@ -784,7 +786,7 @@ export function CardActionDialog({
         <div>
           <p className="text-gray-300 text-sm mb-2">
             {activeCard.type === CardType.RentDual || activeCard.type === CardType.RentWild
-              ? settings.useSocialistTheme ? "Select a color to charge levy:" : "Select a color to charge rent:"
+              ? useSocialistTheme ? "Select a color to charge levy:" : "Select a color to charge rent:"
               : activeCard.type === CardType.PropertyWildcard
                 ? "Pick a color. Each tile shows your current set count and the rent ladder — the highlighted row is where this card lands."
                 : "Select a color:"}
@@ -794,7 +796,7 @@ export function CardActionDialog({
               activeCard.type === CardType.RentWild) && (
               <div className="mb-2 p-2 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
                 <p className="text-yellow-300 text-xs font-semibold text-center">
-                  🎯 {settings.useSocialistTheme ? "Levy" : "Rent"} will be {rentMultiplier * Math.pow(2, selectedDtrCardIds.length)}x (Doubled!)
+                  🎯 {useSocialistTheme ? "Levy" : "Rent"} will be {rentMultiplier * Math.pow(2, selectedDtrCardIds.length)}x (Doubled!)
                 </p>
               </div>
             )}
@@ -834,7 +836,7 @@ export function CardActionDialog({
                         onPlayToProperty(activeCard.id, color);
                         onClose();
                       }}
-                      useSocialistTheme={settings.useSocialistTheme}
+                      useSocialistTheme={useSocialistTheme}
                     />
                   ))}
                 </div>
@@ -978,11 +980,11 @@ export function CardActionDialog({
                     </span>
                   )}
                   <span>
-                    {getPropertyColorLabel(color, settings.useSocialistTheme)}
+                    {getPropertyColorLabel(color, useSocialistTheme)}
                   </span>
                   {finalRent !== null && (
                     <span className="text-xs mt-1 opacity-90">
-                      ${finalRent}M {settings.useSocialistTheme ? "levy" : "rent"}
+                      ${finalRent}M {useSocialistTheme ? "levy" : "rent"}
                       {combinedMultiplier > 1 && baseRent !== null && (
                         <span className="ml-1 text-yellow-300">
                           (${baseRent}M × {combinedMultiplier})
@@ -995,7 +997,7 @@ export function CardActionDialog({
                     const bonus = activeCard.type === CardType.House ? 3 : 4;
                     return (
                       <span className="text-xs mt-1 opacity-90">
-                        ${currentRent}M → ${currentRent + bonus}M {settings.useSocialistTheme ? "levy" : "rent"}
+                        ${currentRent}M → ${currentRent + bonus}M {useSocialistTheme ? "levy" : "rent"}
                       </span>
                     );
                   })()}
@@ -1016,7 +1018,7 @@ export function CardActionDialog({
       {step === "selectTarget" && (
         <div>
           <p className="text-gray-300 text-sm mb-2">
-            {settings.useSocialistTheme ? "Select a comrade:" : "Select a player:"}
+            {useSocialistTheme ? "Select a comrade:" : "Select a player:"}
           </p>
           <p
             style={{
@@ -1205,7 +1207,7 @@ export function CardActionDialog({
                   key={c.id}
                   card={c}
                   player={selectedTarget}
-                  useSocialistTheme={settings.useSocialistTheme}
+                  useSocialistTheme={useSocialistTheme}
                   onClick={() => handleSelectTargetCard(c.id)}
                 />
               ))}
@@ -1239,7 +1241,7 @@ export function CardActionDialog({
                   key={c.id}
                   card={c}
                   player={player}
-                  useSocialistTheme={settings.useSocialistTheme}
+                  useSocialistTheme={useSocialistTheme}
                   onClick={() => handleSelectMyCard(c.id)}
                 />
               ))}
@@ -1252,7 +1254,6 @@ export function CardActionDialog({
           activeCard={activeCard}
           opponents={opponents}
           player={player}
-          settings={settings}
           selectedTarget={selectedTarget}
           selectedTargetCard={selectedTargetCard}
           selectedMyCard={selectedMyCard}
@@ -1284,17 +1285,17 @@ export function CardActionDialog({
         <div className="flex flex-col items-center space-y-4 px-4 w-full">
           <div className="w-full text-left">
             <h3 className="text-lg font-semibold text-white mb-2">
-              {settings.useSocialistTheme ? "Collect the Mandatory State Levy" : "Play Rent Cards"}
+              {useSocialistTheme ? "Collect the Mandatory State Levy" : "Play Rent Cards"}
             </h3>
             
-            {settings.useSocialistTheme && (
+            {useSocialistTheme && (
               <div className="bg-yellow-500/10 border-l-4 border-yellow-500 p-2 text-sm italic text-yellow-200/80 mb-4">
                 "The state demands its fair share. Combine directives to maximize your expropriation."
               </div>
             )}
             
             <p className="text-gray-300 text-sm">
-              Select a {settings.useSocialistTheme ? "levy" : "rent"} card and any multipliers you wish to use. You can play up to {3 - cardsPlayed} cards total.
+              Select a {useSocialistTheme ? "levy" : "rent"} card and any multipliers you wish to use. You can play up to {3 - cardsPlayed} cards total.
             </p>
           </div>
 
@@ -1321,7 +1322,7 @@ export function CardActionDialog({
                 }
                 
                 if (baseRent === 0) {
-                  return <div className="text-gray-400 italic text-sm py-4">No valid properties to charge {settings.useSocialistTheme ? "levy" : "rent"}</div>;
+                  return <div className="text-gray-400 italic text-sm py-4">No valid properties to charge {useSocialistTheme ? "levy" : "rent"}</div>;
                 }
                 
                 return (
@@ -1351,7 +1352,7 @@ export function CardActionDialog({
                   </div>
                 );
             })() : (
-              <div className="text-gray-400 italic text-sm py-4">Select a {settings.useSocialistTheme ? "levy" : "rent"} card to see total</div>
+              <div className="text-gray-400 italic text-sm py-4">Select a {useSocialistTheme ? "levy" : "rent"} card to see total</div>
             )}
           </div>
 
@@ -1375,7 +1376,7 @@ export function CardActionDialog({
                     card={c}
                     width={96}
                     selected={isSelected}
-                    useSocialistTheme={settings.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                     onClick={() => {
                       if (isRentCard) {
                         if (selectedRentCardId === c.id) {
@@ -1424,12 +1425,12 @@ export function CardActionDialog({
               }`}
             >
               {(!selectedRentCardId && selectedDtrCardIds.length > 0)
-                ? (settings.useSocialistTheme ? "Select a Levy card" : "Select a Rent card")
+                ? (useSocialistTheme ? "Select a Levy card" : "Select a Rent card")
                 : "Play Selected Cards"}
             </button>
             {(!selectedRentCardId && selectedDtrCardIds.length > 0) && (
               <p className="text-red-400 text-xs text-center">
-                You must select a {settings.useSocialistTheme ? "levy" : "rent"} card to use a multiplier.
+                You must select a {useSocialistTheme ? "levy" : "rent"} card to use a multiplier.
               </p>
             )}
             {((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) > 3 - cardsPlayed && (
@@ -1454,7 +1455,7 @@ export function CardActionDialog({
                 className="py-2 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                 style={{ backgroundColor: PROPERTY_COLOR_HEX[set.color] }}
               >
-                {getPropertyColorLabel(set.color, settings.useSocialistTheme)}
+                {getPropertyColorLabel(set.color, useSocialistTheme)}
               </button>
             ))}
           </div>
@@ -1476,7 +1477,6 @@ function ForceDealSwapStep({
   activeCard,
   opponents,
   player,
-  settings,
   selectedTarget,
   selectedTargetCard,
   selectedMyCard,
@@ -1488,7 +1488,6 @@ function ForceDealSwapStep({
   activeCard: Card;
   opponents: ClientPlayer[];
   player: ClientPlayer;
-  settings: GameSettings;
   selectedTarget: ClientPlayer | null;
   selectedTargetCard: string | null;
   selectedMyCard: string | null;
@@ -1497,6 +1496,7 @@ function ForceDealSwapStep({
   onSelectMyCard: (id: string) => void;
   onConfirm: () => void;
 }) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   // activeCard is the Force Deal action card itself — referenced
   // mostly so this prop is "used"; the real card-pickers below pull
   // from the player/opponent property sets.
@@ -1699,7 +1699,7 @@ function ForceDealSwapStep({
                         selectedTarget?.id === opp.id &&
                         selectedTargetCard === c.id
                       }
-                      useSocialistTheme={settings.useSocialistTheme}
+                      useSocialistTheme={useSocialistTheme}
                       onClick={() => {
                         if (selectedTarget?.id !== opp.id) {
                           onSelectTarget(opp);
@@ -1736,7 +1736,7 @@ function ForceDealSwapStep({
               card={c}
               player={player}
               selected={selectedMyCard === c.id}
-              useSocialistTheme={settings.useSocialistTheme}
+              useSocialistTheme={useSocialistTheme}
               onClick={() => onSelectMyCard(c.id)}
             />
           ))}

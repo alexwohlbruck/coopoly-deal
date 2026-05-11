@@ -14,6 +14,7 @@ import {
   WildcardColorOption,
   rentGainFor,
 } from "./WildcardColorOption";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface WildcardFlipDialogProps {
   card: Card;
@@ -32,6 +33,7 @@ export function WildcardFlipDialog({
   onFlip,
   onClose,
 }: WildcardFlipDialogProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const isMultiWildcard = card.colors && card.colors.length > 2;
 
   const availableColors = isMultiWildcard
@@ -174,7 +176,7 @@ export function WildcardFlipDialog({
                 onFlip(color);
                 onClose();
               }}
-              useSocialistTheme={settings.useSocialistTheme}
+              useSocialistTheme={useSocialistTheme}
             />
           );
         })}

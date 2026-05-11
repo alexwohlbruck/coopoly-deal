@@ -26,6 +26,7 @@ import {
   OpponentRail,
   TurnPill,
 } from "./Chrome";
+
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
 import { CardHand } from "../CardHand";
 import { PrimaryButton } from "../../ui/Button";
@@ -81,7 +82,7 @@ export function GameTableCompact({
   const me = gameState.players.find((p) => p.id === playerId);
   const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
   const setToast = useGameStore((s) => s.setToast);
-  const useSocialistTheme = !!gameState.settings.useSocialistTheme;
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
 
   const seatPlayers = useMemo(
     () =>
@@ -145,6 +146,7 @@ export function GameTableCompact({
 
       {/* 2. Active opponent's table */}
       <div
+        data-table-panel
         style={{
           flex: 1,
           minHeight: 0,
@@ -292,6 +294,7 @@ export function GameTableCompact({
       {/* 4. Your sets + bank — gold platter (compact) */}
       {me && (
         <div
+          data-platter
           ref={yourTableRef}
           style={{
             flexShrink: 0,
@@ -435,7 +438,7 @@ export function GameTableCompact({
             }}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
-            useSocialistTheme={gameState.settings.useSocialistTheme}
+            useSocialistTheme={useSocialistTheme}
             fanMode="drag"
             peekResetSignal={peekResetSignal}
           />

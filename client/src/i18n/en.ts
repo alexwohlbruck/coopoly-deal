@@ -2,8 +2,8 @@ import type { Translations } from "./index";
 
 export const en: Translations = {
   lobby: {
-    title: "Co-Opoly Deal",
-    subtitle: "The socialist card game",
+    title: "Monopoly Deal",
+    subtitle: "The online card game",
     welcomeBack: "Welcome back",
     welcomeBackName: "Welcome back, {name}",
     createRoom: "Create Room",
@@ -128,7 +128,7 @@ export const en: Translations = {
   },
   rules: {
     eyebrow: "How to play",
-    title: "Co-Opoly Deal · Rules",
+    title: "Monopoly Deal · Rules",
     close: "Close",
     gotIt: "Got it",
     dialecticalLens: "Dialectical Lens",

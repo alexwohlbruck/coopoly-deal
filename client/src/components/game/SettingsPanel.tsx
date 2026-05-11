@@ -14,6 +14,75 @@ import {
 } from "../../hooks/useSoundManager";
 import { previewHaptic } from "../../hooks/useHaptics";
 import { useModalParam } from "../../hooks/useModalParam";
+import { Toggle } from "../ui/Toggle";
+
+// ─── Shared inline styles ──────────────────────────────────────────
+
+const ROW_STYLE: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+};
+
+const ROW_LABEL_STYLE: React.CSSProperties = {
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "#f5ead0",
+};
+
+const SECTION_LABEL_STYLE: React.CSSProperties = {
+  fontFamily: "var(--font-ui)",
+  fontSize: 13,
+  fontWeight: 600,
+  color: "rgba(245,234,208,0.7)",
+  marginBottom: 8,
+  display: "block",
+};
+
+const SELECT_STYLE: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 8,
+  fontFamily: "var(--font-display)",
+  fontWeight: 600,
+  fontSize: 13,
+  letterSpacing: "-0.005em",
+  color: "#f5ead0",
+  background:
+    "linear-gradient(180deg, rgba(28,22,20,0.9) 0%, rgba(16,10,8,0.96) 100%)",
+  border: "1px solid rgba(245,234,208,0.12)",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+  cursor: "pointer",
+  appearance: "none" as const,
+  backgroundImage:
+    "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23f0c14a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+  backgroundRepeat: "no-repeat",
+  backgroundPosition: "right 14px center",
+  paddingRight: 32,
+};
+
+const PILL_LINK_STYLE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  width: "100%",
+  padding: "10px 12px",
+  borderRadius: 10,
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  letterSpacing: "0.06em",
+  textTransform: "uppercase",
+  color: "rgba(245,234,208,0.6)",
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(245,234,208,0.08)",
+  textDecoration: "none",
+  cursor: "pointer",
+};
+
+// ────────────────────────────────────────────────────────────────────
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -41,7 +110,7 @@ export function SettingsPanel({
   musicControls,
 }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
-  const { theme, setTheme } = useGameStore();
+  const { theme, setTheme, useSocialistTheme, setUseSocialistTheme } = useGameStore();
   const [handLimit, setHandLimit] = useState(currentHandLimit);
   const soundTheme = useSoundSettings((s) => s.soundTheme);
   const setSoundTheme = useSoundSettings((s) => s.setSoundTheme);
@@ -72,12 +141,10 @@ export function SettingsPanel({
       height="h-[80vh]"
       footer={footer}
     >
-      <div className="space-y-6 pb-4">
+      <div style={{ display: "flex", flexDirection: "column", gap: 24, paddingBottom: 16 }}>
         {/* Theme Selection */}
         <div>
-          <label className="text-gray-300 text-sm font-medium mb-2 block">
-            {t.settings.theme}
-          </label>
+          <span style={SECTION_LABEL_STYLE}>{t.settings.theme}</span>
           <div className="grid grid-cols-5 gap-2">
             {THEME_IDS.map((themeName: ThemeName) => {
               const t = themes[themeName];
@@ -99,37 +166,24 @@ export function SettingsPanel({
               );
             })}
           </div>
+
+          {/* Co-Opoly Deal mode — inline with theme swatches */}
+          <div style={{ ...ROW_STYLE, marginTop: 12 }}>
+            <span style={{ ...ROW_LABEL_STYLE, fontSize: 12 }}>☭ Co-Opoly Deal</span>
+            <Toggle
+              checked={useSocialistTheme}
+              onChange={(next) => setUseSocialistTheme(next)}
+            />
+          </div>
         </div>
 
         {/* Language Selection */}
         <div>
-          <label className="text-gray-300 text-sm font-medium mb-2 block">
-            {t.settings.language}
-          </label>
+          <span style={SECTION_LABEL_STYLE}>{t.settings.language}</span>
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value as Locale)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 8,
-              fontFamily: "var(--font-display)",
-              fontWeight: 600,
-              fontSize: 13,
-              letterSpacing: "-0.005em",
-              color: "#f5ead0",
-              background:
-                "linear-gradient(180deg, rgba(28,22,20,0.9) 0%, rgba(16,10,8,0.96) 100%)",
-              border: "1px solid rgba(245,234,208,0.12)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-              cursor: "pointer",
-              appearance: "none",
-              backgroundImage:
-                "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23f0c14a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
-              backgroundRepeat: "no-repeat",
-              backgroundPosition: "right 14px center",
-              paddingRight: 32,
-            }}
+            style={SELECT_STYLE}
           >
             <option value="en">English</option>
             <option value="es">Español</option>
@@ -138,25 +192,12 @@ export function SettingsPanel({
 
         {/* Sound Effects + theme picker */}
         <div>
-          <label className="flex items-center justify-between text-gray-300 text-sm">
-            <span className="font-medium">{t.settings.soundEffects}</span>
-            <button
-              onClick={onToggleSfx}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                sfxEnabled ? "bg-emerald-600" : "bg-gray-600"
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  sfxEnabled ? "translate-x-6" : ""
-                }`}
-              />
-            </button>
-          </label>
+          <div style={ROW_STYLE}>
+            <span style={ROW_LABEL_STYLE}>{t.settings.soundEffects}</span>
+            <Toggle checked={sfxEnabled} onChange={onToggleSfx} />
+          </div>
 
-          {/* Sound theme — dropdown so we can list all 9 themes
-              compactly. Selecting also previews a representative
-              sound from that theme. Disabled when SFX is off. */}
+          {/* Sound theme dropdown — disabled when SFX is off */}
           <div
             style={{
               marginTop: 10,
@@ -169,35 +210,9 @@ export function SettingsPanel({
               onChange={(e) => {
                 const id = e.target.value as SoundTheme;
                 setSoundTheme(id);
-                // Preview via the non-hook path (avoids the stale
-                // closure that would play the previously-selected
-                // theme).
                 previewSound(id, "setComplete");
               }}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontFamily: "var(--font-display)",
-                fontWeight: 600,
-                fontSize: 13,
-                letterSpacing: "-0.005em",
-                color: "#f5ead0",
-                background:
-                  "linear-gradient(180deg, rgba(28,22,20,0.9) 0%, rgba(16,10,8,0.96) 100%)",
-                border: "1px solid rgba(245,234,208,0.12)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-                cursor: "pointer",
-                appearance: "none",
-                // Caret on the right, drawn as a CSS arrow so it
-                // matches the cream/accent palette better than the
-                // browser default.
-                backgroundImage:
-                  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23f0c14a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
-                backgroundRepeat: "no-repeat",
-                backgroundPosition: "right 14px center",
-                paddingRight: 32,
-              }}
+              style={SELECT_STYLE}
             >
               {SOUND_THEMES.map((id: SoundTheme) => (
                 <option key={id} value={id}>
@@ -209,173 +224,101 @@ export function SettingsPanel({
         </div>
 
         {/* Haptic feedback */}
-        <div>
-          <label className="flex items-center justify-between text-gray-300 text-sm">
-            <span>
-              <span className="font-medium">{t.settings.haptics}</span>
-            </span>
-            <button
-              onClick={() => {
-                toggleHaptics();
-                // Preview only when turning ON. previewHaptic bypasses
-                // the enabled check (the hook-based haptic would
-                // capture the still-false enabled value here).
-                if (!hapticsEnabled) previewHaptic("complete");
-              }}
-              className={`relative w-12 h-6 rounded-full transition-colors ${
-                hapticsEnabled ? "bg-emerald-600" : "bg-gray-600"
-              }`}
-            >
-              <div
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                  hapticsEnabled ? "translate-x-6" : ""
-                }`}
-              />
-            </button>
-          </label>
+        <div style={ROW_STYLE}>
+          <span style={ROW_LABEL_STYLE}>{t.settings.haptics}</span>
+          <Toggle
+            checked={hapticsEnabled}
+            onChange={(next) => {
+              toggleHaptics();
+              if (!hapticsEnabled) previewHaptic("complete");
+            }}
+          />
         </div>
 
         {/* Music Controls */}
         {musicControls && (
-          <div>
-            <label className="flex items-center justify-between text-gray-300 text-sm">
-              <span className="font-medium">{t.settings.backgroundMusic}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={musicControls.onNext}
-                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
-                >
-                  {t.common.next}
-                </button>
-                <button
-                  onClick={musicControls.onToggle}
-                  className={`relative w-12 h-6 rounded-full transition-colors ${
-                    musicControls.isPlaying ? "bg-emerald-600" : "bg-gray-600"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                      musicControls.isPlaying ? "translate-x-6" : ""
-                    }`}
-                  />
-                </button>
-              </div>
-            </label>
+          <div style={ROW_STYLE}>
+            <span style={ROW_LABEL_STYLE}>{t.settings.backgroundMusic}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={musicControls.onNext}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                  fontWeight: 700,
+                  background: "rgba(255,255,255,0.08)",
+                  color: "rgba(245,234,208,0.7)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  cursor: "pointer",
+                }}
+              >
+                {t.common.next}
+              </button>
+              <Toggle
+                checked={musicControls.isPlaying}
+                onChange={musicControls.onToggle}
+              />
+            </div>
           </div>
         )}
 
         {/* Hand Limit (if editable) */}
         {canEdit && onUpdateSettings && (
           <div>
-            <label className="text-gray-300 text-sm font-medium mb-2 block">
-              {t.settings.handLimit}
-            </label>
+            <span style={SECTION_LABEL_STYLE}>{t.settings.handLimit}</span>
             <input
               type="number"
               value={handLimit}
               onChange={(e) => setHandLimit(Number(e.target.value))}
               min={5}
               max={10}
-              className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                borderRadius: 8,
+                fontFamily: "var(--font-ui)",
+                fontSize: 13,
+                color: "#f5ead0",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(245,234,208,0.12)",
+              }}
             />
           </div>
         )}
 
-        {/* Footer action group — tip jar + Credits + Source code.
-            Tighter gap than the surrounding `space-y-6` settings rows
-            since these three pills read as one block of "about / where
-            to find more". */}
-        <div
-          style={{
-            marginTop: 4,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
+        {/* Footer action group — tip jar + Credits + Source code */}
+        <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 8 }}>
           <a
             href="https://buymeacoffee.com/alexwohlbruck"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "rgba(245,234,208,0.6)",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(245,234,208,0.08)",
-              textDecoration: "none",
-            }}
+            style={PILL_LINK_STYLE}
           >
             <span aria-hidden="true">☕</span>
             <span>{t.lobby.buyMeACoffee}</span>
           </a>
 
-          {/* Credits — opens the credits modal. Closes this panel as a
-              side effect (mutually-exclusive ?modal= URL state) which
-              is fine; user can close credits to return to the
-              underlying screen. */}
-          <button
-            onClick={() => openModal("credits")}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "rgba(245,234,208,0.6)",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(245,234,208,0.08)",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => openModal("credits")} style={PILL_LINK_STYLE}>
             <span aria-hidden="true">✦</span>
             <span>{t.settings.credits}</span>
           </button>
 
-          {/* Source code link — same shape as the credits button. */}
           <a
             href="https://github.com/alexwohlbruck/coopoly-deal"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 10,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              color: "rgba(245,234,208,0.6)",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(245,234,208,0.08)",
-              textDecoration: "none",
-            }}
+            style={PILL_LINK_STYLE}
           >
             <Github className="w-3.5 h-3.5" />
             <span>{t.common.sourceCode}</span>
           </a>
         </div>
 
-        {/* Author credit. Same component as the lobby for consistency. */}
+        {/* Author credit */}
         <div
           style={{
             textAlign: "center",
@@ -387,9 +330,7 @@ export function SettingsPanel({
           }}
         >
           {t.lobby.madeWithLoveBy.split("♥")[0]}
-          <span aria-hidden="true" style={{ color: "#e26a6a" }}>
-            ♥
-          </span>
+          <span aria-hidden="true" style={{ color: "#e26a6a" }}>♥</span>
           {t.lobby.madeWithLoveBy.split("♥")[1]}{" "}
           <a
             href="https://alex.wohlbruck.com"

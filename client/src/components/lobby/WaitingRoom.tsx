@@ -63,7 +63,7 @@ export function WaitingRoom({
   musicControls,
 }: WaitingRoomProps) {
   const { t } = useI18n();
-  const { theme } = useGameStore();
+  const { theme, useSocialistTheme } = useGameStore();
   const themeData = getTheme(theme);
   const layout = useLayout();
   const isCompact = layout === "compact";
@@ -104,7 +104,6 @@ export function WaitingRoom({
         isOpen={modal === "rules"}
         maxHandSize={gameState.settings.maxHandSize}
         allowDuplicateSets={gameState.settings.allowDuplicateSets}
-        useSocialistTheme={gameState.settings.useSocialistTheme}
         onClose={close}
       />
 
@@ -254,7 +253,7 @@ export function WaitingRoom({
               }}
             >
               <span>
-                {gameState.settings.useSocialistTheme
+                {useSocialistTheme
                   ? "Comrades"
                   : t.waiting.players}
               </span>
@@ -347,7 +346,7 @@ export function WaitingRoom({
                       <button
                         onClick={() => onRemovePlayer(player.id)}
                         title={
-                          gameState.settings.useSocialistTheme
+                          useSocialistTheme
                             ? "Remove comrade"
                             : "Remove player"
                         }
@@ -439,7 +438,7 @@ export function WaitingRoom({
               >
                 {canStart
                   ? t.waiting.startGame
-                  : gameState.settings.useSocialistTheme
+                  : useSocialistTheme
                     ? "Need Comrades"
                     : t.waiting.needMorePlayers}
               </PrimaryButton>
@@ -456,7 +455,7 @@ export function WaitingRoom({
                 textTransform: "uppercase",
               }}
             >
-              {gameState.settings.useSocialistTheme
+              {useSocialistTheme
                 ? "Waiting for comrades…"
                 : t.waiting.waitingForPlayers}
             </p>

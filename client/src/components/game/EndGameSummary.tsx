@@ -830,7 +830,7 @@ function StandingsRow({
               <PropertySetsRow
                 align="flex-start"
                 sets={player.properties}
-                useSocialistTheme={settings.useSocialistTheme}
+                useSocialistTheme={useSocialistTheme}
               />
             </div>
           </div>
@@ -983,7 +983,7 @@ function MobileStandingsCard({
                 align="flex-start"
                 sets={player.properties}
                 compact
-                useSocialistTheme={settings.useSocialistTheme}
+                useSocialistTheme={useSocialistTheme}
               />
             </div>
           </>
@@ -1012,7 +1012,7 @@ export function EndGameSummary({
   onGoHome,
   onShare,
 }: EndGameSummaryProps) {
-  const { theme } = useGameStore();
+  const { theme, useSocialistTheme } = useGameStore();
   const { t } = useI18n();
   const themeData = getTheme(theme);
   const layout = useLayout();

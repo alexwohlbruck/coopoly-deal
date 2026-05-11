@@ -45,15 +45,15 @@ export const themes = {
     frame2: "#0c0805",
     accent: "#5ee0d8",
   },
-  burgundy: {
-    id: "burgundy",
-    name: "Burgundy",
-    feltClass: "felt-burgundy",
-    felt: "#6a1e2a",
-    felt2: "#320d12",
-    frame: "#1a0a05",
-    frame2: "#0a0402",
-    accent: "#ffb070",
+  soviet: {
+    id: "soviet",
+    name: "Soviet",
+    feltClass: "felt-soviet",
+    felt: "#4a1515",
+    felt2: "#1e0808",
+    frame: "#2a0808",
+    frame2: "#140404",
+    accent: "#e8c840",
   },
   midnight: {
     id: "midnight",
@@ -132,7 +132,7 @@ export type ThemeName = keyof typeof themes;
 export const THEME_IDS: readonly ThemeName[] = [
   "emerald",
   "teal",
-  "burgundy",
+  "soviet",
   "midnight",
   "forest",
   "amber",

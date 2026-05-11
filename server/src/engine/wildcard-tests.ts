@@ -37,7 +37,6 @@ function createTestGame(): { engine: GameEngine; state: GameState } {
     wildcardFlipCountsAsMove: false,
     turnTimer: 30,
     allowDuplicateSets: false,
-    useSocialistTheme: false,
     botSpeed: "normal",
   };
 

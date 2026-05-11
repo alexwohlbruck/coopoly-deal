@@ -53,6 +53,13 @@ function AppMain() {
     reset,
   } = useGameStore();
 
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+
+  // Keep the HTML page title in sync with the dialectical lens setting.
+  useEffect(() => {
+    document.title = useSocialistTheme ? "Co-Opoly Deal" : "Monopoly Deal";
+  }, [useSocialistTheme]);
+
   // Auto-rejoin: true on mount if we have persisted credentials and are on a
   // game/room route. Read from localStorage directly because Zustand v5's
   // persist middleware rehydrates asynchronously — getState() returns defaults
@@ -124,7 +131,7 @@ function AppMain() {
 
         case "PLAYER_LEFT":
           setToast(
-            gameState?.settings?.useSocialistTheme
+            useGameStore.getState().useSocialistTheme
               ? "A comrade disconnected"
               : "A player disconnected",
           );
@@ -187,7 +194,6 @@ function AppMain() {
       playerId,
       playerName,
       gameState?.id,
-      gameState?.settings?.useSocialistTheme,
       location.pathname,
       navigate,
       setPlayer,

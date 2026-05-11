@@ -140,12 +140,14 @@
   --frame-2: #0c0805;
   --accent: #5ee0d8;
 }
-.felt-burgundy {
-  --felt: #6a1e2a;
-  --felt-2: #320d12;
-  --frame: #1a0a05;
-  --frame-2: #0a0402;
-  --accent: #ffb070;
+.felt-soviet {
+  --felt: #4a1515;
+  --felt-2: #1e0808;
+  --frame: #2a0808;
+  --frame-2: #140404;
+  --accent: #e8c840;
+  --card-back-1: #9a1a1a;
+  --card-back-2: #5a0e0e;
 }
 .felt-midnight {
   --felt: #1a2c5a;
@@ -195,6 +197,28 @@
   --frame: #0a0a0a;
   --frame-2: #050505;
   --accent: #f0c14a;
+}
+
+/* Soviet platter — red velvet instead of the default gold */
+.felt-soviet [data-platter] {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(180, 30, 30, 0.22) 0%,
+      rgba(120, 18, 18, 0.30) 50%,
+      rgba(60, 8, 8, 0.38) 100%
+    ) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(232, 200, 64, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(200, 50, 50, 0.22),
+    0 2px 0 rgba(0, 0, 0, 0.45),
+    0 12px 28px -10px rgba(0, 0, 0, 0.65) !important;
+}
+
+/* Soviet opponent/table panels — subtle red tint */
+.felt-soviet [data-table-panel] {
+  background: rgba(60, 10, 10, 0.28) !important;
 }
 
 /* Felt surface — vignette + grain + leather frame */

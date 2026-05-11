@@ -55,7 +55,7 @@ for (const name of Object.keys(networkInterfaces)) {
   }
 }
 
-console.log(`Co-Opoly Deal server running on:`);
+console.log(`Monopoly Deal server running on:`);
 console.log(`  Local:   http://localhost:${server.port}`);
 console.log(`  Network: http://${localIP}:${server.port}`);
 

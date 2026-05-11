@@ -1011,7 +1011,7 @@ export function GameCard({
 }
 
 /**
- * Co-Opoly Deal card back. Two-shadow object with diagonal pattern + branding.
+ * Card back. Two-shadow object with diagonal pattern + branding.
  */
 export function CardBack({
   scale = 1,
@@ -1083,7 +1083,7 @@ export function CardBack({
                 color: "rgba(248,232,196,0.8)",
               }}
             >
-              CO-OPOLY
+              {useSocialistTheme ? "CO-OPOLY" : "MONOPOLY"}
             </span>
           </div>
         ) : (
@@ -1100,7 +1100,7 @@ export function CardBack({
               lineHeight: 1.1,
             }}
           >
-            Co-Opoly
+            {useSocialistTheme ? "Co-Opoly" : "Monopoly"}
             <br />
             <span
               style={{

@@ -20,9 +20,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png', 'favicon-32x32.png', 'favicon-16x16.png'],
       manifest: {
-        name: 'Co-Opoly Deal',
-        short_name: 'Co-Opoly',
-        description: 'A cooperative card-dealing board game',
+        name: 'Monopoly Deal',
+        short_name: 'Monopoly Deal',
+        description: 'Play Monopoly Deal online with friends',
         theme_color: '#1a5c2e',
         background_color: '#1a5c2e',
         display: 'standalone',

@@ -63,7 +63,6 @@ function testForceDeal2Player() {
       turnTimer: 30,
       allowDuplicateSets: false,
       wildcardFlipCountsAsMove: false,
-      useSocialistTheme: false,
       botSpeed: "normal",
     },
   };
@@ -204,7 +203,6 @@ function testForceDeal4Player() {
       turnTimer: 30,
       allowDuplicateSets: false,
       wildcardFlipCountsAsMove: false,
-      useSocialistTheme: false,
       botSpeed: "normal",
     },
   };
@@ -327,7 +325,6 @@ function testForceDealWithJustSayNo() {
       turnTimer: 30,
       allowDuplicateSets: false,
       wildcardFlipCountsAsMove: false,
-      useSocialistTheme: false,
       botSpeed: "normal",
     },
   };

@@ -47,6 +47,7 @@ export function IconButton({ children, onClick, title }: IconButtonProps) {
 interface TopBarProps {
   roomCode: string;
   compact?: boolean;
+  useSocialistTheme?: boolean;
   onSettings?: () => void;
   onResign?: () => void;
   onLeave?: () => void;
@@ -59,6 +60,7 @@ interface TopBarProps {
 export function TopBar({
   roomCode,
   compact = false,
+  useSocialistTheme = false,
   onSettings,
   onResign,
   onLeave,
@@ -97,7 +99,7 @@ export function TopBar({
             textShadow: "0 1px 0 rgba(0,0,0,0.5)",
           }}
         >
-          Co-Opoly Deal
+          {useSocialistTheme ? "☭ Co-Opoly Deal" : "Monopoly Deal"}
         </div>
         <div
           style={{
@@ -410,7 +412,7 @@ interface TurnPillProps {
 export function TurnPill({ status = "your", label, sub }: TurnPillProps) {
   const colors = {
     your: {
-      bg: "rgba(240, 193, 74, 0.15)",
+      bg: "color-mix(in oklab, var(--accent, #f0c14a) 15%, transparent)",
       text: "var(--accent, #f5d883)",
     },
     waiting: {

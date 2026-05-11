@@ -156,6 +156,7 @@ export function GameTableDesktop({
         }}
       >
         <div
+          data-table-panel
           style={{
             padding: "14px 20px 10px",
             borderRadius: 14,
@@ -238,6 +239,7 @@ export function GameTableDesktop({
 
         {/* Deck + Discard rail */}
         <div
+          data-table-panel
           style={{
             display: "flex",
             flexDirection: "column",
@@ -350,6 +352,7 @@ export function GameTableDesktop({
       {/* Your area — pinned bottom, gold platter */}
       {me && (
         <div
+          data-platter
           style={{
             position: "absolute",
             bottom: 18,

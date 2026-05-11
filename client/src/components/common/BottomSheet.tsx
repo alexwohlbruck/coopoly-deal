@@ -120,21 +120,22 @@ export function BottomSheet({
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop — visual dimming only; pointer-events disabled so the
-              table behind stays inspectable (a player needs to see their
-              own bank/sets while deciding how to pay rent etc.). The X
-              button + ESC + the explicit footer buttons close the dialog. */}
+          {/* Backdrop — clicking it closes the dialog when closable.
+              On mobile, a lighter dim keeps the table partially visible
+              so the player can glance at their bank/sets. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] pointer-events-none"
+            className="fixed inset-0 z-[100]"
             style={{
               background: isModal
                 ? "rgba(0,0,0,0.35)"
                 : "rgba(0,0,0,0.20)",
               backdropFilter: isModal ? "blur(2px)" : "none",
+              cursor: closable ? "pointer" : "default",
             }}
+            onClick={closable ? onClose : undefined}
           />
 
           {isModal ? (

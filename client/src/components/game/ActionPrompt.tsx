@@ -10,6 +10,7 @@ import { GameCard } from "../cards/GameCard";
 import { BottomSheet } from "../common/BottomSheet";
 import { getQuirkySaying } from "../../utils/quirkySayings";
 import { PrimaryButton, DangerButton } from "../ui/Button";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface ActionPromptProps {
   action: PendingAction;
@@ -31,6 +32,7 @@ export function ActionPrompt({
   onAccept,
 }: ActionPromptProps) {
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const isSource = action.sourcePlayerId === playerId;
   const isTarget = action.targetPlayerIds.includes(playerId);
   const hasResponded = action.respondedPlayerIds.includes(playerId);
@@ -53,7 +55,7 @@ export function ActionPrompt({
       ? getQuirkySaying(
           action.type,
           sourcePlayer.name,
-          settings.useSocialistTheme,
+          useSocialistTheme,
         )
       : null,
   );
@@ -145,38 +147,39 @@ export function ActionPrompt({
       const jsnPlayerName =
         players.find((p) => p.id === isJSNChain.targetPlayerId)?.name ??
         "Someone";
+      const jsnLabel = useSocialistTheme ? "Counter-Intelligence" : "Just Say No";
 
       // If the current player is the source, they see that opponent countered
       if (isSource) {
-        return `${jsnPlayerName} played Just Say No! Accept to let them counter your ${settings.useSocialistTheme ? "directive" : "action"}.`;
+        return `${jsnPlayerName} played ${jsnLabel}! ${useSocialistTheme ? "Comply" : "Accept"} to let them counter your ${useSocialistTheme ? "directive" : "action"}.`;
       }
 
       // If the current player is the target, they see that opponent countered the JSN
       if (isTarget) {
-        return `${sourcePlayer?.name ?? "Someone"} played Just Say No! Accept to let them counter.`;
+        return `${sourcePlayer?.name ?? "Someone"} played ${jsnLabel}! ${useSocialistTheme ? "Comply" : "Accept"} to let them counter.`;
       }
     }
 
     // Regular action descriptions
     switch (action.type) {
       case "rent":
-        return `${sourcePlayer?.name ?? "Someone"} is charging ${amountDue}M ${settings.useSocialistTheme ? "levy" : "rent"}!`;
+        return `${sourcePlayer?.name ?? "Someone"} is charging ${amountDue}M ${useSocialistTheme ? "levy" : "rent"}!`;
       case "debtCollector":
         return `${sourcePlayer?.name ?? "Someone"} demands ${amountDue}M!`;
       case "birthday":
-        return settings.useSocialistTheme
+        return useSocialistTheme
           ? `Comrade ${sourcePlayer?.name ?? "someone"} demands ${amountDue}M in union dues!`
           : `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
       case "slyDeal":
-        return `${sourcePlayer?.name ?? "Someone"} wants to ${settings.useSocialistTheme ? "expropriate" : "steal"} your property!`;
+        return `${sourcePlayer?.name ?? "Someone"} wants to ${useSocialistTheme ? "expropriate" : "steal"} your property!`;
       case "forceDeal":
-        return settings.useSocialistTheme
+        return useSocialistTheme
           ? `Central planning demands a resource reallocation with ${sourcePlayer?.name ?? "someone"}!`
           : `${sourcePlayer?.name ?? "Someone"} wants to swap properties!`;
       case "dealBreaker":
         return `${sourcePlayer?.name ?? "Someone"} is taking your complete set!`;
       default:
-        return settings.useSocialistTheme ? "A directive was played against you." : "An action was played against you.";
+        return useSocialistTheme ? "A directive was played against you." : "An action was played against you.";
     }
   }
 
@@ -227,6 +230,8 @@ export function ActionPrompt({
     (action.type === "slyDeal" || action.type === "forceDeal") && targetCard;
   const showDealBreakerPreview = action.type === "dealBreaker" && targetSet;
 
+  const soc = useSocialistTheme;
+
   const footerButtons = (
     <div style={{ display: "flex", gap: 8 }}>
       {needsPayment && (
@@ -237,22 +242,22 @@ export function ActionPrompt({
           size="lg"
         >
           {totalTableValue === 0
-            ? "I Can't Pay"
+            ? soc ? "Nothing to Contribute" : "I Can't Pay"
             : selectedCardIds.length > 0
-              ? `Pay ${selectedTotal}M`
-              : "Select Cards"}
+              ? `${soc ? "Contribute" : "Pay"} ${selectedTotal}M`
+              : soc ? "Select Resources" : "Select Cards"}
         </PrimaryButton>
       )}
 
       {!needsPayment && (
         <PrimaryButton onClick={onAccept} fullWidth size="lg">
-          Accept
+          {soc ? "Comply" : "Accept"}
         </PrimaryButton>
       )}
 
       {hasJustSayNo && (
         <DangerButton onClick={onJustSayNo} fullWidth size="lg">
-          Just Say No!
+          {soc ? "Counter-Intelligence!" : "Just Say No!"}
         </DangerButton>
       )}
     </div>
@@ -263,7 +268,7 @@ export function ActionPrompt({
       isOpen={true}
       onClose={() => {}}
       closable={false}
-      title={settings.useSocialistTheme ? "Directive!" : "Action!"}
+      title={useSocialistTheme ? "Directive!" : "Action!"}
       height="h-auto"
       footer={footerButtons}
       playSound={true}
@@ -290,7 +295,7 @@ export function ActionPrompt({
                     key={card.id}
                     card={card}
                     width={96}
-                    useSocialistTheme={settings.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                   />
                 ))}
                 {targetSet.house && (
@@ -298,7 +303,7 @@ export function ActionPrompt({
                     key={targetSet.house.id}
                     card={targetSet.house}
                     width={96}
-                    useSocialistTheme={settings.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                   />
                 )}
                 {targetSet.hotel && (
@@ -306,7 +311,7 @@ export function ActionPrompt({
                     key={targetSet.hotel.id}
                     card={targetSet.hotel}
                     width={96}
-                    useSocialistTheme={settings.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                   />
                 )}
               </div>
@@ -327,7 +332,7 @@ export function ActionPrompt({
                   d="M13 7l5 5m0 0l-5 5m5-5H6"
                 />
               </svg>
-              <p className="text-red-400 text-[10px] mt-1">{settings.useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
+              <p className="text-red-400 text-[10px] mt-1">{useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
             </div>
           </div>
         </div>
@@ -347,7 +352,7 @@ export function ActionPrompt({
                   <GameCard
                     card={sourceCard}
                     width={96}
-                    useSocialistTheme={settings.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                   />
                 </div>
                 {/* Swap icon */}
@@ -376,7 +381,7 @@ export function ActionPrompt({
                 <GameCard
                   card={targetCard}
                   width={96}
-                  useSocialistTheme={settings.useSocialistTheme}
+                  useSocialistTheme={useSocialistTheme}
                 />
               )}
             </div>
@@ -397,7 +402,7 @@ export function ActionPrompt({
                     d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
-                <p className="text-red-400 text-[10px] mt-1">{settings.useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
+                <p className="text-red-400 text-[10px] mt-1">{useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
               </div>
             )}
           </div>
@@ -407,12 +412,14 @@ export function ActionPrompt({
       {needsPayment && me && (
         <>
           <p className="text-gray-400 text-xs mb-2">
-            Select cards to pay with (${selectedTotal}M / ${amountDue}M):
+            {soc
+              ? `Select resources to contribute ($${selectedTotal}M / $${amountDue}M):`
+              : `Select cards to pay with ($${selectedTotal}M / $${amountDue}M):`}
           </p>
 
           {me.bank.filter((c) => c.value > 0).length > 0 && (
             <div className="mb-2">
-              <p className="text-gray-500 text-[10px] mb-1">Bank</p>
+              <p className="text-gray-500 text-[10px] mb-1">{soc ? "Treasury" : "Bank"}</p>
               <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {[...me.bank]
                   .filter((c) => c.value > 0)
@@ -424,7 +431,7 @@ export function ActionPrompt({
                       width={96}
                       selected={selectedCardIds.includes(card.id)}
                       onClick={() => toggleCard(card.id)}
-                      useSocialistTheme={settings.useSocialistTheme}
+                      useSocialistTheme={useSocialistTheme}
                     />
                   ))}
               </div>
@@ -434,7 +441,7 @@ export function ActionPrompt({
           {me.properties.flatMap((s) => s.cards).filter((c) => c.value > 0)
             .length > 0 && (
             <div className="mb-3">
-              <p className="text-gray-500 text-[10px] mb-1">Properties</p>
+              <p className="text-gray-500 text-[10px] mb-1">{soc ? "State Assets" : "Properties"}</p>
               <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {me.properties.flatMap((set) => [
                   ...set.cards
@@ -446,7 +453,7 @@ export function ActionPrompt({
                         width={96}
                         selected={selectedCardIds.includes(card.id)}
                         onClick={() => toggleCard(card.id)}
-                        useSocialistTheme={settings.useSocialistTheme}
+                        useSocialistTheme={useSocialistTheme}
                       />
                     )),
                   ...(set.house && set.house.value > 0
@@ -457,7 +464,7 @@ export function ActionPrompt({
                           width={96}
                           selected={selectedCardIds.includes(set.house.id)}
                           onClick={() => toggleCard(set.house!.id)}
-                          useSocialistTheme={settings.useSocialistTheme}
+                          useSocialistTheme={useSocialistTheme}
                         />,
                       ]
                     : []),
@@ -469,7 +476,7 @@ export function ActionPrompt({
                           width={96}
                           selected={selectedCardIds.includes(set.hotel.id)}
                           onClick={() => toggleCard(set.hotel!.id)}
-                          useSocialistTheme={settings.useSocialistTheme}
+                          useSocialistTheme={useSocialistTheme}
                         />,
                       ]
                     : []),

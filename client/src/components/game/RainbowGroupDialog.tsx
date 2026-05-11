@@ -9,6 +9,7 @@ import {
   isSetComplete,
 } from "../../types/game";
 import { type GameSettings } from "../../types/game";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface RainbowGroupDialogProps {
   card: Card;
@@ -29,6 +30,7 @@ export function RainbowGroupDialog({
   onClose,
   onConfirm,
 }: RainbowGroupDialogProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const unassignedSet = player.properties.find(
     (s) => s.color === PropertyColor.Unassigned,
   );
@@ -91,7 +93,7 @@ export function RainbowGroupDialog({
                   className="py-3 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                   style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
                 >
-                  {getPropertyColorLabel(color, settings.useSocialistTheme)}
+                  {getPropertyColorLabel(color, useSocialistTheme)}
                 </button>
               ))}
             </div>
@@ -102,7 +104,7 @@ export function RainbowGroupDialog({
           <div>
             <p className="text-gray-300 text-sm mb-4 text-center">
               You already have an incomplete{" "}
-              {getPropertyColorLabel(selectedColor, settings.useSocialistTheme)}{" "}
+              {getPropertyColorLabel(selectedColor, useSocialistTheme)}{" "}
               set. What would you like to do?
             </p>
             <div className="grid grid-cols-1 gap-2">

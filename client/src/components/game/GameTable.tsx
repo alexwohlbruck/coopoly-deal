@@ -107,7 +107,7 @@ export function GameTable({
   const [draggingCard, setDraggingCard] = useState<Card | null>(null);
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const { play } = useSoundManager();
-  const { theme, setToast } = useGameStore();
+  const { theme, useSocialistTheme, setToast } = useGameStore();
   const themeData = getTheme(theme);
   const layoutMode = useLayout();
   const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -258,7 +258,7 @@ export function GameTable({
     // it should be dragged to the bank if they want to bank it.
     if (card.type === CardType.JustSayNo) {
       setToast(
-        gameState.settings?.useSocialistTheme
+        useSocialistTheme
           ? "Just Say No can only be played when a directive is played against you, or banked."
           : "Just Say No can only be played when an action is played against you, or banked.",
       );
@@ -288,7 +288,7 @@ export function GameTable({
         card,
         gameState,
         playerId,
-        gameState.settings?.useSocialistTheme,
+        useSocialistTheme,
       );
       if (!validation.valid) {
         // Show error feedback
@@ -441,6 +441,7 @@ export function GameTable({
       <TopBar
         roomCode={gameState.id}
         compact={layoutMode === "compact"}
+        useSocialistTheme={!!useSocialistTheme}
         onSettings={() => openModal("settings")}
         onResign={onResign}
         onLeave={onGoHome}
@@ -453,6 +454,26 @@ export function GameTable({
           import.meta.env.MODE === "development" && !!onDevInjectCard
         }
       />
+
+      {/* Soviet watermark — very subtle ☭ behind the felt */}
+      {useSocialistTheme && (
+        <div
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            fontSize: layoutMode === "compact" ? 280 : 420,
+            lineHeight: 1,
+            color: "rgba(255,255,255,0.03)",
+            pointerEvents: "none",
+            userSelect: "none",
+            zIndex: 1,
+          }}
+        >
+          ☭
+        </div>
+      )}
 
       {/* Game area — branches on layout mode */}
       {layoutMode === "table" ? (
@@ -492,19 +513,19 @@ export function GameTable({
               <div
                 style={{
                   background: "linear-gradient(180deg, rgba(28,22,20,0.92) 0%, rgba(16,10,8,0.96) 100%)",
-                  border: "1px solid rgba(240,193,74,0.3)",
-                  boxShadow: "0 0 24px -4px rgba(240,193,74,0.35), 0 8px 16px -4px rgba(0,0,0,0.5)",
+                  border: "1px solid color-mix(in oklab, var(--accent, #f0c14a) 30%, transparent)",
+                  boxShadow: "0 0 24px -4px color-mix(in oklab, var(--accent, #f0c14a) 35%, transparent), 0 8px 16px -4px rgba(0,0,0,0.5)",
                   borderRadius: 10,
                   padding: "8px 16px",
                   fontFamily: "var(--font-display)",
                   fontSize: 13,
                   fontWeight: 700,
                   letterSpacing: "0.04em",
-                  color: "#f0c14a",
+                  color: "var(--accent, #f0c14a)",
                   whiteSpace: "nowrap",
                 }}
               >
-                {gameState.settings?.useSocialistTheme ? "Levy" : "Rent"}{" "}
+                {useSocialistTheme ? "Levy" : "Rent"}{" "}
                 {gameState.turn.rentMultiplier}×
               </div>
             </div>

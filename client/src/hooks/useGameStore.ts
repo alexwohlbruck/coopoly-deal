@@ -5,7 +5,13 @@ import {
   type GameSettings,
   DEFAULT_SETTINGS as DEFAULT_GAME_SETTINGS,
 } from "../types/game";
-import type { ThemeName } from "../theme/colors";
+import { themes, type ThemeName } from "../theme/colors";
+
+/** Default to dialectical mode on the coopoly.deal domain. */
+const isCoopolyDomain =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "coopoly.deal" ||
+    window.location.hostname.endsWith(".coopoly.deal"));
 
 interface GameStore {
   playerId: string | null;
@@ -21,6 +27,7 @@ interface GameStore {
     gamesPlayed: number;
   };
   theme: ThemeName;
+  useSocialistTheme: boolean;
   preferredSettings: GameSettings;
 
   setPlayer: (id: string, name: string) => void;
@@ -31,6 +38,7 @@ interface GameStore {
   recordWin: () => void;
   recordLoss: () => void;
   setTheme: (theme: ThemeName) => void;
+  setUseSocialistTheme: (enabled: boolean) => void;
   setPreferredSettings: (settings: GameSettings) => void;
   reset: () => void;
 }
@@ -50,7 +58,8 @@ export const useGameStore = create<GameStore>()(
         streak: 0,
         gamesPlayed: 0,
       },
-      theme: "emerald",
+      theme: isCoopolyDomain ? ("soviet" as ThemeName) : ("emerald" as ThemeName),
+      useSocialistTheme: isCoopolyDomain,
       preferredSettings: DEFAULT_GAME_SETTINGS,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),
@@ -59,6 +68,12 @@ export const useGameStore = create<GameStore>()(
       setError: (error) => set({ error }),
       setToast: (toast) => set({ toast }),
       setTheme: (theme) => set({ theme }),
+      setUseSocialistTheme: (enabled) =>
+        set((state) => ({
+          useSocialistTheme: enabled,
+          // Auto-switch to the soviet theme when turning on
+          ...(enabled ? { theme: "soviet" as ThemeName } : {}),
+        })),
       setPreferredSettings: (settings) => set({ preferredSettings: settings }),
       recordWin: () =>
         set((state) => ({
@@ -89,8 +104,16 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "coopoly-settings",
+      // Migrate removed themes (e.g. "burgundy") → default on rehydrate.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<GameStore>;
+        const theme =
+          p.theme && p.theme in themes ? p.theme : current.theme;
+        return { ...current, ...p, theme } as GameStore;
+      },
       partialize: (state) => ({
         theme: state.theme,
+        useSocialistTheme: state.useSocialistTheme,
         playerId: state.playerId,
         playerName: state.playerName,
         roomCode: state.roomCode,

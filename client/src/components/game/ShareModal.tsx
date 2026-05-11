@@ -48,7 +48,7 @@ interface ShareModalProps {
   };
 }
 
-const SHARE_URL = "https://coopoly.deal";
+const SHARE_URL = typeof window !== "undefined" ? window.location.origin : "https://monopolydeal.online";
 
 // ─── Emoji squares for the plain-text version ───────────────────
 // (These ship in the actual posted text. The visual on-screen tiles
@@ -467,7 +467,7 @@ export function ShareModal({
                   marginTop: 4,
                 }}
               >
-                coopoly.deal
+                {typeof window !== "undefined" ? window.location.hostname : "monopolydeal.online"}
               </div>
             </div>
 

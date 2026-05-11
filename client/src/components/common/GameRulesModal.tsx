@@ -4,7 +4,7 @@
 // property-color swatches in the rent table, mono captions for
 // section labels, and a PrimaryButton-style footer.
 
-import { useEffect, useState } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { ModalCloseButton } from "./ModalCloseButton";
 import {
@@ -15,7 +15,9 @@ import {
   getPropertyColorLabel,
 } from "../../types/game";
 import { PrimaryButton } from "../ui/Button";
+import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface GameRulesModalProps {
   isOpen: boolean;
@@ -218,21 +220,11 @@ export function GameRulesModal({
   isOpen,
   maxHandSize = 7,
   allowDuplicateSets = true,
-  useSocialistTheme: defaultSocialistTheme = false,
   onClose,
 }: GameRulesModalProps) {
   const { t } = useI18n();
-  // Local toggle for the "comrades / levies / directives" wording.
-  // Initialized from the prop (which reflects the current room
-  // setting) but the user can flip it independently while reading
-  // the rules. Re-syncs to the prop if the prop changes (e.g. host
-  // changes the setting while the modal is open).
-  const [useSocialistTheme, setUseSocialistTheme] = useState(
-    defaultSocialistTheme,
-  );
-  useEffect(() => {
-    setUseSocialistTheme(defaultSocialistTheme);
-  }, [defaultSocialistTheme]);
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const setUseSocialistTheme = useGameStore((s) => s.setUseSocialistTheme);
 
   if (!isOpen) return null;
 
@@ -293,77 +285,41 @@ export function GameRulesModal({
                   lineHeight: 1.05,
                 }}
               >
-                {t.rules.title}
+                {useSocialistTheme ? "Co-Opoly Deal · Rules" : t.rules.title}
               </h2>
-              {/* Theme toggle — flip the wording between standard
+              {/* Co-Opoly Deal toggle — flip wording between standard
                   ("players, rent, action cards") and the socialist
-                  variant ("comrades, levies, directives"). Local state
-                  only; doesn't change the room setting. */}
-              <button
-                type="button"
-                onClick={() => setUseSocialistTheme((v) => !v)}
-                aria-pressed={useSocialistTheme}
+                  variant ("comrades, levies, directives"). Toggles
+                  the browser-local preference. */}
+              <div
                 style={{
                   marginTop: 10,
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  padding: "5px 10px 5px 6px",
-                  borderRadius: 999,
-                  border: "1px solid rgba(245,234,208,0.1)",
-                  background: useSocialistTheme
-                    ? "color-mix(in oklab, var(--accent, #f0c14a) 14%, rgba(0,0,0,0.3))"
-                    : "rgba(0,0,0,0.3)",
-                  cursor: "pointer",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 10,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: useSocialistTheme
-                    ? "var(--accent, #f0c14a)"
-                    : "rgba(245,234,208,0.65)",
-                  transition:
-                    "background var(--d-quick) var(--ease-out-soft), color var(--d-quick) var(--ease-out-soft)",
                 }}
-                title={
-                  useSocialistTheme
-                    ? t.rules.dialecticalLensSwitchOff
-                    : t.rules.dialecticalLensSwitchOn
-                }
               >
+                <Toggle
+                  checked={useSocialistTheme}
+                  onChange={(next) => setUseSocialistTheme(next)}
+                />
                 <span
                   style={{
-                    position: "relative",
-                    width: 26,
-                    height: 14,
-                    borderRadius: 999,
-                    background: useSocialistTheme
-                      ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 65%, #000) 100%)"
-                    : "rgba(255,255,255,0.08)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    transition: "background var(--d-quick) var(--ease-out-soft)",
-                    flexShrink: 0,
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: useSocialistTheme
+                      ? "var(--accent, #f0c14a)"
+                      : "rgba(245,234,208,0.65)",
+                    transition: "color var(--d-quick) var(--ease-out-soft)",
+                    cursor: "pointer",
                   }}
+                  onClick={() => setUseSocialistTheme(!useSocialistTheme)}
                 >
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 1,
-                      left: useSocialistTheme ? 12 : 1,
-                      width: 10,
-                      height: 10,
-                      borderRadius: 999,
-                      background: useSocialistTheme
-                        ? "#1a1208"
-                        : "rgba(245,234,208,0.85)",
-                      boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 2px rgba(0,0,0,0.4)",
-                      transition: "left var(--d-quick) var(--ease-out-soft)",
-                    }}
-                  />
+                  ☭ Co-Opoly Deal
                 </span>
-                {t.rules.dialecticalLens}
-              </button>
+              </div>
             </div>
             <ModalCloseButton onClick={onClose} ariaLabel={t.rules.close} />
           </div>
@@ -387,7 +343,7 @@ export function GameRulesModal({
             <section>
               <SectionHeading>{t.rules.overview}</SectionHeading>
               <p style={{ margin: 0 }}>
-                Co-Opoly Deal is a card game for 2–6{" "}
+                {useSocialistTheme ? "Co-Opoly Deal" : "Monopoly Deal"} is a card game for 2–6{" "}
                 {useSocialistTheme ? "comrades" : "players"}. The goal is to be
                 the first {useSocialistTheme ? "comrade" : "player"} to collect{" "}
                 <Hi>

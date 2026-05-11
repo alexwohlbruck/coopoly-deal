@@ -8,6 +8,7 @@ import { type GameSettings } from "../../types/game";
 import { PropertySetDisplay } from "./PropertySetDisplay";
 import { EmptyPropertyDropZone } from "./EmptyPropertyDropZone";
 import { FannedCards } from "../cards/FannedCards";
+import { useGameStore } from "../../hooks/useGameStore";
 
 interface PlayerAreaProps {
   player: ClientPlayer;
@@ -42,6 +43,7 @@ export function PlayerArea({
   onWildcardClick,
   draggingCard,
 }: PlayerAreaProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
 
   const completeSetsList = player.properties.filter(isSetComplete);
@@ -186,7 +188,7 @@ export function PlayerArea({
             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-10"
             title={
-              settings?.useSocialistTheme
+              useSocialistTheme
                 ? "Waiting for comrade response"
                 : "Waiting for player response"
             }
@@ -245,7 +247,7 @@ export function PlayerArea({
                         isYou={isYou}
                         isCurrentTurn={isCurrentTurn}
                         isDragOver={dragOverSetColor === set.color}
-                        useSocialistTheme={settings?.useSocialistTheme}
+                        useSocialistTheme={useSocialistTheme}
                         cardWidth={setsLayout.setWidth}
                       />
                     ))}
@@ -288,7 +290,7 @@ export function PlayerArea({
                     cards={[...bankCards].sort((a, b) => a.value - b.value)}
                     cardWidth={64} // Bank cards - readable but not dominant
                     maxVisible={10}
-                    useSocialistTheme={settings?.useSocialistTheme}
+                    useSocialistTheme={useSocialistTheme}
                   />
                 ) : (
                   <div
@@ -316,7 +318,7 @@ export function PlayerArea({
                   cardWidth={64} // Hand preview - same size as bank
                   showBacks={handCards.length === 0}
                   maxVisible={10}
-                  useSocialistTheme={settings?.useSocialistTheme}
+                  useSocialistTheme={useSocialistTheme}
                 />
               </div>
             )}

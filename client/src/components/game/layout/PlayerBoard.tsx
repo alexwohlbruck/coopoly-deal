@@ -16,6 +16,7 @@ import type {
 import { isSetComplete, CardType } from "../../../types/game";
 import { PropertySetsRow } from "./TableObjects";
 import type { TouchDropSpec } from "../../../utils/drop-zone";
+import { useGameStore } from "../../../hooks/useGameStore";
 
 interface PlayerBoardProps {
   player: ClientPlayer;
@@ -56,6 +57,7 @@ export function PlayerBoard({
   compact = false,
   wrap = false,
 }: PlayerBoardProps) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const [dragOverColor, setDragOverColor] = useState<PropertyColor | null>(
     null,
   );
@@ -164,7 +166,7 @@ export function PlayerBoard({
         wrap={wrap}
         isYou={isYou}
         isCurrentTurn={isCurrentTurn}
-        useSocialistTheme={settings.useSocialistTheme}
+        useSocialistTheme={useSocialistTheme}
         onSetDragOver={handleSetDragOver}
         onSetDragLeave={handleSetDragLeave}
         onSetDrop={handleSetDrop}
