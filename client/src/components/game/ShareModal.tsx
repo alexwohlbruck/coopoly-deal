@@ -467,7 +467,7 @@ export function ShareModal({
                   marginTop: 4,
                 }}
               >
-                coopoly-deal.com
+                coopoly.deal
               </div>
             </div>
 
