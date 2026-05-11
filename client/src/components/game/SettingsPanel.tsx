@@ -109,7 +109,27 @@ export function SettingsPanel({
           <select
             value={locale}
             onChange={(e) => setLocale(e.target.value as Locale)}
-            className="w-full bg-gray-800 text-white rounded-lg px-3 py-2 text-sm"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 8,
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              fontSize: 13,
+              letterSpacing: "-0.005em",
+              color: "#f5ead0",
+              background:
+                "linear-gradient(180deg, rgba(28,22,20,0.9) 0%, rgba(16,10,8,0.96) 100%)",
+              border: "1px solid rgba(245,234,208,0.12)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+              cursor: "pointer",
+              appearance: "none",
+              backgroundImage:
+                "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' stroke='%23f0c14a' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
+              backgroundRepeat: "no-repeat",
+              backgroundPosition: "right 14px center",
+              paddingRight: 32,
+            }}
           >
             <option value="en">English</option>
             <option value="es">Español</option>
@@ -181,7 +201,7 @@ export function SettingsPanel({
             >
               {SOUND_THEMES.map((id: SoundTheme) => (
                 <option key={id} value={id}>
-                  {SOUND_THEME_LABEL[id]} — {SOUND_THEME_HINT[id]}
+                  {SOUND_THEME_LABEL[id]}{SOUND_THEME_HINT[id] ? ` — ${SOUND_THEME_HINT[id]}` : ""}
                 </option>
               ))}
             </select>

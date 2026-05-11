@@ -500,6 +500,19 @@ a img,
   }
 }
 
+/* Pulsing badge for "waiting for action" on opponent chips */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(0.85);
+  }
+}
+
 /* Soft pulse for the "your turn" indicator pill — gold halo breathing */
 @keyframes turnPulse {
   0%,

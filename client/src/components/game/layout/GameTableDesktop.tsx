@@ -1,10 +1,9 @@
 // GameTableDesktop — around-the-table layout for ≥1024px viewports.
-// Replaces the carousel pattern: opponents live in a chip rail at the top,
-// the active opponent's full board sits center-left, deck+discard live
-// center-right, and "you" pin to the bottom in a gold platter.
+// Opponents live in a chip rail at the top with a swipeable carousel
+// of boards center-left, deck+discard live center-right, and "you"
+// pin to the bottom in a gold platter.
 
-import { useState, useMemo, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useRef } from "react";
 import type {
   ClientGameState,
   Card,
@@ -14,11 +13,15 @@ import type {
 import {
   OpponentRail,
   PlayerCrest,
-  type OpponentSeatPlayer,
 } from "./Chrome";
 import { CardStack } from "./TableObjects";
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
 import { GameCard } from "../../cards/GameCard";
+import {
+  toSeatPlayer,
+  useActiveOpponent,
+  OpponentCarousel,
+} from "./OpponentCarousel";
 
 interface GameTableDesktopProps {
   gameState: ClientGameState;
@@ -38,40 +41,6 @@ interface GameTableDesktopProps {
   bottomBar: React.ReactNode;
 }
 
-// Default opponent avatar colors (cycled through if none set per-player).
-const AVATAR_COLORS = [
-  "#7adb88",
-  "#d96aa1",
-  "#6c9bd2",
-  "#ffb070",
-  "#c8f078",
-  "#88d4ff",
-];
-
-function avatarColorFor(_player: ClientPlayer, index: number): string {
-  return AVATAR_COLORS[index % AVATAR_COLORS.length];
-}
-
-function toSeatPlayer(
-  player: ClientPlayer,
-  index: number,
-  allowDuplicateSets: boolean,
-  currentTurnPlayerId?: string,
-): OpponentSeatPlayer {
-  const money = player.bank.reduce((sum, c) => sum + c.value, 0);
-  return {
-    id: player.id,
-    name: player.name,
-    initial: player.name[0]?.toUpperCase() ?? "?",
-    color: avatarColorFor(player, index),
-    sets: completeSetsCount(player, allowDuplicateSets),
-    totalSetsNeeded: 3,
-    money,
-    handCount: player.hand?.length ?? 0,
-    isCurrentTurn: !!currentTurnPlayerId && player.id === currentTurnPlayerId,
-  };
-}
-
 export function GameTableDesktop({
   gameState,
   playerId,
@@ -84,39 +53,19 @@ export function GameTableDesktop({
   setDraggingCard,
   bottomBar,
 }: GameTableDesktopProps) {
-  const opponents = useMemo(
-    () => gameState.players.filter((p) => p.id !== playerId),
-    [gameState.players, playerId],
-  );
+  const { opponents, activeOppId, setActiveOppId, activeOpp } =
+    useActiveOpponent(gameState, playerId);
   const me = gameState.players.find((p) => p.id === playerId);
   const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
 
-  // Active opponent (the one whose board is shown center). Defaults to whoever
-  // is currently taking a turn (if it's an opponent), else the first opponent.
   const turnOwnerId = gameState.turn?.playerId;
-  const turnOwnerIsOpponent = turnOwnerId && turnOwnerId !== playerId;
-  const [activeOppId, setActiveOppId] = useState<string | null>(
-    () => (turnOwnerIsOpponent ? turnOwnerId : opponents[0]?.id) ?? null,
-  );
 
-  // Auto-follow the turn owner if they're an opponent.
-  useEffect(() => {
-    if (turnOwnerIsOpponent && turnOwnerId) {
-      setActiveOppId(turnOwnerId);
-    }
-  }, [turnOwnerId, turnOwnerIsOpponent]);
-
-  const activeOpp = useMemo(
-    () => opponents.find((p) => p.id === activeOppId) ?? opponents[0] ?? null,
-    [opponents, activeOppId],
-  );
-
-  const seatPlayers: OpponentSeatPlayer[] = useMemo(
+  const seatPlayers = useMemo(
     () =>
       opponents.map((p, i) =>
-        toSeatPlayer(p, i, allowDuplicateSets, gameState.turn?.playerId),
+        toSeatPlayer(p, i, allowDuplicateSets, gameState),
       ),
-    [opponents, allowDuplicateSets, gameState.turn?.playerId],
+    [opponents, allowDuplicateSets, gameState],
   );
 
   const deckCount = gameState.deckCount ?? 0;
@@ -156,9 +105,6 @@ export function GameTableDesktop({
   // ~440 keeps the hand from clipping while letting sets reach scale=1.0.
   const BOTTOM_RESERVE = 440;
 
-  // Scroll opponents rail (used by < / > nav arrows)
-  const railScroll = useRef<HTMLDivElement | null>(null);
-
   return (
     <>
       {/* Opponent rail */}
@@ -191,7 +137,6 @@ export function GameTableDesktop({
             const next = seatPlayers[(idx + 1) % seatPlayers.length];
             setActiveOppId(next.id);
           }}
-          railRef={railScroll}
         />
       </div>
 
@@ -247,22 +192,45 @@ export function GameTableDesktop({
                 activeOppStats.setsToWin <= 1 &&
                 " · 1 set from win"}
             </div>
-            {activeOppStats && (
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 10,
-                  color: "rgba(245,234,208,0.4)",
-                }}
-              >
-                {activeOppStats.complete} complete ·{" "}
-                {activeOppStats.partial} partial ·{" "}
-                {activeOppStats.handCount} cards in hand
-              </div>
-            )}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              {activeOppStats && (
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    color: "rgba(245,234,208,0.4)",
+                  }}
+                >
+                  {activeOppStats.complete} complete ·{" "}
+                  {activeOppStats.partial} partial ·{" "}
+                  {activeOppStats.handCount} cards in hand
+                </div>
+              )}
+              {opponents.length > 1 && (
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 9,
+                    color: "rgba(245,234,208,0.3)",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  scroll to switch
+                </div>
+              )}
+            </div>
           </div>
-          <ActiveOpponentBoardWrapper
-            activeOpp={activeOpp}
+          <OpponentCarousel
+            opponents={opponents}
+            activeOppId={activeOppId}
+            onActiveChange={setActiveOppId}
             gameState={gameState}
             draggingCard={draggingCard}
           />
@@ -273,12 +241,13 @@ export function GameTableDesktop({
           style={{
             display: "flex",
             flexDirection: "column",
-            gap: 12,
-            padding: "12px 12px 12px",
+            gap: 8,
+            padding: "10px 12px",
             borderRadius: 14,
             background: "rgba(0,0,0,0.28)",
             boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
             minHeight: 0,
+            overflow: "hidden",
           }}
         >
           <div
@@ -288,6 +257,7 @@ export function GameTableDesktop({
               color: "rgba(245,234,208,0.55)",
               letterSpacing: "0.08em",
               textTransform: "uppercase",
+              flexShrink: 0,
             }}
           >
             Table
@@ -298,9 +268,10 @@ export function GameTableDesktop({
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 12,
-              justifyContent: "space-around",
+              gap: 8,
+              justifyContent: "space-evenly",
               minHeight: 0,
+              overflow: "hidden",
             }}
           >
             <div
@@ -309,12 +280,14 @@ export function GameTableDesktop({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 4,
+                flexShrink: 1,
+                minHeight: 0,
               }}
             >
               <CardStack
                 depth={Math.min(5, Math.max(2, Math.round(deckCount / 18)))}
-                width={84}
-                height={114}
+                width={72}
+                height={98}
                 faceDown
               />
               <div
@@ -323,6 +296,7 @@ export function GameTableDesktop({
                   fontSize: 10,
                   color: "rgba(245,234,208,0.7)",
                   letterSpacing: "0.1em",
+                  flexShrink: 0,
                 }}
               >
                 <span style={{ opacity: 0.65 }}>Deck</span>{" "}
@@ -339,15 +313,17 @@ export function GameTableDesktop({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 4,
+                flexShrink: 1,
+                minHeight: 0,
               }}
             >
               <CardStack
                 depth={Math.min(3, Math.max(1, Math.round(discardCount / 2)))}
-                width={84}
-                height={114}
+                width={72}
+                height={98}
               >
                 {topDiscard ? (
-                  <GameCard card={topDiscard} width={84} disableHover />
+                  <GameCard card={topDiscard} width={72} disableHover />
                 ) : null}
               </CardStack>
               <div
@@ -356,6 +332,7 @@ export function GameTableDesktop({
                   fontSize: 10,
                   color: "rgba(245,234,208,0.7)",
                   letterSpacing: "0.1em",
+                  flexShrink: 0,
                 }}
               >
                 <span style={{ opacity: 0.65 }}>Discard</span>{" "}
@@ -448,80 +425,6 @@ export function GameTableDesktop({
 }
 
 // ────────────────────────────────────────────────────────────────────
-// ActiveOpponentBoardWrapper — measures its container with a
-// ResizeObserver and passes the actual width through as PropertySetsRow's
-// maxWidth, so 6+ stacks scale appropriately on wide screens.
-// ────────────────────────────────────────────────────────────────────
-
-interface ActiveOpponentBoardWrapperProps {
-  activeOpp: ClientPlayer | null;
-  gameState: ClientGameState;
-  draggingCard: Card | null;
-}
-
-function ActiveOpponentBoardWrapper({
-  activeOpp,
-  gameState,
-  draggingCard,
-}: ActiveOpponentBoardWrapperProps) {
-  return (
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-        // Horizontal scroll if the player has more sets than fit; vertical
-        // hidden so the row stays one line.
-        overflowX: "auto",
-        overflowY: "hidden",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "flex-start",
-      }}
-      className="scrollbar-hide"
-    >
-      {activeOpp ? (
-        // Keyed motion wrapper so the table fades+slides when the active
-        // opponent switches (rail < / > or auto-follow on turn change).
-        <motion.div
-          key={activeOpp.id}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.22, 0.9, 0.32, 1] }}
-          style={{
-            margin: "0 auto",
-            // Let the inner row push its own width — center if narrower,
-            // scroll if wider (parent has overflow-x: auto).
-            display: "inline-flex",
-            padding: "0 8px",
-          }}
-        >
-          <PlayerBoard
-            player={activeOpp}
-            isYou={false}
-            isCurrentTurn={gameState.turn?.playerId === activeOpp.id}
-            settings={gameState.settings}
-            draggingCard={draggingCard}
-          />
-        </motion.div>
-      ) : (
-        <div
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            color: "rgba(245,234,208,0.4)",
-            letterSpacing: "0.08em",
-            padding: 36,
-            margin: "auto",
-          }}
-        >
-          no opponents
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
 // YourTableGrid — the sets+bank | hand split inside the gold platter.
 // Pulled out so a ResizeObserver can measure the actual sets-column
 // width and pass it through to PropertySetsRow as maxWidth — without
@@ -589,6 +492,9 @@ function YourTableGrid({
           alignSelf: "stretch",
           display: "flex",
           alignItems: "center",
+          // Padding so the bank border / card shadows don't get clipped
+          // at the overflow boundary.
+          padding: "8px 4px",
         }}
         className="scrollbar-hide"
       >

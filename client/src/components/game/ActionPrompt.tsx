@@ -165,12 +165,14 @@ export function ActionPrompt({
         return `${sourcePlayer?.name ?? "Someone"} demands ${amountDue}M!`;
       case "birthday":
         return settings.useSocialistTheme
-          ? `Comrade ${sourcePlayer?.name ?? "someone"} demands a solidarity contribution of ${amountDue}M!`
+          ? `Comrade ${sourcePlayer?.name ?? "someone"} demands ${amountDue}M in union dues!`
           : `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
       case "slyDeal":
         return `${sourcePlayer?.name ?? "Someone"} wants to ${settings.useSocialistTheme ? "expropriate" : "steal"} your property!`;
       case "forceDeal":
-        return `${sourcePlayer?.name ?? "Someone"} wants to swap properties!`;
+        return settings.useSocialistTheme
+          ? `Central planning demands a resource reallocation with ${sourcePlayer?.name ?? "someone"}!`
+          : `${sourcePlayer?.name ?? "Someone"} wants to swap properties!`;
       case "dealBreaker":
         return `${sourcePlayer?.name ?? "Someone"} is taking your complete set!`;
       default:

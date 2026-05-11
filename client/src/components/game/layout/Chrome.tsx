@@ -1,8 +1,8 @@
 // Chrome — TopBar, PlayerCrest, TurnPill, OpponentSeat, OpponentRail.
 // Decorative chrome that sits over the felt surface.
 
-import { useState, type ReactNode } from "react";
-import { Settings } from "lucide-react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { Settings, Hourglass } from "lucide-react";
 
 // ────────────────────────────────────────────────────────────────────
 // IconButton — small dark glass button (Music / Settings / nav arrows).
@@ -480,6 +480,8 @@ export interface OpponentSeatPlayer {
    *  which produced an always-on glow on whichever chip you happened
    *  to be looking at. */
   isCurrentTurn?: boolean;
+  /** Whether we're waiting for this player to respond to an action. */
+  isWaitingForAction?: boolean;
 }
 
 interface OpponentSeatProps {
@@ -493,16 +495,126 @@ export function OpponentSeat({
   player,
   isActive,
   scale = 1,
+  compact = false,
   onClick,
-}: OpponentSeatProps) {
-  // Glow ONLY when it's this player's turn. "Selected in the rail"
-  // (isActive) just gets a slightly less dim background; the always-
-  // on color halo on the carousel-active chip was confusing — it
-  // looked like the active chip was on its turn even when it wasn't.
+}: OpponentSeatProps & { compact?: boolean }) {
   const onTurn = !!player.isCurrentTurn;
+  const waiting = !!player.isWaitingForAction;
   const accent = "var(--accent, #f0c14a)";
+
+  // ── Compact mode: small pill with avatar + name ──────────────
+  if (compact) {
+    const s = 0.85;
+    return (
+      <button
+        data-opp-id={player.id}
+        onClick={onClick}
+        style={{
+          flex: "0 0 auto",
+          scrollSnapAlign: "center",
+          padding: "4px 8px 4px 4px",
+          borderRadius: 999,
+          background: onTurn
+            ? "linear-gradient(180deg, rgba(28,22,20,0.7) 0%, rgba(16,10,8,0.85) 100%)"
+            : isActive
+              ? "rgba(0,0,0,0.35)"
+              : "rgba(0,0,0,0.18)",
+          border: "none",
+          boxShadow: onTurn
+            ? `0 0 0 1px ${accent}55, 0 0 12px -4px ${accent}66`
+            : isActive
+              ? "inset 0 0 0 1px rgba(255,255,255,0.1)"
+              : "inset 0 0 0 1px rgba(255,255,255,0.04)",
+          cursor: "pointer",
+          color: "#f5ead0",
+          opacity: onTurn ? 1 : isActive ? 0.95 : 0.6,
+          transition: "all var(--d-base) var(--ease-out-soft)",
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          whiteSpace: "nowrap",
+        }}
+      >
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <div
+            style={{
+              width: 26 * s,
+              height: 26 * s,
+              borderRadius: 999,
+              background: `linear-gradient(180deg, ${player.color}, color-mix(in oklab, ${player.color} 55%, #000))`,
+              color: "#1a1208",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 11,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
+          >
+            {player.initial}
+          </div>
+          {waiting && (
+            <div
+              style={{
+                position: "absolute",
+                top: -2,
+                right: -2,
+                width: 12,
+                height: 12,
+                borderRadius: 999,
+                background: "#e08840",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 4px rgba(224,136,64,0.6)",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            >
+              <Hourglass style={{ width: 7, height: 7, color: "#fff" }} />
+            </div>
+          )}
+        </div>
+        <span
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: 11,
+            fontWeight: 600,
+            maxWidth: 56,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {player.name}
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            color: player.color,
+            flexShrink: 0,
+          }}
+        >
+          {player.sets}/{player.totalSetsNeeded}
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            color: "rgba(245,234,208,0.5)",
+            flexShrink: 0,
+          }}
+        >
+          ${player.money}M
+        </span>
+      </button>
+    );
+  }
+
+  // ── Full-size mode (desktop) ─────────────────────────────────
   return (
     <button
+      data-opp-id={player.id}
       onClick={onClick}
       style={{
         flex: "0 0 auto",
@@ -535,23 +647,51 @@ export function OpponentSeat({
       <div
         style={{ display: "flex", alignItems: "center", gap: 10 * scale }}
       >
-        <div
-          style={{
-            width: 32 * scale,
-            height: 32 * scale,
-            borderRadius: 999,
-            background: `linear-gradient(180deg, ${player.color}, color-mix(in oklab, ${player.color} 55%, #000))`,
-            color: "#1a1208",
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: 14 * scale,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
-          }}
-        >
-          {player.initial}
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <div
+            style={{
+              width: 32 * scale,
+              height: 32 * scale,
+              borderRadius: 999,
+              background: `linear-gradient(180deg, ${player.color}, color-mix(in oklab, ${player.color} 55%, #000))`,
+              color: "#1a1208",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 14 * scale,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+            }}
+          >
+            {player.initial}
+          </div>
+          {waiting && (
+            <div
+              style={{
+                position: "absolute",
+                top: -3 * scale,
+                right: -3 * scale,
+                width: 16 * scale,
+                height: 16 * scale,
+                borderRadius: 999,
+                background: "#e08840",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 0 6px rgba(224,136,64,0.6)",
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            >
+              <Hourglass
+                style={{
+                  width: 10 * scale,
+                  height: 10 * scale,
+                  color: "#fff",
+                }}
+              />
+            </div>
+          )}
         </div>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div
@@ -580,9 +720,6 @@ export function OpponentSeat({
             · ${player.money}M · {player.handCount}c
           </div>
         </div>
-        {/* "Live" / online dot removed — it was decorative and read as
-            an online indicator to users; the gold glow on isCurrentTurn
-            is now the only signal here. */}
       </div>
     </button>
   );
@@ -615,44 +752,89 @@ export function OpponentRail({
   const scale = compact ? 0.78 : 1;
   const showArrows = !compact && players.length > 1 && !!onScrollLeft && !!onScrollRight;
 
+  // Internal ref for auto-scroll; also fed to external railRef if provided.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll the rail to keep the active chip visible.
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !activeId) return;
+    const chip = container.querySelector(
+      `[data-opp-id="${activeId}"]`,
+    ) as HTMLElement | null;
+    if (!chip) return;
+    chip.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [activeId]);
+
   return (
     <div
       style={{
         position: "relative",
-        height: compact ? 64 : 78,
+        height: compact ? 40 : 78,
         flexShrink: 0,
       }}
     >
       <div
-        ref={railRef}
+        ref={(el) => {
+          scrollContainerRef.current = el;
+          if (railRef && typeof railRef === "object") {
+            (railRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+          }
+        }}
         style={{
           display: "flex",
           alignItems: "center",
-          // When chips fit, center them. When they overflow, browser
-          // ignores justifyContent and aligns to start so the rail is
-          // still scrollable from the first chip.
-          justifyContent: "center",
-          gap: compact ? 8 : 18,
+          justifyContent: compact ? "flex-start" : "center",
+          gap: compact ? undefined : 18,
           overflowX: "auto",
-          scrollSnapType: "x mandatory",
-          // Padding sized so first/last chip can still snap-center at
-          // the ends. Smaller on compact since the chip itself is
-          // narrower and the screen is narrower too.
-          padding: compact ? "4px 28px" : "8px 240px",
+          scrollSnapType: compact ? "none" : "x mandatory",
+          padding: compact ? "4px 12px" : "8px 240px",
           height: "100%",
           scrollbarWidth: "none",
         }}
         className="scrollbar-hide"
       >
-        {players.map((p) => (
-          <OpponentSeat
-            key={p.id}
-            player={p}
-            isActive={p.id === activeId}
-            scale={scale}
-            onClick={() => onSelect(p.id)}
-          />
-        ))}
+        {compact ? (
+          /* Inner wrapper centers via auto margins when chips fit, and
+             naturally overflows/scrolls when they don't — avoids the
+             justify-content:center clipping bug on the first chip. */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              margin: "0 auto",
+              width: "fit-content",
+              flexShrink: 0,
+            }}
+          >
+            {players.map((p) => (
+              <OpponentSeat
+                key={p.id}
+                player={p}
+                isActive={p.id === activeId}
+                scale={1}
+                compact
+                onClick={() => onSelect(p.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          players.map((p) => (
+            <OpponentSeat
+              key={p.id}
+              player={p}
+              isActive={p.id === activeId}
+              scale={scale}
+              onClick={() => onSelect(p.id)}
+            />
+          ))
+        )}
+        {!compact && <div style={{ flex: "0 0 1px" }} />} {/* gap sentinel for scroll-snap */}
       </div>
       {showArrows && (
         <>

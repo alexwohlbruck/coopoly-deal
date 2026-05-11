@@ -61,7 +61,7 @@ export function BankStack({ cards, compact = false, useSocialistTheme = false }:
         borderRadius: 10,
         background: "rgba(0,0,0,0.16)",
         boxShadow:
-          "inset 0 0 0 1px rgba(212,168,96,0.28), inset 0 1px 0 rgba(255,225,170,0.12), 0 0 0 1px rgba(212,168,96,0.12)",
+          "inset 0 0 0 1px rgba(212,168,96,0.28), inset 0 1px 0 rgba(255,225,170,0.12)",
       }}
     >
       <div
@@ -185,7 +185,7 @@ export function CardStack({
       style={{
         position: "relative",
         width,
-        height: height + depth * 2 + 18,
+        height: height + depth * 2,
       }}
     >
       {/* shadow puddle */}

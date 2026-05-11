@@ -343,10 +343,12 @@ function CompactPropertyStrip({
   sets,
   bank,
   dense = false,
+  showBank = true,
 }: {
   sets: PropertySet[];
   bank: number[];
   dense?: boolean;
+  showBank?: boolean;
 }) {
   const totalBank = bank.reduce((a, b) => a + b, 0);
   return (
@@ -425,25 +427,29 @@ function CompactPropertyStrip({
           NO PROPERTIES
         </span>
       )}
-      <span
-        style={{
-          width: 1,
-          height: 16,
-          background: "rgba(245,234,208,0.15)",
-          margin: "0 4px",
-        }}
-      />
-      <span
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: dense ? 10 : 11,
-          color: "rgba(245,234,208,0.55)",
-          letterSpacing: "0.12em",
-        }}
-      >
-        BANK{" "}
-        <span style={{ color: "#7adb88", fontWeight: 700 }}>${totalBank}M</span>
-      </span>
+      {showBank && (
+        <>
+          <span
+            style={{
+              width: 1,
+              height: 16,
+              background: "rgba(245,234,208,0.15)",
+              margin: "0 4px",
+            }}
+          />
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: dense ? 10 : 11,
+              color: "rgba(245,234,208,0.55)",
+              letterSpacing: "0.12em",
+            }}
+          >
+            BANK{" "}
+            <span style={{ color: "#7adb88", fontWeight: 700 }}>${totalBank}M</span>
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -832,6 +838,7 @@ function StandingsRow({
           <CompactPropertyStrip
             sets={player.properties}
             bank={player.bank.map((c) => c.value)}
+            showBank={false}
           />
         )}
       </div>
@@ -985,6 +992,7 @@ function MobileStandingsCard({
             sets={player.properties}
             bank={player.bank.map((c) => c.value)}
             dense
+            showBank={false}
           />
         )}
       </div>
@@ -1150,8 +1158,9 @@ export function EndGameSummary({
             flexDirection: "column",
             gap: isCompact ? 8 : 10,
             // Extra bottom padding so the last standings row isn't hidden
-            // behind the fixed action bar at the bottom.
-            paddingBottom: isCompact ? 100 : 80,
+            // behind the fixed action bar at the bottom. Compact stacks
+            // up to 4 buttons vertically (~240px with gaps + safe area).
+            paddingBottom: isCompact ? 260 : 80,
           }}
         >
           <div
