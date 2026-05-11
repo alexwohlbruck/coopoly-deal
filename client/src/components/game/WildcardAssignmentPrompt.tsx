@@ -26,7 +26,7 @@ interface WildcardAssignmentPromptProps {
 export function WildcardAssignmentPrompt({
   assignment,
   player,
-  settings,
+  settings: _settings,
   onAssign,
 }: WildcardAssignmentPromptProps) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);

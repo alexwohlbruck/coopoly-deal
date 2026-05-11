@@ -46,7 +46,7 @@ export function PlayerBoard({
   player,
   isYou,
   isCurrentTurn,
-  settings,
+  settings: _settings,
   draggingCard,
   onDropToBank,
   onDropToProperty,

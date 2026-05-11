@@ -69,11 +69,11 @@ export const useGameStore = create<GameStore>()(
       setToast: (toast) => set({ toast }),
       setTheme: (theme) => set({ theme }),
       setUseSocialistTheme: (enabled) =>
-        set((state) => ({
+        set({
           useSocialistTheme: enabled,
           // Auto-switch to the soviet theme when turning on
           ...(enabled ? { theme: "soviet" as ThemeName } : {}),
-        })),
+        }),
       setPreferredSettings: (settings) => set({ preferredSettings: settings }),
       recordWin: () =>
         set((state) => ({

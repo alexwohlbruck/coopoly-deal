@@ -632,7 +632,7 @@ function StandingsRow({
   expanded,
   bankTotal,
   completeSets,
-  settings,
+  settings: _settings,
   gameSeed,
 }: {
   player: ClientPlayer;
@@ -644,6 +644,7 @@ function StandingsRow({
   settings: GameSettings;
   gameSeed: string | number;
 }) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   return (
     <div
       style={{
@@ -854,7 +855,7 @@ function MobileStandingsCard({
   expanded,
   bankTotal,
   completeSets,
-  settings,
+  settings: _settings,
 }: {
   player: ClientPlayer;
   rank: number;
@@ -864,6 +865,7 @@ function MobileStandingsCard({
   completeSets: number;
   settings: GameSettings;
 }) {
+  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   return (
     <div
       style={{
@@ -1012,7 +1014,7 @@ export function EndGameSummary({
   onGoHome,
   onShare,
 }: EndGameSummaryProps) {
-  const { theme, useSocialistTheme } = useGameStore();
+  const { theme } = useGameStore();
   const { t } = useI18n();
   const themeData = getTheme(theme);
   const layout = useLayout();

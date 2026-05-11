@@ -228,7 +228,7 @@ export function SettingsPanel({
           <span style={ROW_LABEL_STYLE}>{t.settings.haptics}</span>
           <Toggle
             checked={hapticsEnabled}
-            onChange={(next) => {
+            onChange={() => {
               toggleHaptics();
               if (!hapticsEnabled) previewHaptic("complete");
             }}

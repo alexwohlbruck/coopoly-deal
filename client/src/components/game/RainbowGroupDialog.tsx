@@ -26,7 +26,7 @@ interface RainbowGroupDialogProps {
 export function RainbowGroupDialog({
   card,
   player,
-  settings,
+  settings: _settings,
   onClose,
   onConfirm,
 }: RainbowGroupDialogProps) {

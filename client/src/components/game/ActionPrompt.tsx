@@ -26,7 +26,7 @@ export function ActionPrompt({
   action,
   playerId,
   players,
-  settings,
+  settings: _settings,
   onPayWithCards,
   onJustSayNo,
   onAccept,
