@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Settings, Save } from "lucide-react";
+import { ChevronDown, ChevronUp, Settings } from "lucide-react";
 import {
   type GameSettings,
   type SettingsProfile,
@@ -61,7 +61,7 @@ export function GameSettingsPanel({
   const [customProfiles, setCustomProfiles] = useState<SettingsProfile[]>(
     getCustomProfiles,
   );
-  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [isEditingCustom, setIsEditingCustom] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
 
   const allProfiles = useMemo(
@@ -99,7 +99,7 @@ export function GameSettingsPanel({
     setCustomProfiles(updated);
     saveCustomProfiles(updated);
     setNewProfileName("");
-    setShowSaveForm(false);
+    setIsEditingCustom(false);
   };
 
   const handleDeleteProfile = (id: string) => {
@@ -279,57 +279,16 @@ export function GameSettingsPanel({
                       </div>
                     );
                   })}
-                  {/* Custom indicator when no profile matches */}
+                  {/* Custom chip — click to name & save as profile */}
                   {!activeProfileId && (
-                    <span
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 10,
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        fontWeight: 700,
-                        border: "1px dashed rgba(255,255,255,0.15)",
-                        background: "transparent",
-                        color: "rgba(245,234,208,0.5)",
-                      }}
-                    >
-                      {t.gameSettings.custom}
-                    </span>
-                  )}
-                </div>
-
-                {/* Save as profile */}
-                {isHost && (
-                  <div style={{ marginTop: 6 }}>
-                    {!showSaveForm ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowSaveForm(true)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 4,
-                          padding: "3px 0",
-                          background: "none",
-                          border: "none",
-                          color: "rgba(245,234,208,0.35)",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 9,
-                          letterSpacing: "0.06em",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <Save style={{ width: 9, height: 9 }} />
-                        {t.gameSettings.saveAsProfile}
-                      </button>
-                    ) : (
+                    isEditingCustom && isHost ? (
                       <div
                         style={{
                           display: "flex",
-                          gap: 4,
-                          alignItems: "center",
+                          alignItems: "stretch",
+                          borderRadius: 8,
+                          overflow: "hidden",
+                          border: "1px solid rgba(255,255,255,0.15)",
                         }}
                       >
                         <input
@@ -338,33 +297,43 @@ export function GameSettingsPanel({
                           onChange={(e) => setNewProfileName(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleSaveProfile();
-                            if (e.key === "Escape") setShowSaveForm(false);
+                            if (e.key === "Escape") {
+                              setIsEditingCustom(false);
+                              setNewProfileName("");
+                            }
+                          }}
+                          onBlur={() => {
+                            if (!newProfileName.trim()) {
+                              setIsEditingCustom(false);
+                              setNewProfileName("");
+                            }
                           }}
                           placeholder={t.gameSettings.profileName}
                           autoFocus
                           style={{
-                            flex: 1,
-                            padding: "4px 8px",
-                            borderRadius: 6,
-                            border: "1px solid rgba(255,255,255,0.1)",
+                            width: 90,
+                            padding: "5px 8px",
+                            border: "none",
                             background: "rgba(0,0,0,0.3)",
                             color: "#f5ead0",
-                            fontFamily: "var(--font-ui)",
-                            fontSize: 11,
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.06em",
                             outline: "none",
                           }}
                         />
                         <button
                           type="button"
-                          onClick={handleSaveProfile}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => handleSaveProfile()}
                           disabled={!newProfileName.trim()}
                           style={{
-                            padding: "4px 8px",
-                            borderRadius: 6,
+                            padding: "0 8px",
                             border: "none",
+                            borderLeft: "1px solid rgba(255,255,255,0.08)",
                             background: newProfileName.trim()
                               ? "var(--accent, #f0c14a)"
-                              : "rgba(255,255,255,0.08)",
+                              : "rgba(255,255,255,0.05)",
                             color: newProfileName.trim()
                               ? "#1a1208"
                               : "rgba(245,234,208,0.25)",
@@ -374,34 +343,36 @@ export function GameSettingsPanel({
                             cursor: newProfileName.trim()
                               ? "pointer"
                               : "not-allowed",
+                            display: "flex",
+                            alignItems: "center",
                           }}
                         >
-                          <Save style={{ width: 10, height: 10 }} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowSaveForm(false);
-                            setNewProfileName("");
-                          }}
-                          style={{
-                            padding: "4px 6px",
-                            borderRadius: 6,
-                            border: "none",
-                            background: "rgba(255,255,255,0.04)",
-                            color: "rgba(245,234,208,0.4)",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: 9,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                        >
-                          ✕
+                          ✓
                         </button>
                       </div>
-                    )}
-                  </div>
-                )}
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => isHost && setIsEditingCustom(true)}
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: 8,
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 10,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          fontWeight: 700,
+                          border: "1px dashed rgba(255,255,255,0.15)",
+                          background: "transparent",
+                          color: "rgba(245,234,208,0.5)",
+                          cursor: isHost ? "pointer" : "default",
+                        }}
+                      >
+                        {t.gameSettings.custom}
+                      </button>
+                    )
+                  )}
+                </div>
               </div>
 
               {/* ── Max hand size ── */}
