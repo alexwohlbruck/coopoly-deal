@@ -113,7 +113,7 @@ function ConfettiLayer({ count = 60, seed = 7 }: { count?: number; seed?: number
 }
 
 // ─── Wax-stamp WINNER seal ────────────────────────────────────────
-function WinnerSeal({ size = 92 }: { size?: number }) {
+function WinnerSeal({ size = 92, label }: { size?: number; label: string }) {
   return (
     <div
       style={{
@@ -147,7 +147,7 @@ function WinnerSeal({ size = 92 }: { size?: number }) {
           textShadow: "0 1px 0 rgba(255,235,180,0.4)",
         }}
       >
-        WINNER
+        {label.toUpperCase()}
       </div>
     </div>
   );
@@ -210,7 +210,7 @@ function CrownIcon({
 }
 
 // ─── Rank ribbon — left-side gilded numeral ──────────────────────
-function RankRibbon({ rank, height = 72 }: { rank: number; height?: number }) {
+function RankRibbon({ rank, height = 72, label }: { rank: number; height?: number; label: string }) {
   const tone =
     rank === 1
       ? {
@@ -264,7 +264,7 @@ function RankRibbon({ rank, height = 72 }: { rank: number; height?: number }) {
           fontWeight: 700,
         }}
       >
-        RANK
+        {label.toUpperCase()}
       </div>
       <div
         style={{
@@ -350,6 +350,7 @@ function CompactPropertyStrip({
   dense?: boolean;
   showBank?: boolean;
 }) {
+  const { t } = useI18n();
   const totalBank = bank.reduce((a, b) => a + b, 0);
   return (
     <div
@@ -407,7 +408,7 @@ function CompactPropertyStrip({
                   letterSpacing: "0.06em",
                 }}
               >
-                ✓ SET
+                ✓ {t.finished.set.toUpperCase()}
               </span>
             )}
             {s.house && <span style={{ fontSize: 10 }}>🏠</span>}
@@ -424,7 +425,7 @@ function CompactPropertyStrip({
             letterSpacing: "0.12em",
           }}
         >
-          NO PROPERTIES
+          {t.finished.noProperties.toUpperCase()}
         </span>
       )}
       {showBank && (
@@ -445,7 +446,7 @@ function CompactPropertyStrip({
               letterSpacing: "0.12em",
             }}
           >
-            BANK{" "}
+            {t.finished.bank.toUpperCase()}{" "}
             <span style={{ color: "#7adb88", fontWeight: 700 }}>${totalBank}M</span>
           </span>
         </>
@@ -485,6 +486,7 @@ function HeroPlaque({
   completeSets: number;
   gameSeed: string | number;
 }) {
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -552,7 +554,7 @@ function HeroPlaque({
               opacity: 0.7,
             }}
           />
-          GAME OVER · WINNER
+          {t.finished.gameOver.toUpperCase()} · {t.finished.winner.toUpperCase()}
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
           <div
@@ -577,7 +579,7 @@ function HeroPlaque({
               letterSpacing: "-0.01em",
             }}
           >
-            wins
+            {t.finished.wins.toLowerCase()}
           </span>
         </div>
         <div
@@ -604,14 +606,14 @@ function HeroPlaque({
         }}
       >
         <StatReadout
-          label="Sets"
+          label={t.common.sets}
           value={`${completeSets}/3`}
           mono={false}
           size="lg"
           accent="#f5ead0"
         />
         <StatReadout
-          label="Bank"
+          label={t.finished.bank}
           value={`$${bankTotal}M`}
           mono={false}
           size="lg"
@@ -619,7 +621,7 @@ function HeroPlaque({
         />
       </div>
 
-      <WinnerSeal size={84} />
+      <WinnerSeal size={84} label={t.finished.winner} />
     </div>
   );
 }
@@ -645,6 +647,7 @@ function StandingsRow({
   gameSeed: string | number;
 }) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -664,7 +667,7 @@ function StandingsRow({
         opacity: expanded ? 1 : 0.92,
       }}
     >
-      <RankRibbon rank={rank} height={expanded ? 134 : 120} />
+      <RankRibbon rank={rank} height={expanded ? 134 : 120} label={t.finished.rank} />
 
       <div
         style={{
@@ -742,7 +745,7 @@ function StandingsRow({
                   color: "rgba(245,234,208,0.5)",
                 }}
               >
-                SETS
+                {t.common.sets.toUpperCase()}
               </span>
               <span
                 style={{
@@ -774,7 +777,7 @@ function StandingsRow({
                   color: "rgba(245,234,208,0.5)",
                 }}
               >
-                BANK
+                {t.finished.bank.toUpperCase()}
               </span>
               <span
                 style={{
@@ -825,7 +828,7 @@ function StandingsRow({
                 marginBottom: 8,
               }}
             >
-              {completeSets} COMPLETE {completeSets === 1 ? "SET" : "SETS"}
+              {completeSets} {t.finished.completeSets.toUpperCase()}
             </div>
             <div style={{ overflowX: "auto" }} className="scrollbar-hide">
               <PropertySetsRow
@@ -866,6 +869,7 @@ function MobileStandingsCard({
   settings: GameSettings;
 }) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -884,7 +888,7 @@ function MobileStandingsCard({
         display: "flex",
       }}
     >
-      <RankRibbon rank={rank} height={expanded ? 132 : 64} />
+      <RankRibbon rank={rank} height={expanded ? 132 : 64} label={t.finished.rank} />
       <div
         style={{
           flex: 1,
@@ -974,7 +978,7 @@ function MobileStandingsCard({
                   color: "rgba(245,234,208,0.55)",
                 }}
               >
-                PROPERTIES
+                {t.common.properties.toUpperCase()}
               </div>
             </div>
             <div
@@ -1095,7 +1099,7 @@ export function EndGameSummary({
                   marginBottom: 2,
                 }}
               >
-                GAME OVER · WINNER
+                {t.finished.gameOver.toUpperCase()} · {t.finished.winner.toUpperCase()}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div
@@ -1127,14 +1131,14 @@ export function EndGameSummary({
                 <span
                   style={{ color: "var(--accent, #f0c14a)", fontWeight: 700 }}
                 >
-                  {winnerSets}/3 sets
+                  {winnerSets}/3 {t.common.sets}
                 </span>
                 <span style={{ color: "#7adb88", fontWeight: 700 }}>
                   ${winnerBank}M
                 </span>
               </div>
             </div>
-            <WinnerSeal size={56} />
+            <WinnerSeal size={56} label={t.finished.winner} />
           </motion.div>
         ) : (
           <motion.div
@@ -1181,7 +1185,7 @@ export function EndGameSummary({
                 color: "rgba(245,234,208,0.6)",
               }}
             >
-              FINAL STANDINGS
+              {t.finished.finalStandings.toUpperCase()}
             </div>
             <div
               style={{
@@ -1199,7 +1203,7 @@ export function EndGameSummary({
                 color: "rgba(245,234,208,0.4)",
               }}
             >
-              {players.length} PLAYERS
+              {players.length} {t.finished.players.toUpperCase()}
             </div>
           </div>
 

@@ -13,6 +13,7 @@ import {
   getPropertyColorLabel,
   type ClientPlayer,
 } from "../../types/game";
+import { useI18n } from "../../i18n";
 
 interface WildcardColorOptionProps {
   color: PropertyColor;
@@ -59,6 +60,7 @@ export function WildcardColorOption({
   onClick,
   useSocialistTheme = false,
 }: WildcardColorOptionProps) {
+  const { t } = useI18n();
   const setSize = SET_SIZE[color] ?? 3;
   const rents = RENT_VALUES[color] ?? [];
   const set = player?.properties.find((s) => s.color === color);
@@ -140,7 +142,7 @@ export function WildcardColorOption({
                 flexShrink: 0,
               }}
             >
-              Best
+              {t.common.best}
             </span>
           )}
           <span
@@ -236,10 +238,10 @@ export function WildcardColorOption({
         }}
       >
         {isCurrent
-          ? "Current"
+          ? t.common.current
           : willCompleteSet
-            ? `Completes the set ★`
-            : `Add → ${currentCount + 1}/${setSize}`}
+            ? `${t.common.completesSet} ★`
+            : `${t.common.add} → ${currentCount + 1}/${setSize}`}
       </div>
 
     </button>

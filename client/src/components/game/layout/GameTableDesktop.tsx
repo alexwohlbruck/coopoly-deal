@@ -14,6 +14,7 @@ import {
   OpponentRail,
   PlayerCrest,
 } from "./Chrome";
+import { useI18n } from "../../../i18n";
 import { CardStack } from "./TableObjects";
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
 import { GameCard } from "../../cards/GameCard";
@@ -53,6 +54,7 @@ export function GameTableDesktop({
   setDraggingCard,
   bottomBar,
 }: GameTableDesktopProps) {
+  const { t } = useI18n();
   const { opponents, activeOppId, setActiveOppId, activeOpp } =
     useActiveOpponent(gameState, playerId);
   const me = gameState.players.find((p) => p.id === playerId);
@@ -186,7 +188,7 @@ export function GameTableDesktop({
                 textTransform: "uppercase",
               }}
             >
-              {activeOpp ? `${activeOpp.name}'s table` : "No opponent"}
+              {activeOpp ? `${activeOpp.name}'s ${t.game.table.toLowerCase()}` : "No opponent"}
               {turnOwnerId === activeOppId && " · in play"}
               {activeOppStats &&
                 activeOppStats.setsToWin > 0 &&
@@ -262,7 +264,7 @@ export function GameTableDesktop({
               flexShrink: 0,
             }}
           >
-            Table
+            {t.game.table}
           </div>
           <div
             style={{
@@ -301,7 +303,7 @@ export function GameTableDesktop({
                   flexShrink: 0,
                 }}
               >
-                <span style={{ opacity: 0.65 }}>Deck</span>{" "}
+                <span style={{ opacity: 0.65 }}>{t.game.deck}</span>{" "}
                 <span
                   style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
                 >
@@ -337,7 +339,7 @@ export function GameTableDesktop({
                   flexShrink: 0,
                 }}
               >
-                <span style={{ opacity: 0.65 }}>Discard</span>{" "}
+                <span style={{ opacity: 0.65 }}>{t.game.discardPile}</span>{" "}
                 <span
                   style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}
                 >

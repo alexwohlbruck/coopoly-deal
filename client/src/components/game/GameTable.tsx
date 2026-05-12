@@ -4,6 +4,7 @@ import { GamePhase, TurnPhase, CardType } from "../../types/game";
 import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
 import { useTurnTimer } from "../../hooks/useTurnTimer";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 import { getTheme } from "../../theme/colors";
 import { validateActionCard } from "../../utils/card-validation";
 import { PlayerTurnBar } from "./PlayerTurnBar";
@@ -92,6 +93,7 @@ export function GameTable({
   onDevGiveCompleteSet,
   onDevSetMoney,
 }: GameTableProps) {
+  const { t } = useI18n();
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const { modal, open: openModal, close: closeModal } = useModalParam();
   const showSettings = modal === "settings";
@@ -161,7 +163,7 @@ export function GameTable({
       console.log("[GameTable] Turn ended while dialog open, closing");
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedCard(null);
-      setToast("Time's up — your turn ended.");
+      setToast(t.game.timesUp);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMyTurn]);
@@ -259,8 +261,8 @@ export function GameTable({
     if (card.type === CardType.JustSayNo) {
       setToast(
         useSocialistTheme
-          ? "Just Say No can only be played when a directive is played against you, or banked."
-          : "Just Say No can only be played when an action is played against you, or banked.",
+          ? `${t.socialist.counterIntelligence.replace("!", "")} can only be played when a directive is played against you, or banked.`
+          : `${t.actions.justSayNo} can only be played when an action is played against you, or banked.`,
       );
       setShakingCardId(card.id);
       play("error");
@@ -292,7 +294,7 @@ export function GameTable({
       );
       if (!validation.valid) {
         // Show error feedback
-        setToast(validation.reason || "Cannot play this card");
+        setToast(validation.reason || t.game.cannotPlay);
         setShakingCardId(card.id);
         play("error");
         setTimeout(() => setShakingCardId(null), 300);
@@ -525,7 +527,7 @@ export function GameTable({
                   whiteSpace: "nowrap",
                 }}
               >
-                {useSocialistTheme ? "Levy" : "Rent"}{" "}
+                {useSocialistTheme ? t.socialist.rent : t.actions.rent}{" "}
                 {gameState.turn.rentMultiplier}×
               </div>
             </div>

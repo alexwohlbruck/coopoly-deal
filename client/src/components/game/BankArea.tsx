@@ -1,5 +1,6 @@
 import { FannedCards } from "../cards/FannedCards";
 import type { Card } from "../../types/game";
+import { useI18n } from "../../i18n";
 
 interface BankAreaProps {
   bankCards: Card[];
@@ -28,6 +29,8 @@ export function BankArea({
   onBankDrop,
   useSocialistTheme = false,
 }: BankAreaProps) {
+  const { t } = useI18n();
+
   if (
     bankCards.length === 0 &&
     handBackCards.length === 0 &&
@@ -72,7 +75,7 @@ export function BankArea({
               <span
                 className={`text-xs ${showDropZones ? "text-blue-300" : "text-gray-500"}`}
               >
-                {showDropZones ? "Bank" : "Empty"}
+                {showDropZones ? t.common.bank : t.game.empty}
               </span>
             </div>
           )

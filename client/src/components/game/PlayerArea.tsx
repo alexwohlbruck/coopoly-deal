@@ -9,6 +9,7 @@ import { PropertySetDisplay } from "./PropertySetDisplay";
 import { EmptyPropertyDropZone } from "./EmptyPropertyDropZone";
 import { FannedCards } from "../cards/FannedCards";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface PlayerAreaProps {
   player: ClientPlayer;
@@ -43,6 +44,7 @@ export function PlayerArea({
   onWildcardClick,
   draggingCard,
 }: PlayerAreaProps) {
+  const { t } = useI18n();
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const bankTotal = player.bank.reduce((sum, c) => sum + c.value, 0);
 
@@ -189,8 +191,8 @@ export function PlayerArea({
             className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center shadow-lg z-10"
             title={
               useSocialistTheme
-                ? "Waiting for comrade response"
-                : "Waiting for player response"
+                ? `${t.game.waitingForResponses.replace("...", "")} ${t.socialist.player}`
+                : `${t.game.waitingForResponses.replace("...", "")} ${t.common.player}`
             }
           >
             <Clock className="w-4 h-4 text-white" />
@@ -212,14 +214,14 @@ export function PlayerArea({
             >
               {player.name}
               {isYou && (
-                <span className="text-emerald-400 text-xs ml-1">(you)</span>
+                <span className="text-emerald-400 text-xs ml-1">({t.common.you})</span>
               )}
             </span>
             <span className="text-emerald-300 text-xs font-mono">
               ${bankTotal}M
             </span>
             <span className="text-yellow-300 text-xs">{completeSets}/3</span>
-            <span className="text-gray-400 text-xs">{player.handCount} cards</span>
+            <span className="text-gray-400 text-xs">{player.handCount} {t.common.cards}</span>
           </div>
         </div>
 
@@ -303,7 +305,7 @@ export function PlayerArea({
                     <span
                       className={`text-xs ${showDropZones ? "text-blue-300" : "text-gray-500"}`}
                     >
-                      Bank
+                      {t.common.bank}
                     </span>
                   </div>
                 )}

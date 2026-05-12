@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Settings, Hourglass } from "lucide-react";
+import { useI18n } from "../../../i18n";
 
 // ────────────────────────────────────────────────────────────────────
 // IconButton — small dark glass button (Music / Settings / nav arrows).
@@ -69,6 +70,7 @@ export function TopBar({
   showLeave = false,
   showDevTools = false,
 }: TopBarProps) {
+  const { t } = useI18n();
   const [confirmResign, setConfirmResign] = useState(false);
 
   return (
@@ -99,7 +101,7 @@ export function TopBar({
             textShadow: "0 1px 0 rgba(0,0,0,0.5)",
           }}
         >
-          {useSocialistTheme ? "☭ Co-Opoly Deal" : "Monopoly Deal"}
+          {useSocialistTheme ? `☭ ${t.socialist.title}` : t.lobby.title}
         </div>
         <div
           style={{
@@ -143,10 +145,10 @@ export function TopBar({
               cursor: "pointer",
             }}
           >
-            Dev
+            {t.game.dev}
           </button>
         )}
-        <IconButton title="Settings" onClick={onSettings}>
+        <IconButton title={t.game.settings} onClick={onSettings}>
           <Settings size={14} />
         </IconButton>
         {showResign && onResign && (
@@ -168,7 +170,7 @@ export function TopBar({
               cursor: "pointer",
             }}
           >
-            Resign
+            {t.game.resign}
           </button>
         )}
         {showLeave && onLeave && (
@@ -190,7 +192,7 @@ export function TopBar({
               cursor: "pointer",
             }}
           >
-            Leave
+            {t.game.leave}
           </button>
         )}
         {confirmResign && onResign && (
@@ -219,7 +221,7 @@ export function TopBar({
                 marginBottom: 4,
               }}
             >
-              Resign this game?
+              {t.game.resignConfirm}
             </div>
             <div
               style={{
@@ -228,7 +230,7 @@ export function TopBar({
                 marginBottom: 10,
               }}
             >
-              You'll forfeit and your cards return to the deck.
+              {t.game.resignDescription}
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               <button
@@ -246,7 +248,7 @@ export function TopBar({
                   cursor: "pointer",
                 }}
               >
-                Cancel
+                {t.common.cancel}
               </button>
               <button
                 onClick={() => {
@@ -266,7 +268,7 @@ export function TopBar({
                   cursor: "pointer",
                 }}
               >
-                Resign
+                {t.game.resign}
               </button>
             </div>
           </div>
@@ -306,6 +308,7 @@ export function PlayerCrest({
   active = false,
   compact = false,
 }: PlayerCrestProps) {
+  const { t } = useI18n();
   return (
     <div
       style={{
@@ -371,7 +374,7 @@ export function PlayerCrest({
                 color,
               }}
             >
-              (YOU)
+              ({t.common.you.toUpperCase()})
             </span>
           )}
         </div>
@@ -390,7 +393,7 @@ export function PlayerCrest({
             <span style={{ color }}>
               {sets}/{totalSetsNeeded}
             </span>{" "}
-            sets
+            {t.common.sets}
           </span>
           <span>{handCount}c</span>
         </div>

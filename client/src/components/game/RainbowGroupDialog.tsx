@@ -10,6 +10,7 @@ import {
 } from "../../types/game";
 import { type GameSettings } from "../../types/game";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface RainbowGroupDialogProps {
   card: Card;
@@ -31,6 +32,7 @@ export function RainbowGroupDialog({
   onConfirm,
 }: RainbowGroupDialogProps) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   const unassignedSet = player.properties.find(
     (s) => s.color === PropertyColor.Unassigned,
   );
@@ -72,7 +74,7 @@ export function RainbowGroupDialog({
     <BottomSheet
       isOpen={true}
       onClose={onClose}
-      title="Group with Rainbow Wildcards"
+      title={t.game.groupWithRainbow}
       height="h-auto"
       playSound={true}
     >
@@ -80,7 +82,7 @@ export function RainbowGroupDialog({
         {step === "color" && (
           <div>
             <p className="text-gray-300 text-sm mb-4 text-center">
-              Which color do you want to play this as?
+              {t.game.playAsColor}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {card.colors?.map((color) => (
@@ -103,9 +105,7 @@ export function RainbowGroupDialog({
         {step === "set" && selectedColor && (
           <div>
             <p className="text-gray-300 text-sm mb-4 text-center">
-              You already have an incomplete{" "}
-              {getPropertyColorLabel(selectedColor, useSocialistTheme)}{" "}
-              set. What would you like to do?
+              {t.game.incompleteSetPrompt.replace("{color}", getPropertyColorLabel(selectedColor, useSocialistTheme))}
             </p>
             <div className="grid grid-cols-1 gap-2">
               <button
@@ -116,7 +116,7 @@ export function RainbowGroupDialog({
                 className="py-3 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                 style={{ backgroundColor: PROPERTY_COLOR_HEX[selectedColor] }}
               >
-                Add to Existing Set
+                {t.game.addToExistingSet}
               </button>
               <button
                 onClick={() => {
@@ -125,7 +125,7 @@ export function RainbowGroupDialog({
                 }}
                 className="py-3 rounded-lg text-white font-semibold text-sm hover:opacity-80 bg-gray-600"
               >
-                Start a New Set
+                {t.game.startNewSet}
               </button>
             </div>
           </div>
@@ -134,7 +134,7 @@ export function RainbowGroupDialog({
         {step === "count" && selectedColor && (
           <div>
             <p className="text-gray-300 text-sm mb-4 text-center">
-              How many Rainbow wildcards do you want to include?
+              {t.game.howManyRainbow}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {Array.from({ length: availableWildcards.length + 1 }).map(

@@ -287,7 +287,7 @@ export function GameRulesModal({
                   lineHeight: 1.05,
                 }}
               >
-                {useSocialistTheme ? "Co-Opoly Deal · Rules" : t.rules.title}
+                {useSocialistTheme ? t.socialist.rulesTitle : t.rules.title}
               </h2>
               {/* Co-Opoly Deal toggle — flip wording between standard
                   ("players, rent, action cards") and the socialist
@@ -319,7 +319,7 @@ export function GameRulesModal({
                   }}
                   onClick={() => setUseSocialistTheme(!useSocialistTheme)}
                 >
-                  ☭ Co-Opoly Deal
+                  ☭ {t.socialist.title}
                 </span>
               </div>
             </div>
@@ -345,20 +345,20 @@ export function GameRulesModal({
             <section>
               <SectionHeading>{t.rules.overview}</SectionHeading>
               <p style={{ margin: 0 }}>
-                {useSocialistTheme ? "Co-Opoly Deal" : "Monopoly Deal"} is a card game for 2–6{" "}
-                {useSocialistTheme ? "comrades" : "players"}. The goal is to be
-                the first {useSocialistTheme ? "comrade" : "player"} to collect{" "}
+                {useSocialistTheme ? t.socialist.title : t.lobby.title} is a card game for 2–6{" "}
+                {useSocialistTheme ? t.socialist.players : t.common.players}. The goal is to be
+                the first {useSocialistTheme ? t.socialist.player : t.common.player} to collect{" "}
                 <Hi>
-                  3 complete {useSocialistTheme ? "state asset" : "property"} sets
+                  3 complete {useSocialistTheme ? t.socialist.property : "property"} sets
                   {allowDuplicateSets ? "" : " of different colors"}
                 </Hi>{" "}
                 on the table in front of you.{" "}
-                {useSocialistTheme ? "Comrades" : "Players"} take turns drawing
+                {(useSocialistTheme ? t.socialist.players : t.common.players).replace(/^./, c => c.toUpperCase())} take turns drawing
                 cards, playing cards, and using{" "}
-                {useSocialistTheme ? "directive" : "action"} cards to collect{" "}
-                {useSocialistTheme ? "levies" : "rent"},{" "}
-                {useSocialistTheme ? "expropriate" : "steal"}{" "}
-                {useSocialistTheme ? "state assets" : "properties"}, and
+                {useSocialistTheme ? t.socialist.action : "action"} cards to collect{" "}
+                {useSocialistTheme ? t.socialist.rents : t.actions.rent.toLowerCase()},{" "}
+                {useSocialistTheme ? t.socialist.steal : "steal"}{" "}
+                {useSocialistTheme ? t.socialist.properties : t.common.properties.toLowerCase()}, and
                 block opponents.
               </p>
             </section>
@@ -380,11 +380,11 @@ export function GameRulesModal({
                   "Shuffle the full 106-card deck.",
                   <>
                     Deal <Hi>5 cards</Hi> face-down to each{" "}
-                    {useSocialistTheme ? "comrade" : "player"}.
+                    {useSocialistTheme ? t.socialist.player : t.common.player}.
                   </>,
                   "Place the remaining cards face-down in the center as the draw pile.",
                   <>
-                    The first {useSocialistTheme ? "comrade" : "player"} is
+                    The first {useSocialistTheme ? t.socialist.player : t.common.player} is
                     chosen randomly. Play proceeds clockwise.
                   </>,
                 ].map((text, i) => (
@@ -414,9 +414,9 @@ export function GameRulesModal({
                 </SubCard>
                 <SubCard title={t.rules.playPhase}>
                   Play <Hi>up to 3 cards</Hi> from your hand. Cards can go to
-                  your {useSocialistTheme ? "treasury" : "bank"}, your{" "}
-                  {useSocialistTheme ? "state asset" : "property"} area, or be
-                  played as {useSocialistTheme ? "directive" : "action"} cards.
+                  your {useSocialistTheme ? t.socialist.bank : t.common.bank.toLowerCase()}, your{" "}
+                  {useSocialistTheme ? t.socialist.property : "property"} area, or be
+                  played as {useSocialistTheme ? t.socialist.action : "action"} cards.
                 </SubCard>
                 <SubCard title={t.rules.discardPhase}>
                   You may have{" "}
@@ -436,10 +436,10 @@ export function GameRulesModal({
             <section>
               <SectionHeading>{t.rules.winning}</SectionHeading>
               <p style={{ margin: 0 }}>
-                The first {useSocialistTheme ? "comrade" : "player"} to have{" "}
-                <Hi>3 complete {useSocialistTheme ? "state asset" : "property"} sets</Hi>{" "}
+                The first {useSocialistTheme ? t.socialist.player : t.common.player} to have{" "}
+                <Hi>3 complete {useSocialistTheme ? t.socialist.property : "property"} sets</Hi>{" "}
                 on the table wins immediately.{" "}
-                {useSocialistTheme ? "State asset" : "Property"} sets must be on
+                {(useSocialistTheme ? t.socialist.property : "property").replace(/^./, c => c.toUpperCase())} sets must be on
                 the table — cards in your hand do not count.
               </p>
             </section>
@@ -447,7 +447,7 @@ export function GameRulesModal({
             {/* Property Sets table */}
             <section>
               <SectionHeading>
-                {useSocialistTheme ? "State Asset Sets" : t.rules.propertySets}
+                {useSocialistTheme ? t.socialist.stateAssetSets : t.rules.propertySets}
               </SectionHeading>
               <div
                 style={{
@@ -475,10 +475,10 @@ export function GameRulesModal({
                       {[
                         "Color",
                         "Set",
-                        useSocialistTheme ? "Levy 1" : "Rent 1",
-                        useSocialistTheme ? "Levy 2" : "Rent 2",
-                        useSocialistTheme ? "Levy 3" : "Rent 3",
-                        useSocialistTheme ? "Levy 4" : "Rent 4",
+                        `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 1`,
+                        `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 2`,
+                        `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 3`,
+                        `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 4`,
                       ].map((label, i) => (
                         <th
                           key={label}
@@ -545,36 +545,36 @@ export function GameRulesModal({
                   Draw 2 cards from the deck.
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.SlyDeal, useSocialistTheme)} small>
-                  {useSocialistTheme ? "Expropriate" : "Steal"} one{" "}
-                  {useSocialistTheme ? "state asset" : "property"} card from any
+                  {useSocialistTheme ? t.socialist.steal : "Steal"} one{" "}
+                  {useSocialistTheme ? t.socialist.property : "property"} card from any
                   opponent (not from complete sets).
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.ForceDeal, useSocialistTheme)} small>
-                  Swap one of your {useSocialistTheme ? "state assets" : "properties"}{" "}
+                  Swap one of your {useSocialistTheme ? t.socialist.properties : t.common.properties.toLowerCase()}{" "}
                   for one of an opponent's (neither from complete sets).
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.DealBreaker, useSocialistTheme)} small>
-                  {useSocialistTheme ? "Expropriate" : "Steal"} an entire
-                  complete {useSocialistTheme ? "state asset" : "property"} set from an opponent.
+                  {useSocialistTheme ? t.socialist.steal : "Steal"} an entire
+                  complete {useSocialistTheme ? t.socialist.property : "property"} set from an opponent.
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.DebtCollector, useSocialistTheme)} small>
-                  Charge one {useSocialistTheme ? "comrade" : "player"} 5M.
+                  Charge one {useSocialistTheme ? t.socialist.player : t.common.player} 5M.
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.Birthday, useSocialistTheme)} small>
-                  All other {useSocialistTheme ? "comrades" : "players"} pay you
+                  All other {useSocialistTheme ? t.socialist.players : t.common.players} pay you
                   2M.
                 </SubCard>
                 <SubCard title={getCardTypeLabel(CardType.JustSayNo, useSocialistTheme)} small>
-                  Cancel any {useSocialistTheme ? "directive" : "action"} card
+                  Cancel any {useSocialistTheme ? t.socialist.action : "action"} card
                   played against you. Can be chained!
                 </SubCard>
                 <SubCard
                   title={getCardTypeLabel(CardType.DoubleTheRent, useSocialistTheme)}
                   small
                 >
-                  Play with a {useSocialistTheme ? "levy" : "rent"} card to
+                  Play with a {useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase()} card to
                   double it. Can stack 2 cards for 4×{" "}
-                  {useSocialistTheme ? "levy" : "rent"}!
+                  {useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase()}!
                 </SubCard>
               </div>
             </section>
@@ -595,7 +595,7 @@ export function GameRulesModal({
                 {[
                   <>
                     The{" "}
-                    <Hi>paying {useSocialistTheme ? "comrade" : "player"}</Hi>{" "}
+                    <Hi>paying {useSocialistTheme ? t.socialist.player : t.common.player}</Hi>{" "}
                     decides which cards to use for payment.
                   </>,
                   <>
@@ -605,13 +605,13 @@ export function GameRulesModal({
                   <>
                     <Hi>
                       {useSocialistTheme ? "Ledger" : "Money"} /{" "}
-                      {useSocialistTheme ? "directive" : "action"} cards
+                      {useSocialistTheme ? t.socialist.action : "action"} cards
                     </Hi>{" "}
-                    go to the recipient's {useSocialistTheme ? "treasury" : "bank"}.
+                    go to the recipient's {useSocialistTheme ? t.socialist.bank : t.common.bank.toLowerCase()}.
                   </>,
                   <>
-                    <Hi>{useSocialistTheme ? "State asset" : "Property"} cards</Hi>{" "}
-                    go to the recipient's {useSocialistTheme ? "state asset" : "property"} area.
+                    <Hi>{(useSocialistTheme ? t.socialist.property : "property").replace(/^./, c => c.toUpperCase())} cards</Hi>{" "}
+                    go to the recipient's {useSocialistTheme ? t.socialist.property : "property"} area.
                   </>,
                   <>
                     <Hi>No change is given</Hi> — overpayment goes to the
@@ -636,7 +636,7 @@ export function GameRulesModal({
             {/* Wildcards */}
             <section>
               <SectionHeading>
-                {useSocialistTheme ? "General Asset Wildcards" : t.rules.propertyWildcards}
+                {useSocialistTheme ? t.socialist.generalAssetWildcards : t.rules.propertyWildcards}
               </SectionHeading>
               <ul
                 style={{
@@ -658,7 +658,7 @@ export function GameRulesModal({
                   </>,
                   <>
                     Wildcards can be{" "}
-                    <Hi>moved between your {useSocialistTheme ? "state asset" : "property"} sets during your turn</Hi>.
+                    <Hi>moved between your {useSocialistTheme ? t.socialist.property : "property"} sets during your turn</Hi>.
                   </>,
                   <>
                     Multi-color wildcards have <Hi>no monetary value</Hi> and

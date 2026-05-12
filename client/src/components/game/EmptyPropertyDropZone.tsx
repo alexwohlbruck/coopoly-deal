@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useI18n } from "../../i18n";
 import { CardType, PropertyColor } from "../../types/game";
 import type { Card } from "../../types/game";
 import { type GameSettings } from "../../types/game";
@@ -22,6 +23,7 @@ export function EmptyPropertyDropZone({
   existingColors,
   settings,
 }: EmptyPropertyDropZoneProps) {
+  const { t } = useI18n();
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -131,7 +133,7 @@ export function EmptyPropertyDropZone({
             : "border-gray-600 hover:border-gray-500"
         }`}
       >
-        <span className="text-gray-400 text-xs text-center">New set</span>
+        <span className="text-gray-400 text-xs text-center">{t.game.newSet}</span>
       </div>
     </div>
   );

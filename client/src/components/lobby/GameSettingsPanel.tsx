@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Settings } from "lucide-react";
 import { type GameSettings } from "../../types/game";
 import { Toggle } from "../ui/Toggle";
+import { useI18n } from "../../i18n";
 
 interface GameSettingsPanelProps {
   isHost: boolean;
@@ -50,6 +51,7 @@ export function GameSettingsPanel({
   onSettingsChange,
   defaultExpanded = false,
 }: GameSettingsPanelProps) {
+  const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const updateSetting = <K extends keyof GameSettings>(
@@ -101,7 +103,7 @@ export function GameSettingsPanel({
               letterSpacing: "-0.01em",
             }}
           >
-            Game Settings
+            {t.gameSettings.title}
           </span>
           {!isHost && (
             <span
@@ -113,7 +115,7 @@ export function GameSettingsPanel({
                 color: "rgba(245,234,208,0.4)",
               }}
             >
-              Host only
+              {t.gameSettings.hostOnly}
             </span>
           )}
         </span>
@@ -145,7 +147,7 @@ export function GameSettingsPanel({
               {/* Max hand size */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
-                  Max Hand Size
+                  {t.gameSettings.maxHandSize}
                 </div>
                 <div
                   style={{
@@ -198,7 +200,7 @@ export function GameSettingsPanel({
                     marginBottom: 6,
                   }}
                 >
-                  <span style={LABEL_STYLE}>Turn Timer</span>
+                  <span style={LABEL_STYLE}>{t.gameSettings.turnTimer}</span>
                   <CheckTile
                     checked={settings.turnTimer > 0}
                     onChange={(next) =>
@@ -252,13 +254,13 @@ export function GameSettingsPanel({
               {[
                 {
                   key: "allowDuplicateSets" as const,
-                  label: "Allow Duplicate Color Sets",
-                  hint: "Win with multiple complete sets of the same color",
+                  label: t.gameSettings.allowDuplicateSets,
+                  hint: t.gameSettings.allowDuplicateSetsHint,
                 },
                 {
                   key: "wildcardFlipCountsAsMove" as const,
-                  label: "Wildcard Flip Counts as Move",
-                  hint: "Changing a wildcard's color uses one of your 3 moves (disables Rainbow set)",
+                  label: t.gameSettings.wildcardFlipCountsAsMove,
+                  hint: t.gameSettings.wildcardFlipHint,
                 },
               ].map(({ key, label, hint }) => (
                 <div
@@ -283,11 +285,17 @@ export function GameSettingsPanel({
 
               {/* Bot speed */}
               <div>
-                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>Bot Speed</div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>{t.gameSettings.botSpeed}</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["slow", "normal", "fast", "instant"] as const).map(
                     (speed) => {
                       const active = settings.botSpeed === speed;
+                      const speedLabels = {
+                        slow: t.gameSettings.slow,
+                        normal: t.gameSettings.normal,
+                        fast: t.gameSettings.fast,
+                        instant: t.gameSettings.instant,
+                      } as const;
                       return (
                         <button
                           key={speed}
@@ -320,7 +328,7 @@ export function GameSettingsPanel({
                               "background var(--d-quick) var(--ease-out-soft)",
                           }}
                         >
-                          {speed}
+                          {speedLabels[speed]}
                         </button>
                       );
                     },
@@ -341,7 +349,7 @@ export function GameSettingsPanel({
                     borderTop: "1px solid rgba(255,255,255,0.05)",
                   }}
                 >
-                  Only the host can change game settings
+                  {t.gameSettings.hostOnlyNote}
                 </div>
               )}
             </div>

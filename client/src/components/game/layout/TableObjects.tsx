@@ -10,6 +10,7 @@ import { PropertySetDisplay } from "../PropertySetDisplay";
 import { CardBack, GameCard } from "../../cards/GameCard";
 import type { Card, PropertySet, PropertyColor } from "../../../types/game";
 import type { TouchDropSpec } from "../../../utils/drop-zone";
+import { useI18n } from "../../../i18n";
 
 // ────────────────────────────────────────────────────────────────────
 // BankStack — money cards displayed as an overlapped stack of REAL
@@ -280,6 +281,7 @@ interface MiniPileProps {
 }
 
 export function MiniPile({ kind, count }: MiniPileProps) {
+  const { t } = useI18n();
   const cardW = 48;
   const cardH = 68;
   const isDeck = kind === "deck";
@@ -378,7 +380,7 @@ export function MiniPile({ kind, count }: MiniPileProps) {
         }}
       >
         <span style={{ opacity: 0.6, textTransform: "uppercase" }}>
-          {isDeck ? "Deck" : "Disc"}
+          {isDeck ? t.game.deck : t.game.discardPile}
         </span>
         <span style={{ fontWeight: 700, color: "var(--accent, #f0c14a)" }}>
           {count}

@@ -22,6 +22,7 @@ import {
   getPropertyColorLabel,
 } from "../../../types/game";
 import { useGameStore } from "../../../hooks/useGameStore";
+import { useI18n } from "../../../i18n";
 import {
   OpponentRail,
   TurnPill,
@@ -77,6 +78,7 @@ export function GameTableCompact({
   setDraggingCard,
   peekResetSignal = null,
 }: GameTableCompactProps) {
+  const { t } = useI18n();
   const { opponents, activeOppId, setActiveOppId, activeOpp } =
     useActiveOpponent(gameState, playerId);
   const me = gameState.players.find((p) => p.id === playerId);
@@ -178,7 +180,7 @@ export function GameTableCompact({
               textTransform: "uppercase",
             }}
           >
-            {activeOpp ? `${activeOpp.name}'s table` : "no opponent"}
+            {activeOpp ? `${activeOpp.name}'s ${t.game.table.toLowerCase()}` : "no opponent"}
           </div>
           <div
             style={{
@@ -247,13 +249,13 @@ export function GameTableCompact({
           }}
         >
           <span>
-            <span style={{ color: "rgba(245,234,208,0.45)" }}>Deck</span>{" "}
+            <span style={{ color: "rgba(245,234,208,0.45)" }}>{t.game.deck}</span>{" "}
             <span style={{ fontWeight: 700, color: "#f5ead0" }}>
               {deckCount}
             </span>
           </span>
           <span>
-            <span style={{ color: "rgba(245,234,208,0.45)" }}>Discard</span>{" "}
+            <span style={{ color: "rgba(245,234,208,0.45)" }}>{t.game.discardPile}</span>{" "}
             <span style={{ fontWeight: 700, color: "#f5ead0" }}>
               {discardCount}
             </span>
@@ -264,29 +266,29 @@ export function GameTableCompact({
             status="your"
             label={
               timeLeft != null
-                ? `Your Turn · ${timeLeft}s`
-                : "Your Turn"
+                ? `${t.game.yourTurn} · ${timeLeft}s`
+                : t.game.yourTurn
             }
-            sub={`${cardsPlayed}/3 cards played`}
+            sub={`${cardsPlayed}/3 ${t.game.cardsPlayed}`}
           />
         ) : (
           <TurnPill
             status="waiting"
             label={
               currentTurnPlayer
-                ? `${currentTurnPlayer.name}'s turn`
-                : "Waiting…"
+                ? `${currentTurnPlayer.name}'s ${useSocialistTheme ? t.socialist.shift : t.common.turn}`
+                : `${t.game.waitingForResponses.replace("...", "")}`
             }
             sub={
               turnPhase === TurnPhase.ActionPending
-                ? "Awaiting response"
-                : "Playing…"
+                ? t.game.waitingForResponses
+                : t.game.playing
             }
           />
         )}
         {isMyTurn && turnPhase !== TurnPhase.ActionPending && (
           <PrimaryButton onClick={onEndTurn} disabled={needsDiscard} size="sm">
-            End Turn
+            {t.game.endTurn}
           </PrimaryButton>
         )}
       </div>

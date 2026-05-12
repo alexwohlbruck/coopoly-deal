@@ -15,6 +15,7 @@ import {
   rentGainFor,
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface WildcardFlipDialogProps {
   card: Card;
@@ -34,6 +35,7 @@ export function WildcardFlipDialog({
   onClose,
 }: WildcardFlipDialogProps) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   const isMultiWildcard = card.colors && card.colors.length > 2;
 
   const availableColors = isMultiWildcard
@@ -86,7 +88,7 @@ export function WildcardFlipDialog({
     <BottomSheet
       isOpen={true}
       onClose={onClose}
-      title="Change Wildcard Color"
+      title={t.game.changeWildcardColor}
       height="h-auto"
       playSound={true}
     >
@@ -97,8 +99,7 @@ export function WildcardFlipDialog({
           marginBottom: 14,
         }}
       >
-        Pick a color. Each tile shows your current set count and the
-        rent ladder — the highlighted row is where this card lands.
+        {t.game.wildcardFlipInstruction}
       </p>
 
       <div
@@ -146,7 +147,7 @@ export function WildcardFlipDialog({
                   boxShadow: "var(--sh-object)",
                 }}
               >
-                I'll decide later
+                {t.game.decideLater}
                 {color === currentColor && (
                   <span
                     style={{
@@ -158,7 +159,7 @@ export function WildcardFlipDialog({
                       opacity: 0.85,
                     }}
                   >
-                    Current
+                    {t.common.current}
                   </span>
                 )}
               </button>

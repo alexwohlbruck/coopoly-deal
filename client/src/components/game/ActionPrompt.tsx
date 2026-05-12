@@ -11,6 +11,7 @@ import { BottomSheet } from "../common/BottomSheet";
 import { getQuirkySaying } from "../../utils/quirkySayings";
 import { PrimaryButton, DangerButton } from "../ui/Button";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface ActionPromptProps {
   action: PendingAction;
@@ -33,6 +34,7 @@ export function ActionPrompt({
 }: ActionPromptProps) {
   const [selectedCardIds, setSelectedCardIds] = useState<string[]>([]);
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   const isSource = action.sourcePlayerId === playerId;
   const isTarget = action.targetPlayerIds.includes(playerId);
   const hasResponded = action.respondedPlayerIds.includes(playerId);
@@ -147,16 +149,16 @@ export function ActionPrompt({
       const jsnPlayerName =
         players.find((p) => p.id === isJSNChain.targetPlayerId)?.name ??
         "Someone";
-      const jsnLabel = useSocialistTheme ? "Counter-Intelligence" : "Just Say No";
+      const jsnLabel = useSocialistTheme ? t.socialist.counterIntelligence : t.actions.justSayNo;
 
       // If the current player is the source, they see that opponent countered
       if (isSource) {
-        return `${jsnPlayerName} played ${jsnLabel}! ${useSocialistTheme ? "Comply" : "Accept"} to let them counter your ${useSocialistTheme ? "directive" : "action"}.`;
+        return `${jsnPlayerName} played ${jsnLabel}! ${useSocialistTheme ? t.socialist.comply : t.prompts.accept} to let them counter your ${useSocialistTheme ? "directive" : "action"}.`;
       }
 
       // If the current player is the target, they see that opponent countered the JSN
       if (isTarget) {
-        return `${sourcePlayer?.name ?? "Someone"} played ${jsnLabel}! ${useSocialistTheme ? "Comply" : "Accept"} to let them counter.`;
+        return `${sourcePlayer?.name ?? "Someone"} played ${jsnLabel}! ${useSocialistTheme ? t.socialist.comply : t.prompts.accept} to let them counter.`;
       }
     }
 
@@ -179,7 +181,7 @@ export function ActionPrompt({
       case "dealBreaker":
         return `${sourcePlayer?.name ?? "Someone"} is taking your complete set!`;
       default:
-        return useSocialistTheme ? "A directive was played against you." : "An action was played against you.";
+        return useSocialistTheme ? t.socialist.actionPlayedAgainstYou : t.prompts.actionPlayedAgainstYou;
     }
   }
 
@@ -242,22 +244,22 @@ export function ActionPrompt({
           size="lg"
         >
           {totalTableValue === 0
-            ? soc ? "Nothing to Contribute" : "I Can't Pay"
+            ? soc ? t.socialist.nothingToContribute : t.prompts.cantPay
             : selectedCardIds.length > 0
-              ? `${soc ? "Contribute" : "Pay"} ${selectedTotal}M`
-              : soc ? "Select Resources" : "Select Cards"}
+              ? `${soc ? t.socialist.contribute : t.prompts.pay} ${selectedTotal}M`
+              : soc ? t.socialist.selectResources : t.prompts.selectCards}
         </PrimaryButton>
       )}
 
       {!needsPayment && (
         <PrimaryButton onClick={onAccept} fullWidth size="lg">
-          {soc ? "Comply" : "Accept"}
+          {soc ? t.socialist.comply : t.prompts.accept}
         </PrimaryButton>
       )}
 
       {hasJustSayNo && (
         <DangerButton onClick={onJustSayNo} fullWidth size="lg">
-          {soc ? "Counter-Intelligence!" : "Just Say No!"}
+          {soc ? `${t.socialist.counterIntelligence}!` : `${t.actions.justSayNo}!`}
         </DangerButton>
       )}
     </div>
@@ -268,7 +270,7 @@ export function ActionPrompt({
       isOpen={true}
       onClose={() => {}}
       closable={false}
-      title={useSocialistTheme ? "Directive!" : "Action!"}
+      title={useSocialistTheme ? `${t.socialist.directive}!` : `${t.prompts.action}!`}
       height="h-auto"
       footer={footerButtons}
       playSound={true}
@@ -287,7 +289,7 @@ export function ActionPrompt({
             {/* Target complete set */}
             <div className="flex flex-col items-center">
               <p className="text-gray-400 text-[10px] mb-1">
-                Your complete set
+                {soc ? t.socialist.yourCompleteSet : t.prompts.yourCompleteSet}
               </p>
               <div className="flex flex-wrap gap-2 justify-center max-w-[200px]">
                 {targetSet.cards.map((card) => (
@@ -332,7 +334,7 @@ export function ActionPrompt({
                   d="M13 7l5 5m0 0l-5 5m5-5H6"
                 />
               </svg>
-              <p className="text-red-400 text-[10px] mt-1">{useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
+              <p className="text-red-400 text-[10px] mt-1">{soc ? t.socialist.stolen : t.common.stolen}</p>
             </div>
           </div>
         </div>
@@ -376,7 +378,7 @@ export function ActionPrompt({
 
             {/* Target card */}
             <div className="flex flex-col items-center">
-              <p className="text-gray-400 text-[10px] mb-1">Your card</p>
+              <p className="text-gray-400 text-[10px] mb-1">{t.prompts.yourCard}</p>
               {targetCard && (
                 <GameCard
                   card={targetCard}
@@ -402,7 +404,7 @@ export function ActionPrompt({
                     d="M13 7l5 5m0 0l-5 5m5-5H6"
                   />
                 </svg>
-                <p className="text-red-400 text-[10px] mt-1">{useSocialistTheme ? "Expropriated!" : "Stolen!"}</p>
+                <p className="text-red-400 text-[10px] mt-1">{soc ? t.socialist.stolen : t.common.stolen}</p>
               </div>
             )}
           </div>
@@ -413,13 +415,13 @@ export function ActionPrompt({
         <>
           <p className="text-gray-400 text-xs mb-2">
             {soc
-              ? `Select resources to contribute ($${selectedTotal}M / $${amountDue}M):`
-              : `Select cards to pay with ($${selectedTotal}M / $${amountDue}M):`}
+              ? `${t.socialist.selectResources} ($${selectedTotal}M / $${amountDue}M):`
+              : `${t.game.selectCardsToPayWith} ($${selectedTotal}M / $${amountDue}M):`}
           </p>
 
           {me.bank.filter((c) => c.value > 0).length > 0 && (
             <div className="mb-2">
-              <p className="text-gray-500 text-[10px] mb-1">{soc ? "Treasury" : "Bank"}</p>
+              <p className="text-gray-500 text-[10px] mb-1">{soc ? t.socialist.bank : t.common.bank}</p>
               <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {[...me.bank]
                   .filter((c) => c.value > 0)
@@ -441,7 +443,7 @@ export function ActionPrompt({
           {me.properties.flatMap((s) => s.cards).filter((c) => c.value > 0)
             .length > 0 && (
             <div className="mb-3">
-              <p className="text-gray-500 text-[10px] mb-1">{soc ? "State Assets" : "Properties"}</p>
+              <p className="text-gray-500 text-[10px] mb-1">{soc ? t.socialist.properties : t.common.properties}</p>
               <div className="flex flex-wrap gap-2 max-h-[30vh] overflow-y-auto p-2 justify-center">
                 {me.properties.flatMap((set) => [
                   ...set.cards

@@ -12,6 +12,7 @@ import {
   rentGainFor,
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
+import { useI18n } from "../../i18n";
 
 interface WildcardAssignmentPromptProps {
   assignment: PendingWildcardAssignment;
@@ -30,6 +31,7 @@ export function WildcardAssignmentPrompt({
   onAssign,
 }: WildcardAssignmentPromptProps) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
+  const { t } = useI18n();
   // Determine the "best" choice — the color that yields the highest
   // rent gain. Skipped for the rainbow / unassigned option.
   const gains = assignment.availableColors
@@ -44,7 +46,7 @@ export function WildcardAssignmentPrompt({
       isOpen={true}
       onClose={() => {}}
       closable={false}
-      title="Assign Wildcard Color"
+      title={t.game.assignWildcardColor}
       height="h-auto"
       playSound={true}
     >
@@ -55,8 +57,7 @@ export function WildcardAssignmentPrompt({
           marginBottom: 14,
         }}
       >
-        You received a wildcard! Pick which color to file it under —
-        each tile shows your set count and the rent ladder.
+        {t.game.wildcardAssignInstruction}
       </p>
       <div
         style={{
@@ -96,7 +97,7 @@ export function WildcardAssignmentPrompt({
                   boxShadow: "var(--sh-object)",
                 }}
               >
-                I'll decide later
+                {t.game.decideLater}
               </button>
             );
           }
