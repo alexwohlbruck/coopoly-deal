@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /game/
+Disallow: /room/
+Disallow: /join/
+
+Sitemap: https://monopolydeal.online/sitemap.xml

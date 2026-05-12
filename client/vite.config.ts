@@ -22,7 +22,7 @@ export default defineConfig({
       manifest: {
         name: 'Monopoly Deal',
         short_name: 'Monopoly Deal',
-        description: 'Play Monopoly Deal online with friends',
+        description: 'Play Monopoly Deal online for free with friends. Collect properties, charge rent, and steal sets in this fast-paced multiplayer card game.',
         theme_color: '#1a5c2e',
         background_color: '#1a5c2e',
         display: 'standalone',

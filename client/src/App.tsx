@@ -55,9 +55,32 @@ function AppMain() {
 
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
 
-  // Keep the HTML page title in sync with the dialectical lens setting.
+  // Keep the HTML page title & SEO meta tags in sync with the mode.
   useEffect(() => {
-    document.title = useSocialistTheme ? "Co-Opoly Deal" : "Monopoly Deal";
+    const title = useSocialistTheme
+      ? "Co-Opoly Deal — The Socialist Card Game"
+      : "Monopoly Deal Online — Play the Card Game Free with Friends";
+    const description = useSocialistTheme
+      ? "Play Co-Opoly Deal online — the socialist twist on the classic property card game. Seize the means of production with friends!"
+      : "Play Monopoly Deal online for free with friends. Collect properties, charge rent, and steal sets in this fast-paced multiplayer card game. No download required — just share a room code and play!";
+
+    document.title = title;
+
+    const setMeta = (attr: string, key: string, content: string) => {
+      let el = document.querySelector(`meta[${attr}="${key}"]`);
+      if (!el) {
+        el = document.createElement("meta");
+        el.setAttribute(attr, key);
+        document.head.appendChild(el);
+      }
+      el.setAttribute("content", content);
+    };
+
+    setMeta("name", "description", description);
+    setMeta("property", "og:title", title);
+    setMeta("property", "og:description", description);
+    setMeta("name", "twitter:title", title);
+    setMeta("name", "twitter:description", description);
   }, [useSocialistTheme]);
 
   // Auto-rejoin: true on mount if we have persisted credentials and are on a
