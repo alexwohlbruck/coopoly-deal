@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Settings, Save, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Settings, Save } from "lucide-react";
 import {
   type GameSettings,
   type SettingsProfile,
@@ -200,97 +200,90 @@ export function GameSettingsPanel({
                   style={{
                     display: "flex",
                     flexWrap: "wrap",
-                    gap: 6,
+                    gap: 4,
                   }}
                 >
                   {allProfiles.map((profile) => {
                     const active = activeProfileId === profile.id;
                     return (
-                      <div
+                      <button
                         key={profile.id}
+                        type="button"
+                        onClick={() => isHost && applyProfile(profile)}
+                        disabled={!isHost}
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0,
+                          position: "relative",
+                          padding: !profile.builtIn && isHost
+                            ? "4px 20px 4px 8px"
+                            : "4px 8px",
+                          borderRadius: 6,
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 10,
+                          letterSpacing: "0.06em",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          border: "1px solid",
+                          borderColor: active
+                            ? "rgba(255,255,255,0.15)"
+                            : "rgba(255,255,255,0.06)",
+                          background: active
+                            ? "rgba(255,255,255,0.12)"
+                            : "rgba(255,255,255,0.03)",
+                          color: active
+                            ? "#f5ead0"
+                            : "rgba(245,234,208,0.5)",
+                          cursor: isHost ? "pointer" : "not-allowed",
+                          opacity: isHost ? 1 : 0.5,
+                          transition: "all 0.15s ease",
                         }}
                       >
-                        <button
-                          type="button"
-                          onClick={() => isHost && applyProfile(profile)}
-                          disabled={!isHost}
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: profile.builtIn ? 8 : "8px 0 0 8px",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: 10,
-                            letterSpacing: "0.06em",
-                            textTransform: "uppercase",
-                            fontWeight: 700,
-                            border: "1px solid",
-                            borderColor: active
-                              ? "transparent"
-                              : "rgba(255,255,255,0.08)",
-                            background: active
-                              ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
-                              : "rgba(255,255,255,0.05)",
-                            color: active
-                              ? "#1a1208"
-                              : "rgba(245,234,208,0.7)",
-                            cursor: isHost ? "pointer" : "not-allowed",
-                            opacity: isHost ? 1 : 0.5,
-                            boxShadow: active
-                              ? "inset 0 1px 0 rgba(255,255,255,0.4)"
-                              : "none",
-                            transition:
-                              "background var(--d-quick) var(--ease-out-soft)",
-                          }}
-                        >
-                          {profile.name}
-                        </button>
+                        {profile.name}
                         {!profile.builtIn && isHost && (
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteProfile(profile.id)}
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProfile(profile.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.stopPropagation();
+                                handleDeleteProfile(profile.id);
+                              }
+                            }}
                             title={t.gameSettings.deleteProfile}
                             style={{
-                              padding: "6px 6px",
-                              borderRadius: "0 8px 8px 0",
-                              border: "1px solid",
-                              borderLeft: "none",
-                              borderColor: active
-                                ? "transparent"
-                                : "rgba(255,255,255,0.08)",
-                              background: active
-                                ? "color-mix(in oklab, var(--accent, #f0c14a) 70%, #000)"
-                                : "rgba(255,255,255,0.03)",
-                              color: active
-                                ? "#1a1208"
-                                : "rgba(245,234,208,0.4)",
+                              position: "absolute",
+                              right: 5,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              fontSize: 8,
+                              lineHeight: 1,
+                              opacity: 0.4,
                               cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
                             }}
                           >
-                            <Trash2 style={{ width: 10, height: 10 }} />
-                          </button>
+                            ✕
+                          </span>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
                   {/* Custom indicator when no profile matches */}
                   {!activeProfileId && (
                     <span
                       style={{
-                        padding: "6px 10px",
-                        borderRadius: 8,
+                        padding: "4px 8px",
+                        borderRadius: 6,
                         fontFamily: "var(--font-mono)",
                         fontSize: 10,
                         letterSpacing: "0.06em",
                         textTransform: "uppercase",
-                        fontWeight: 700,
-                        border: "1px dashed rgba(255,255,255,0.15)",
+                        fontWeight: 600,
+                        border: "1px dashed rgba(255,255,255,0.12)",
                         background: "transparent",
-                        color: "rgba(245,234,208,0.5)",
+                        color: "rgba(245,234,208,0.4)",
                       }}
                     >
                       {t.gameSettings.custom}
@@ -300,7 +293,7 @@ export function GameSettingsPanel({
 
                 {/* Save as profile */}
                 {isHost && (
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 6 }}>
                     {!showSaveForm ? (
                       <button
                         type="button"
@@ -309,24 +302,24 @@ export function GameSettingsPanel({
                           display: "flex",
                           alignItems: "center",
                           gap: 4,
-                          padding: "4px 0",
+                          padding: "3px 0",
                           background: "none",
                           border: "none",
-                          color: "rgba(245,234,208,0.4)",
+                          color: "rgba(245,234,208,0.35)",
                           fontFamily: "var(--font-mono)",
-                          fontSize: 10,
+                          fontSize: 9,
                           letterSpacing: "0.06em",
                           cursor: "pointer",
                         }}
                       >
-                        <Save style={{ width: 10, height: 10 }} />
+                        <Save style={{ width: 9, height: 9 }} />
                         {t.gameSettings.saveAsProfile}
                       </button>
                     ) : (
                       <div
                         style={{
                           display: "flex",
-                          gap: 6,
+                          gap: 4,
                           alignItems: "center",
                         }}
                       >
@@ -342,13 +335,13 @@ export function GameSettingsPanel({
                           autoFocus
                           style={{
                             flex: 1,
-                            padding: "5px 8px",
+                            padding: "4px 8px",
                             borderRadius: 6,
-                            border: "1px solid rgba(255,255,255,0.12)",
+                            border: "1px solid rgba(255,255,255,0.1)",
                             background: "rgba(0,0,0,0.3)",
                             color: "#f5ead0",
                             fontFamily: "var(--font-ui)",
-                            fontSize: 12,
+                            fontSize: 11,
                             outline: "none",
                           }}
                         />
@@ -357,24 +350,24 @@ export function GameSettingsPanel({
                           onClick={handleSaveProfile}
                           disabled={!newProfileName.trim()}
                           style={{
-                            padding: "5px 10px",
+                            padding: "4px 8px",
                             borderRadius: 6,
                             border: "none",
                             background: newProfileName.trim()
-                              ? "var(--accent, #f0c14a)"
-                              : "rgba(255,255,255,0.08)",
+                              ? "rgba(255,255,255,0.15)"
+                              : "rgba(255,255,255,0.05)",
                             color: newProfileName.trim()
-                              ? "#1a1208"
-                              : "rgba(245,234,208,0.3)",
+                              ? "#f5ead0"
+                              : "rgba(245,234,208,0.25)",
                             fontFamily: "var(--font-mono)",
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: 700,
                             cursor: newProfileName.trim()
                               ? "pointer"
                               : "not-allowed",
                           }}
                         >
-                          <Save style={{ width: 12, height: 12 }} />
+                          <Save style={{ width: 10, height: 10 }} />
                         </button>
                         <button
                           type="button"
@@ -383,13 +376,13 @@ export function GameSettingsPanel({
                             setNewProfileName("");
                           }}
                           style={{
-                            padding: "5px 8px",
+                            padding: "4px 6px",
                             borderRadius: 6,
                             border: "none",
-                            background: "rgba(255,255,255,0.06)",
-                            color: "rgba(245,234,208,0.5)",
+                            background: "rgba(255,255,255,0.04)",
+                            color: "rgba(245,234,208,0.4)",
                             fontFamily: "var(--font-mono)",
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: 600,
                             cursor: "pointer",
                           }}

@@ -92,6 +92,34 @@ export const BUILT_IN_PROFILES: SettingsProfile[] = [
     },
     builtIn: true,
   },
+  {
+    id: "blitz",
+    name: "Blitz",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      turnTimer: 15,
+      setsToWin: 2,
+      drawCardsPerTurn: 3,
+      botSpeed: "fast",
+    },
+    builtIn: true,
+  },
+  {
+    id: "crazy",
+    name: "Crazy",
+    settings: {
+      maxHandSize: 999,
+      turnTimer: 10,
+      allowDuplicateSets: true,
+      wildcardFlipCountsAsMove: false,
+      botSpeed: "instant",
+      movesPerTurn: 5,
+      setsToWin: 1,
+      requireHouseBeforeHotel: false,
+      drawCardsPerTurn: 5,
+    },
+    builtIn: true,
+  },
 ];
 
 export function getCustomProfiles(): SettingsProfile[] {
