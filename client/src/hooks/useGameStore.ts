@@ -13,6 +13,12 @@ const isCoopolyDomain =
   (window.location.hostname === "coopoly.deal" ||
     window.location.hostname.endsWith(".coopoly.deal"));
 
+/** Hide the socialist theme toggle on the canonical Monopoly Deal domain. */
+export const isMonopolyDealDomain =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "monopolydeal.online" ||
+    window.location.hostname.endsWith(".monopolydeal.online"));
+
 interface GameStore {
   playerId: string | null;
   playerName: string | null;
@@ -70,9 +76,12 @@ export const useGameStore = create<GameStore>()(
       setTheme: (theme) => set({ theme }),
       setUseSocialistTheme: (enabled) =>
         set({
-          useSocialistTheme: enabled,
+          // On monopolydeal.online the socialist theme is always off
+          useSocialistTheme: isMonopolyDealDomain ? false : enabled,
           // Auto-switch to the soviet theme when turning on
-          ...(enabled ? { theme: "soviet" as ThemeName } : {}),
+          ...(enabled && !isMonopolyDealDomain
+            ? { theme: "soviet" as ThemeName }
+            : {}),
         }),
       setPreferredSettings: (settings) => set({ preferredSettings: settings }),
       recordWin: () =>
@@ -105,11 +114,16 @@ export const useGameStore = create<GameStore>()(
     {
       name: "coopoly-settings",
       // Migrate removed themes (e.g. "burgundy") → default on rehydrate.
+      // Force socialist theme off on monopolydeal.online even if persisted.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<GameStore>;
         const theme =
           p.theme && p.theme in themes ? p.theme : current.theme;
-        return { ...current, ...p, theme } as GameStore;
+        const merged = { ...current, ...p, theme } as GameStore;
+        if (isMonopolyDealDomain) {
+          merged.useSocialistTheme = false;
+        }
+        return merged;
       },
       partialize: (state) => ({
         theme: state.theme,

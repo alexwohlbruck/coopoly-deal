@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Github } from "lucide-react";
 import { useI18n, type Locale } from "../../i18n";
-import { useGameStore } from "../../hooks/useGameStore";
+import { useGameStore, isMonopolyDealDomain } from "../../hooks/useGameStore";
 import { THEME_IDS, themes, type ThemeName } from "../../theme/colors";
 import { BottomSheet } from "../common/BottomSheet";
 import {
@@ -168,13 +168,15 @@ export function SettingsPanel({
           </div>
 
           {/* Co-Opoly Deal mode — inline with theme swatches */}
-          <div style={{ ...ROW_STYLE, marginTop: 12 }}>
-            <span style={{ ...ROW_LABEL_STYLE, fontSize: 12 }}>☭ Co-Opoly Deal</span>
-            <Toggle
-              checked={useSocialistTheme}
-              onChange={(next) => setUseSocialistTheme(next)}
-            />
-          </div>
+          {!isMonopolyDealDomain && (
+            <div style={{ ...ROW_STYLE, marginTop: 12 }}>
+              <span style={{ ...ROW_LABEL_STYLE, fontSize: 12 }}>☭ Co-Opoly Deal</span>
+              <Toggle
+                checked={useSocialistTheme}
+                onChange={(next) => setUseSocialistTheme(next)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Language Selection */}

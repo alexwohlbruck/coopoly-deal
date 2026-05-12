@@ -19,7 +19,7 @@ import {
 import { PrimaryButton } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
-import { useGameStore } from "../../hooks/useGameStore";
+import { useGameStore, isMonopolyDealDomain } from "../../hooks/useGameStore";
 
 interface GameRulesModalProps {
   isOpen: boolean;
@@ -292,36 +292,38 @@ export function GameRulesModal({
               {/* Co-Opoly Deal toggle — flip wording between standard
                   ("players, rent, action cards") and the socialist
                   variant ("comrades, levies, directives"). Toggles
-                  the browser-local preference. */}
-              <div
-                style={{
-                  marginTop: 10,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Toggle
-                  checked={useSocialistTheme}
-                  onChange={(next) => setUseSocialistTheme(next)}
-                />
-                <span
+                  the browser-local preference. Hidden on monopolydeal.online. */}
+              {!isMonopolyDealDomain && (
+                <div
                   style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 10,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: useSocialistTheme
-                      ? "var(--accent, #f0c14a)"
-                      : "rgba(245,234,208,0.65)",
-                    transition: "color var(--d-quick) var(--ease-out-soft)",
-                    cursor: "pointer",
+                    marginTop: 10,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
                   }}
-                  onClick={() => setUseSocialistTheme(!useSocialistTheme)}
                 >
-                  ☭ {t.socialist.title}
-                </span>
-              </div>
+                  <Toggle
+                    checked={useSocialistTheme}
+                    onChange={(next) => setUseSocialistTheme(next)}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 10,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: useSocialistTheme
+                        ? "var(--accent, #f0c14a)"
+                        : "rgba(245,234,208,0.65)",
+                      transition: "color var(--d-quick) var(--ease-out-soft)",
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setUseSocialistTheme(!useSocialistTheme)}
+                  >
+                    ☭ {t.socialist.title}
+                  </span>
+                </div>
+              )}
             </div>
             <ModalCloseButton onClick={onClose} ariaLabel={t.rules.close} />
           </div>
