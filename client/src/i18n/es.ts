@@ -246,6 +246,12 @@ export const es: Translations = {
     requireHouseBeforeHotelHint: "Debes colocar una casa en un set completo antes de agregar un hotel",
     drawCardsPerTurn: "Cartas Robadas por Turno",
     drawCardsPerTurnHint: "Cartas robadas al inicio de cada turno (mano vacía siempre roba 5)",
+    profile: "Perfil",
+    customProfile: "Perfil Personalizado",
+    saveAsProfile: "Guardar como Perfil",
+    deleteProfile: "Eliminar",
+    profileName: "Nombre del perfil",
+    custom: "Personalizado",
   },
   socialist: {
     title: "Co-Opoly Deal",

@@ -66,6 +66,65 @@ export const DEFAULT_SETTINGS: GameSettings = {
   drawCardsPerTurn: 2,
 };
 
+export interface SettingsProfile {
+  id: string;
+  name: string;
+  settings: GameSettings;
+  builtIn?: boolean;
+}
+
+export const BUILT_IN_PROFILES: SettingsProfile[] = [
+  {
+    id: "standard",
+    name: "Standard",
+    settings: { ...DEFAULT_SETTINGS },
+    builtIn: true,
+  },
+  {
+    id: "shobita",
+    name: "Shobita",
+    settings: {
+      ...DEFAULT_SETTINGS,
+      wildcardFlipCountsAsMove: true,
+      requireHouseBeforeHotel: false,
+      maxHandSize: 999,
+      turnTimer: 0,
+    },
+    builtIn: true,
+  },
+];
+
+export function getCustomProfiles(): SettingsProfile[] {
+  try {
+    const raw = localStorage.getItem("customSettingsProfiles");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomProfiles(profiles: SettingsProfile[]): void {
+  localStorage.setItem("customSettingsProfiles", JSON.stringify(profiles));
+}
+
+export function settingsMatchProfile(
+  settings: GameSettings,
+  profile: SettingsProfile,
+): boolean {
+  const keys: (keyof GameSettings)[] = [
+    "maxHandSize",
+    "turnTimer",
+    "allowDuplicateSets",
+    "wildcardFlipCountsAsMove",
+    "botSpeed",
+    "movesPerTurn",
+    "setsToWin",
+    "requireHouseBeforeHotel",
+    "drawCardsPerTurn",
+  ];
+  return keys.every((k) => settings[k] === profile.settings[k]);
+}
+
 export interface PropertySet {
   color: PropertyColor;
   cards: Card[];

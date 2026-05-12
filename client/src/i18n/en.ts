@@ -246,6 +246,12 @@ export const en: Translations = {
     requireHouseBeforeHotelHint: "Must place a house on a complete set before adding a hotel",
     drawCardsPerTurn: "Cards Drawn per Turn",
     drawCardsPerTurnHint: "Cards drawn at the start of each turn (empty hand always draws 5)",
+    profile: "Profile",
+    customProfile: "Custom Profile",
+    saveAsProfile: "Save as Profile",
+    deleteProfile: "Delete",
+    profileName: "Profile name",
+    custom: "Custom",
   },
   socialist: {
     title: "Co-Opoly Deal",

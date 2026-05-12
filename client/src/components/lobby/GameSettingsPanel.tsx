@@ -1,12 +1,18 @@
-// GameSettingsPanel — host-controlled game-rules toggles, restyled to
-// match the design system: dark inset card with cream/accent text,
-// Bricolage display heading, JetBrains-Mono labels, accent-colored
-// active states (no more emerald-500 from the legacy palette).
+// GameSettingsPanel — host-controlled game-rules toggles with profile
+// selector. Dark inset card with cream/accent text, Bricolage display
+// heading, JetBrains-Mono labels, accent-colored active states.
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Settings } from "lucide-react";
-import { type GameSettings } from "../../types/game";
+import { ChevronDown, ChevronUp, Settings, Save, Trash2 } from "lucide-react";
+import {
+  type GameSettings,
+  type SettingsProfile,
+  BUILT_IN_PROFILES,
+  getCustomProfiles,
+  saveCustomProfiles,
+  settingsMatchProfile,
+} from "../../types/game";
 import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
 
@@ -42,7 +48,6 @@ const ROW_HINT_STYLE: React.CSSProperties = {
   lineHeight: 1.3,
 };
 
-// CheckTile is now the shared <Toggle> component from ui/Toggle.tsx.
 const CheckTile = Toggle;
 
 export function GameSettingsPanel({
@@ -53,12 +58,54 @@ export function GameSettingsPanel({
 }: GameSettingsPanelProps) {
   const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [customProfiles, setCustomProfiles] = useState<SettingsProfile[]>(
+    getCustomProfiles,
+  );
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [newProfileName, setNewProfileName] = useState("");
+
+  const allProfiles = useMemo(
+    () => [...BUILT_IN_PROFILES, ...customProfiles],
+    [customProfiles],
+  );
+
+  // Find which profile matches the current settings (if any)
+  const activeProfileId = useMemo(() => {
+    const match = allProfiles.find((p) => settingsMatchProfile(settings, p));
+    return match?.id ?? null;
+  }, [settings, allProfiles]);
 
   const updateSetting = <K extends keyof GameSettings>(
     key: K,
     value: GameSettings[K],
   ) => {
     onSettingsChange({ ...settings, [key]: value });
+  };
+
+  const applyProfile = (profile: SettingsProfile) => {
+    onSettingsChange({ ...profile.settings });
+  };
+
+  const handleSaveProfile = () => {
+    const name = newProfileName.trim();
+    if (!name) return;
+    const id = `custom-${Date.now()}`;
+    const newProfile: SettingsProfile = {
+      id,
+      name,
+      settings: { ...settings },
+    };
+    const updated = [...customProfiles, newProfile];
+    setCustomProfiles(updated);
+    saveCustomProfiles(updated);
+    setNewProfileName("");
+    setShowSaveForm(false);
+  };
+
+  const handleDeleteProfile = (id: string) => {
+    const updated = customProfiles.filter((p) => p.id !== id);
+    setCustomProfiles(updated);
+    saveCustomProfiles(updated);
   };
 
   const accent = "var(--accent, #f0c14a)";
@@ -144,7 +191,218 @@ export function GameSettingsPanel({
                 borderTop: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              {/* Max hand size */}
+              {/* ── Profile selector ── */}
+              <div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+                  {t.gameSettings.profile}
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 6,
+                  }}
+                >
+                  {allProfiles.map((profile) => {
+                    const active = activeProfileId === profile.id;
+                    return (
+                      <div
+                        key={profile.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0,
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => isHost && applyProfile(profile)}
+                          disabled={!isHost}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: profile.builtIn ? 8 : "8px 0 0 8px",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                            border: "1px solid",
+                            borderColor: active
+                              ? "transparent"
+                              : "rgba(255,255,255,0.08)",
+                            background: active
+                              ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
+                              : "rgba(255,255,255,0.05)",
+                            color: active
+                              ? "#1a1208"
+                              : "rgba(245,234,208,0.7)",
+                            cursor: isHost ? "pointer" : "not-allowed",
+                            opacity: isHost ? 1 : 0.5,
+                            boxShadow: active
+                              ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+                              : "none",
+                            transition:
+                              "background var(--d-quick) var(--ease-out-soft)",
+                          }}
+                        >
+                          {profile.name}
+                        </button>
+                        {!profile.builtIn && isHost && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProfile(profile.id)}
+                            title={t.gameSettings.deleteProfile}
+                            style={{
+                              padding: "6px 6px",
+                              borderRadius: "0 8px 8px 0",
+                              border: "1px solid",
+                              borderLeft: "none",
+                              borderColor: active
+                                ? "transparent"
+                                : "rgba(255,255,255,0.08)",
+                              background: active
+                                ? "color-mix(in oklab, var(--accent, #f0c14a) 70%, #000)"
+                                : "rgba(255,255,255,0.03)",
+                              color: active
+                                ? "#1a1208"
+                                : "rgba(245,234,208,0.4)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Trash2 style={{ width: 10, height: 10 }} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {/* Custom indicator when no profile matches */}
+                  {!activeProfileId && (
+                    <span
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 10,
+                        letterSpacing: "0.06em",
+                        textTransform: "uppercase",
+                        fontWeight: 700,
+                        border: "1px dashed rgba(255,255,255,0.15)",
+                        background: "transparent",
+                        color: "rgba(245,234,208,0.5)",
+                      }}
+                    >
+                      {t.gameSettings.custom}
+                    </span>
+                  )}
+                </div>
+
+                {/* Save as profile */}
+                {isHost && (
+                  <div style={{ marginTop: 8 }}>
+                    {!showSaveForm ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowSaveForm(true)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          padding: "4px 0",
+                          background: "none",
+                          border: "none",
+                          color: "rgba(245,234,208,0.4)",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: 10,
+                          letterSpacing: "0.06em",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <Save style={{ width: 10, height: 10 }} />
+                        {t.gameSettings.saveAsProfile}
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 6,
+                          alignItems: "center",
+                        }}
+                      >
+                        <input
+                          type="text"
+                          value={newProfileName}
+                          onChange={(e) => setNewProfileName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveProfile();
+                            if (e.key === "Escape") setShowSaveForm(false);
+                          }}
+                          placeholder={t.gameSettings.profileName}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(0,0,0,0.3)",
+                            color: "#f5ead0",
+                            fontFamily: "var(--font-ui)",
+                            fontSize: 12,
+                            outline: "none",
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSaveProfile}
+                          disabled={!newProfileName.trim()}
+                          style={{
+                            padding: "5px 10px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: newProfileName.trim()
+                              ? "var(--accent, #f0c14a)"
+                              : "rgba(255,255,255,0.08)",
+                            color: newProfileName.trim()
+                              ? "#1a1208"
+                              : "rgba(245,234,208,0.3)",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            cursor: newProfileName.trim()
+                              ? "pointer"
+                              : "not-allowed",
+                          }}
+                        >
+                          <Save style={{ width: 12, height: 12 }} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSaveForm(false);
+                            setNewProfileName("");
+                          }}
+                          style={{
+                            padding: "5px 8px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: "rgba(255,255,255,0.06)",
+                            color: "rgba(245,234,208,0.5)",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Max hand size ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
                   {t.gameSettings.maxHandSize}
@@ -190,7 +448,7 @@ export function GameSettingsPanel({
                 </div>
               </div>
 
-              {/* Turn timer */}
+              {/* ── Turn timer ── */}
               <div>
                 <div
                   style={{
@@ -250,12 +508,14 @@ export function GameSettingsPanel({
                 )}
               </div>
 
-              {/* Moves per turn */}
+              {/* ── Moves per turn ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
                   {t.gameSettings.movesPerTurn}
                 </div>
-                <div style={ROW_HINT_STYLE}>{t.gameSettings.movesPerTurnHint}</div>
+                <div style={ROW_HINT_STYLE}>
+                  {t.gameSettings.movesPerTurnHint}
+                </div>
                 <div
                   style={{
                     display: "flex",
@@ -295,12 +555,14 @@ export function GameSettingsPanel({
                 </div>
               </div>
 
-              {/* Sets to win */}
+              {/* ── Sets to win ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
                   {t.gameSettings.setsToWin}
                 </div>
-                <div style={ROW_HINT_STYLE}>{t.gameSettings.setsToWinHint}</div>
+                <div style={ROW_HINT_STYLE}>
+                  {t.gameSettings.setsToWinHint}
+                </div>
                 <div
                   style={{
                     display: "flex",
@@ -340,12 +602,14 @@ export function GameSettingsPanel({
                 </div>
               </div>
 
-              {/* Draw cards per turn */}
+              {/* ── Draw cards per turn ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
                   {t.gameSettings.drawCardsPerTurn}
                 </div>
-                <div style={ROW_HINT_STYLE}>{t.gameSettings.drawCardsPerTurnHint}</div>
+                <div style={ROW_HINT_STYLE}>
+                  {t.gameSettings.drawCardsPerTurnHint}
+                </div>
                 <div
                   style={{
                     display: "flex",
@@ -360,7 +624,10 @@ export function GameSettingsPanel({
                     max="5"
                     value={settings.drawCardsPerTurn}
                     onChange={(e) => {
-                      updateSetting("drawCardsPerTurn", parseInt(e.target.value));
+                      updateSetting(
+                        "drawCardsPerTurn",
+                        parseInt(e.target.value),
+                      );
                     }}
                     disabled={!isHost}
                     style={{
@@ -385,7 +652,7 @@ export function GameSettingsPanel({
                 </div>
               </div>
 
-              {/* Toggles */}
+              {/* ── Toggles ── */}
               {[
                 {
                   key: "allowDuplicateSets" as const,
@@ -423,9 +690,11 @@ export function GameSettingsPanel({
                 </div>
               ))}
 
-              {/* Bot speed */}
+              {/* ── Bot speed ── */}
               <div>
-                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>{t.gameSettings.botSpeed}</div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+                  {t.gameSettings.botSpeed}
+                </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {(["slow", "normal", "fast", "instant"] as const).map(
                     (speed) => {
@@ -458,7 +727,9 @@ export function GameSettingsPanel({
                             background: active
                               ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
                               : "rgba(255,255,255,0.05)",
-                            color: active ? "#1a1208" : "rgba(245,234,208,0.7)",
+                            color: active
+                              ? "#1a1208"
+                              : "rgba(245,234,208,0.7)",
                             cursor: isHost ? "pointer" : "not-allowed",
                             opacity: isHost ? 1 : 0.5,
                             boxShadow: active
