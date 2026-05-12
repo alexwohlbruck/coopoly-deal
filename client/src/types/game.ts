@@ -88,7 +88,7 @@ export const BUILT_IN_PROFILES: SettingsProfile[] = [
       wildcardFlipCountsAsMove: true,
       requireHouseBeforeHotel: false,
       maxHandSize: 999,
-      turnTimer: 0,
+      turnTimer: 20,
     },
     builtIn: true,
   },
