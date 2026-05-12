@@ -240,6 +240,14 @@ export interface Translations {
     fast: string;
     instant: string;
     hostOnlyNote: string;
+    movesPerTurn: string;
+    movesPerTurnHint: string;
+    setsToWin: string;
+    setsToWinHint: string;
+    requireHouseBeforeHotel: string;
+    requireHouseBeforeHotelHint: string;
+    drawCardsPerTurn: string;
+    drawCardsPerTurnHint: string;
   };
   socialist: {
     title: string;

@@ -57,7 +57,7 @@ export class BotPlayer {
     if (state.turn?.playerId !== botPlayerId) return;
 
     const playerCount = state.players.filter((p) => p.connected).length;
-    const maxPlays = 3;
+    const maxPlays = state.settings.movesPerTurn;
     let plays = state.turn.cardsPlayed;
 
     while (
@@ -133,7 +133,7 @@ export class BotPlayer {
     if (!player) return;
     if (state.turn?.playerId !== botPlayerId) return;
 
-    const maxPlays = 3;
+    const maxPlays = state.settings.movesPerTurn;
     let plays = state.turn.cardsPlayed;
 
     while (

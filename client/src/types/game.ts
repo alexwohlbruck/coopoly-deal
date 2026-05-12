@@ -48,6 +48,10 @@ export interface GameSettings {
   allowDuplicateSets: boolean;
   wildcardFlipCountsAsMove: boolean;
   botSpeed: "slow" | "normal" | "fast" | "instant";
+  movesPerTurn: number;
+  setsToWin: number;
+  requireHouseBeforeHotel: boolean;
+  drawCardsPerTurn: number;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -56,6 +60,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   allowDuplicateSets: true,
   wildcardFlipCountsAsMove: false,
   botSpeed: "normal",
+  movesPerTurn: 3,
+  setsToWin: 3,
+  requireHouseBeforeHotel: true,
+  drawCardsPerTurn: 2,
 };
 
 export interface PropertySet {

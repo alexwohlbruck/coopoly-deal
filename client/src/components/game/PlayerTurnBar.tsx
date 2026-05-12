@@ -176,7 +176,7 @@ export function PlayerTurnBar({
                 )}
               </div>
               <p className="text-gray-400 text-[10px]">
-                {cardsPlayed}/3 {t.game.cardsPlayed}
+                {cardsPlayed}/{gameState.settings.movesPerTurn} {t.game.cardsPlayed}
               </p>
             </div>
           ) : (

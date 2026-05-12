@@ -80,7 +80,7 @@ export function GameTableDesktop({
     ? (() => {
         const complete = completeSetsCount(activeOpp, allowDuplicateSets);
         const partial = activeOpp.properties.length - complete;
-        const setsToWin = 3 - complete;
+        const setsToWin = gameState.settings.setsToWin - complete;
         return {
           complete,
           partial,
@@ -388,7 +388,7 @@ export function GameTableDesktop({
               initial={me.name[0]?.toUpperCase() ?? "?"}
               color="var(--accent, #f0c14a)"
               sets={myCompleteSets}
-              totalSetsNeeded={3}
+              totalSetsNeeded={gameState.settings.setsToWin}
               money={myMoney}
               handCount={myHandCount}
               isYou

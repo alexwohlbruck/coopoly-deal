@@ -269,7 +269,7 @@ export function GameTableCompact({
                 ? `${t.game.yourTurn} · ${timeLeft}s`
                 : t.game.yourTurn
             }
-            sub={`${cardsPlayed}/3 ${t.game.cardsPlayed}`}
+            sub={`${cardsPlayed}/${gameState.settings.movesPerTurn} ${t.game.cardsPlayed}`}
           />
         ) : (
           <TurnPill

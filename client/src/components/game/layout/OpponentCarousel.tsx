@@ -42,7 +42,7 @@ export function toSeatPlayer(
     initial: player.name[0]?.toUpperCase() ?? "?",
     color: avatarColorFor(player, index),
     sets: completeSetsCount(player, allowDuplicateSets),
-    totalSetsNeeded: 3,
+    totalSetsNeeded: gameState.settings.setsToWin,
     money,
     handCount: player.hand?.length ?? 0,
     isCurrentTurn:

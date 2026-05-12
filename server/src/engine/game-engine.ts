@@ -18,7 +18,6 @@ import {
 } from "../models/types.ts";
 import { createDeck, shuffleDeck } from "./deck.ts";
 
-const MAX_PLAYS_PER_TURN = 3;
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
@@ -158,7 +157,7 @@ export class GameEngine {
       return;
     }
 
-    const drawCount = player.hand.length === 0 ? 5 : 2;
+    const drawCount = player.hand.length === 0 ? 5 : state.settings.drawCardsPerTurn;
     this.drawCards(state, player, drawCount);
 
     state.turn = {
@@ -405,7 +404,7 @@ export class GameEngine {
       this.assertCanPlay(state);
     } else {
       const turn = this.getTurn(state);
-      if (turn.cardsPlayed >= MAX_PLAYS_PER_TURN) {
+      if (turn.cardsPlayed >= state.settings.movesPerTurn) {
         throw new Error("Already played maximum cards this turn");
       }
     }
@@ -741,7 +740,7 @@ export class GameEngine {
       (s) => s.color === setColor && isSetComplete(s),
     );
     if (!set) throw new Error("Set is not complete");
-    if (!set.house) throw new Error("Must have a house before placing a hotel");
+    if (state.settings.requireHouseBeforeHotel && !set.house) throw new Error("Must have a house before placing a hotel");
     if (set.hotel) throw new Error("Set already has a hotel");
 
     set.hotel = card;
@@ -1261,7 +1260,7 @@ export class GameEngine {
     if (turn.phase === TurnPhase.ActionPending) {
       throw new Error("Must resolve pending action first");
     }
-    if (turn.cardsPlayed >= MAX_PLAYS_PER_TURN) {
+    if (turn.cardsPlayed >= state.settings.movesPerTurn) {
       throw new Error("Already played maximum cards this turn");
     }
   }
@@ -1279,7 +1278,7 @@ export class GameEngine {
   private tryAutoEndTurn(state: GameState): void {
     const turn = this.getTurn(state);
     if (
-      turn.cardsPlayed >= MAX_PLAYS_PER_TURN &&
+      turn.cardsPlayed >= state.settings.movesPerTurn &&
       turn.phase === TurnPhase.Play &&
       !turn.pendingAction
     ) {
@@ -1587,7 +1586,7 @@ export class GameEngine {
       winCount = uniqueColors.size;
     }
 
-    if (winCount >= 3) {
+    if (winCount >= state.settings.setsToWin) {
       state.phase = GamePhase.Finished;
       state.winner = player.id;
     }

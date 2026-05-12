@@ -250,6 +250,141 @@ export function GameSettingsPanel({
                 )}
               </div>
 
+              {/* Moves per turn */}
+              <div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+                  {t.gameSettings.movesPerTurn}
+                </div>
+                <div style={ROW_HINT_STYLE}>{t.gameSettings.movesPerTurnHint}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: 6,
+                  }}
+                >
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={settings.movesPerTurn}
+                    onChange={(e) => {
+                      updateSetting("movesPerTurn", parseInt(e.target.value));
+                    }}
+                    disabled={!isHost}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent, #f0c14a)",
+                      opacity: isHost ? 1 : 0.4,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: "#f5ead0",
+                      width: 36,
+                      textAlign: "center",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {settings.movesPerTurn}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sets to win */}
+              <div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+                  {t.gameSettings.setsToWin}
+                </div>
+                <div style={ROW_HINT_STYLE}>{t.gameSettings.setsToWinHint}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: 6,
+                  }}
+                >
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={settings.setsToWin}
+                    onChange={(e) => {
+                      updateSetting("setsToWin", parseInt(e.target.value));
+                    }}
+                    disabled={!isHost}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent, #f0c14a)",
+                      opacity: isHost ? 1 : 0.4,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: "#f5ead0",
+                      width: 36,
+                      textAlign: "center",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {settings.setsToWin}
+                  </span>
+                </div>
+              </div>
+
+              {/* Draw cards per turn */}
+              <div>
+                <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
+                  {t.gameSettings.drawCardsPerTurn}
+                </div>
+                <div style={ROW_HINT_STYLE}>{t.gameSettings.drawCardsPerTurnHint}</div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginTop: 6,
+                  }}
+                >
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={settings.drawCardsPerTurn}
+                    onChange={(e) => {
+                      updateSetting("drawCardsPerTurn", parseInt(e.target.value));
+                    }}
+                    disabled={!isHost}
+                    style={{
+                      flex: 1,
+                      accentColor: "var(--accent, #f0c14a)",
+                      opacity: isHost ? 1 : 0.4,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontWeight: 700,
+                      fontSize: 14,
+                      color: "#f5ead0",
+                      width: 36,
+                      textAlign: "center",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    {settings.drawCardsPerTurn}
+                  </span>
+                </div>
+              </div>
+
               {/* Toggles */}
               {[
                 {
@@ -261,6 +396,11 @@ export function GameSettingsPanel({
                   key: "wildcardFlipCountsAsMove" as const,
                   label: t.gameSettings.wildcardFlipCountsAsMove,
                   hint: t.gameSettings.wildcardFlipHint,
+                },
+                {
+                  key: "requireHouseBeforeHotel" as const,
+                  label: t.gameSettings.requireHouseBeforeHotel,
+                  hint: t.gameSettings.requireHouseBeforeHotelHint,
                 },
               ].map(({ key, label, hint }) => (
                 <div
