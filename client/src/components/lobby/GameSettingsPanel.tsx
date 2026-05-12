@@ -200,90 +200,99 @@ export function GameSettingsPanel({
                   style={{
                     display: "flex",
                     flexWrap: "wrap",
-                    gap: 4,
+                    gap: 6,
                   }}
                 >
                   {allProfiles.map((profile) => {
                     const active = activeProfileId === profile.id;
+                    const canDelete = !profile.builtIn && isHost;
+                    const pillBg = active
+                      ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
+                      : "rgba(255,255,255,0.05)";
+                    const pillBorder = active
+                      ? "transparent"
+                      : "rgba(255,255,255,0.08)";
+                    const pillColor = active
+                      ? "#1a1208"
+                      : "rgba(245,234,208,0.7)";
+                    const pillShadow = active
+                      ? "inset 0 1px 0 rgba(255,255,255,0.4)"
+                      : "none";
                     return (
-                      <button
+                      <div
                         key={profile.id}
-                        type="button"
-                        onClick={() => isHost && applyProfile(profile)}
-                        disabled={!isHost}
                         style={{
-                          position: "relative",
-                          padding: !profile.builtIn && isHost
-                            ? "4px 20px 4px 8px"
-                            : "4px 8px",
-                          borderRadius: 6,
-                          fontFamily: "var(--font-mono)",
-                          fontSize: 10,
-                          letterSpacing: "0.06em",
-                          textTransform: "uppercase",
-                          fontWeight: 600,
-                          border: "1px solid",
-                          borderColor: active
-                            ? "rgba(255,255,255,0.15)"
-                            : "rgba(255,255,255,0.06)",
-                          background: active
-                            ? "rgba(255,255,255,0.12)"
-                            : "rgba(255,255,255,0.03)",
-                          color: active
-                            ? "#f5ead0"
-                            : "rgba(245,234,208,0.5)",
-                          cursor: isHost ? "pointer" : "not-allowed",
-                          opacity: isHost ? 1 : 0.5,
-                          transition: "all 0.15s ease",
+                          display: "flex",
+                          alignItems: "stretch",
+                          borderRadius: 8,
+                          overflow: "hidden",
+                          border: `1px solid ${pillBorder}`,
                         }}
                       >
-                        {profile.name}
-                        {!profile.builtIn && isHost && (
-                          <span
-                            role="button"
-                            tabIndex={0}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProfile(profile.id);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.stopPropagation();
-                                handleDeleteProfile(profile.id);
-                              }
-                            }}
+                        <button
+                          type="button"
+                          onClick={() => isHost && applyProfile(profile)}
+                          disabled={!isHost}
+                          style={{
+                            padding: "6px 10px",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: 10,
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            fontWeight: 700,
+                            border: "none",
+                            background: pillBg,
+                            color: pillColor,
+                            cursor: isHost ? "pointer" : "not-allowed",
+                            opacity: isHost ? 1 : 0.5,
+                            boxShadow: pillShadow,
+                            transition:
+                              "background var(--d-quick) var(--ease-out-soft)",
+                          }}
+                        >
+                          {profile.name}
+                        </button>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteProfile(profile.id)}
                             title={t.gameSettings.deleteProfile}
                             style={{
-                              position: "absolute",
-                              right: 5,
-                              top: "50%",
-                              transform: "translateY(-50%)",
-                              fontSize: 8,
-                              lineHeight: 1,
-                              opacity: 0.4,
+                              padding: "0 7px",
+                              border: "none",
+                              borderLeft: `1px solid ${active ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.06)"}`,
+                              background: pillBg,
+                              color: pillColor,
                               cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              boxShadow: pillShadow,
+                              opacity: 0.7,
+                              fontSize: 9,
+                              transition:
+                                "background var(--d-quick) var(--ease-out-soft)",
                             }}
                           >
                             ✕
-                          </span>
+                          </button>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                   {/* Custom indicator when no profile matches */}
                   {!activeProfileId && (
                     <span
                       style={{
-                        padding: "4px 8px",
-                        borderRadius: 6,
+                        padding: "6px 10px",
+                        borderRadius: 8,
                         fontFamily: "var(--font-mono)",
                         fontSize: 10,
                         letterSpacing: "0.06em",
                         textTransform: "uppercase",
-                        fontWeight: 600,
-                        border: "1px dashed rgba(255,255,255,0.12)",
+                        fontWeight: 700,
+                        border: "1px dashed rgba(255,255,255,0.15)",
                         background: "transparent",
-                        color: "rgba(245,234,208,0.4)",
+                        color: "rgba(245,234,208,0.5)",
                       }}
                     >
                       {t.gameSettings.custom}
@@ -354,10 +363,10 @@ export function GameSettingsPanel({
                             borderRadius: 6,
                             border: "none",
                             background: newProfileName.trim()
-                              ? "rgba(255,255,255,0.15)"
-                              : "rgba(255,255,255,0.05)",
+                              ? "var(--accent, #f0c14a)"
+                              : "rgba(255,255,255,0.08)",
                             color: newProfileName.trim()
-                              ? "#f5ead0"
+                              ? "#1a1208"
                               : "rgba(245,234,208,0.25)",
                             fontFamily: "var(--font-mono)",
                             fontSize: 9,

@@ -248,7 +248,7 @@ export const es: Translations = {
     drawCardsPerTurnHint: "Cartas robadas al inicio de cada turno (mano vacía siempre roba 5)",
     profile: "Perfil",
     customProfile: "Perfil Personalizado",
-    saveAsProfile: "Guardar como Perfil",
+    saveAsProfile: "Guardar actual como Perfil",
     deleteProfile: "Eliminar",
     profileName: "Nombre del perfil",
     custom: "Personalizado",

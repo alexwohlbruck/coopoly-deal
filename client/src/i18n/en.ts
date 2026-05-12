@@ -248,7 +248,7 @@ export const en: Translations = {
     drawCardsPerTurnHint: "Cards drawn at the start of each turn (empty hand always draws 5)",
     profile: "Profile",
     customProfile: "Custom Profile",
-    saveAsProfile: "Save as Profile",
+    saveAsProfile: "Save current as Profile",
     deleteProfile: "Delete",
     profileName: "Profile name",
     custom: "Custom",
