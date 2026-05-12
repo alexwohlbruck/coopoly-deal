@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useGameStore } from "../../hooks/useGameStore";
 import { getTheme } from "../../theme/colors";
+import { useI18n } from "../../i18n";
 
 interface NameEntryDialogProps {
   roomCode: string;
@@ -14,6 +15,7 @@ export function NameEntryDialog({
   onSubmit,
   onBack,
 }: NameEntryDialogProps) {
+  const { t } = useI18n();
   const { theme, playerName: savedPlayerName } = useGameStore();
   // Pre-fill with the saved player name so returning players don't
   // have to retype. They can still edit it before joining.
@@ -62,7 +64,7 @@ export function NameEntryDialog({
               marginBottom: 14,
             }}
           >
-            ← Back
+            ← {t.common.back}
           </button>
           <div
             style={{
@@ -74,7 +76,7 @@ export function NameEntryDialog({
               marginBottom: 4,
             }}
           >
-            Joining Room
+            {t.lobby.joiningRoom}
           </div>
           <h2
             style={{
@@ -102,13 +104,13 @@ export function NameEntryDialog({
                 marginBottom: 6,
               }}
             >
-              Your Name
+              {t.lobby.yourName}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
+              placeholder={t.lobby.enterName}
               maxLength={20}
               autoFocus
               style={{
@@ -147,7 +149,7 @@ export function NameEntryDialog({
                 textTransform: "uppercase",
               }}
             >
-              Join Game
+              {t.lobby.joinGame}
             </button>
           </form>
         </div>

@@ -12,7 +12,9 @@ import {
   PROPERTY_COLOR_HEX,
   RENT_VALUES,
   SET_SIZE,
+  CardType,
   getPropertyColorLabel,
+  getCardTypeLabel,
 } from "../../types/game";
 import { PrimaryButton } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
@@ -347,7 +349,7 @@ export function GameRulesModal({
                 {useSocialistTheme ? "comrades" : "players"}. The goal is to be
                 the first {useSocialistTheme ? "comrade" : "player"} to collect{" "}
                 <Hi>
-                  3 complete property sets
+                  3 complete {useSocialistTheme ? "state asset" : "property"} sets
                   {allowDuplicateSets ? "" : " of different colors"}
                 </Hi>{" "}
                 on the table in front of you.{" "}
@@ -355,7 +357,8 @@ export function GameRulesModal({
                 cards, playing cards, and using{" "}
                 {useSocialistTheme ? "directive" : "action"} cards to collect{" "}
                 {useSocialistTheme ? "levies" : "rent"},{" "}
-                {useSocialistTheme ? "expropriate" : "steal"} properties, and
+                {useSocialistTheme ? "expropriate" : "steal"}{" "}
+                {useSocialistTheme ? "state assets" : "properties"}, and
                 block opponents.
               </p>
             </section>
@@ -411,8 +414,9 @@ export function GameRulesModal({
                 </SubCard>
                 <SubCard title={t.rules.playPhase}>
                   Play <Hi>up to 3 cards</Hi> from your hand. Cards can go to
-                  your bank, your property area, or be played as{" "}
-                  {useSocialistTheme ? "directive" : "action"} cards.
+                  your {useSocialistTheme ? "treasury" : "bank"}, your{" "}
+                  {useSocialistTheme ? "state asset" : "property"} area, or be
+                  played as {useSocialistTheme ? "directive" : "action"} cards.
                 </SubCard>
                 <SubCard title={t.rules.discardPhase}>
                   You may have{" "}
@@ -433,15 +437,18 @@ export function GameRulesModal({
               <SectionHeading>{t.rules.winning}</SectionHeading>
               <p style={{ margin: 0 }}>
                 The first {useSocialistTheme ? "comrade" : "player"} to have{" "}
-                <Hi>3 complete property sets</Hi> on the table wins immediately.
-                Property sets must be on the table — cards in your hand do not
-                count.
+                <Hi>3 complete {useSocialistTheme ? "state asset" : "property"} sets</Hi>{" "}
+                on the table wins immediately.{" "}
+                {useSocialistTheme ? "State asset" : "Property"} sets must be on
+                the table — cards in your hand do not count.
               </p>
             </section>
 
             {/* Property Sets table */}
             <section>
-              <SectionHeading>{t.rules.propertySets}</SectionHeading>
+              <SectionHeading>
+                {useSocialistTheme ? "State Asset Sets" : t.rules.propertySets}
+              </SectionHeading>
               <div
                 style={{
                   background: "rgba(0,0,0,0.22)",
@@ -513,8 +520,10 @@ export function GameRulesModal({
                   marginBottom: 0,
                 }}
               >
-                ★ Houses add +3M, hotels add +4M to complete sets (not available
-                for Railroad / Utility).
+                ★ {useSocialistTheme
+                  ? `${getCardTypeLabel(CardType.House, true)} adds +3M, ${getCardTypeLabel(CardType.Hotel, true)} adds +4M to complete sets (not available for ${getPropertyColorLabel(PropertyColor.Railroad, true)} / ${getPropertyColorLabel(PropertyColor.Utility, true)}).`
+                  : `Houses add +3M, hotels add +4M to complete sets (not available for ${getPropertyColorLabel(PropertyColor.Railroad, false)} / ${getPropertyColorLabel(PropertyColor.Utility, false)}).`
+                }
               </p>
             </section>
 
@@ -532,34 +541,35 @@ export function GameRulesModal({
                   gap: 8,
                 }}
               >
-                <SubCard title="Pass Go" small>
+                <SubCard title={getCardTypeLabel(CardType.PassGo, useSocialistTheme)} small>
                   Draw 2 cards from the deck.
                 </SubCard>
-                <SubCard title="Sly Deal" small>
-                  {useSocialistTheme ? "Expropriate" : "Steal"} one property
-                  card from any opponent (not from complete sets).
+                <SubCard title={getCardTypeLabel(CardType.SlyDeal, useSocialistTheme)} small>
+                  {useSocialistTheme ? "Expropriate" : "Steal"} one{" "}
+                  {useSocialistTheme ? "state asset" : "property"} card from any
+                  opponent (not from complete sets).
                 </SubCard>
-                <SubCard title="Force Deal" small>
-                  Swap one of your properties for one of an opponent's (neither
-                  from complete sets).
+                <SubCard title={getCardTypeLabel(CardType.ForceDeal, useSocialistTheme)} small>
+                  Swap one of your {useSocialistTheme ? "state assets" : "properties"}{" "}
+                  for one of an opponent's (neither from complete sets).
                 </SubCard>
-                <SubCard title="Deal Breaker" small>
+                <SubCard title={getCardTypeLabel(CardType.DealBreaker, useSocialistTheme)} small>
                   {useSocialistTheme ? "Expropriate" : "Steal"} an entire
-                  complete property set from an opponent.
+                  complete {useSocialistTheme ? "state asset" : "property"} set from an opponent.
                 </SubCard>
-                <SubCard title="Debt Collector" small>
+                <SubCard title={getCardTypeLabel(CardType.DebtCollector, useSocialistTheme)} small>
                   Charge one {useSocialistTheme ? "comrade" : "player"} 5M.
                 </SubCard>
-                <SubCard title="It's My Birthday" small>
+                <SubCard title={getCardTypeLabel(CardType.Birthday, useSocialistTheme)} small>
                   All other {useSocialistTheme ? "comrades" : "players"} pay you
                   2M.
                 </SubCard>
-                <SubCard title="Just Say No" small>
+                <SubCard title={getCardTypeLabel(CardType.JustSayNo, useSocialistTheme)} small>
                   Cancel any {useSocialistTheme ? "directive" : "action"} card
                   played against you. Can be chained!
                 </SubCard>
                 <SubCard
-                  title={`Double the ${useSocialistTheme ? "Levy" : "Rent"}`}
+                  title={getCardTypeLabel(CardType.DoubleTheRent, useSocialistTheme)}
                   small
                 >
                   Play with a {useSocialistTheme ? "levy" : "rent"} card to
@@ -594,12 +604,14 @@ export function GameRulesModal({
                   </>,
                   <>
                     <Hi>
-                      Money / {useSocialistTheme ? "directive" : "action"} cards
+                      {useSocialistTheme ? "Ledger" : "Money"} /{" "}
+                      {useSocialistTheme ? "directive" : "action"} cards
                     </Hi>{" "}
-                    go to the recipient's bank.
+                    go to the recipient's {useSocialistTheme ? "treasury" : "bank"}.
                   </>,
                   <>
-                    <Hi>Property cards</Hi> go to the recipient's property area.
+                    <Hi>{useSocialistTheme ? "State asset" : "Property"} cards</Hi>{" "}
+                    go to the recipient's {useSocialistTheme ? "state asset" : "property"} area.
                   </>,
                   <>
                     <Hi>No change is given</Hi> — overpayment goes to the
@@ -623,7 +635,9 @@ export function GameRulesModal({
 
             {/* Wildcards */}
             <section>
-              <SectionHeading>{t.rules.propertyWildcards}</SectionHeading>
+              <SectionHeading>
+                {useSocialistTheme ? "General Asset Wildcards" : t.rules.propertyWildcards}
+              </SectionHeading>
               <ul
                 style={{
                   listStyle: "none",
@@ -644,7 +658,7 @@ export function GameRulesModal({
                   </>,
                   <>
                     Wildcards can be{" "}
-                    <Hi>moved between your property sets during your turn</Hi>.
+                    <Hi>moved between your {useSocialistTheme ? "state asset" : "property"} sets during your turn</Hi>.
                   </>,
                   <>
                     Multi-color wildcards have <Hi>no monetary value</Hi> and

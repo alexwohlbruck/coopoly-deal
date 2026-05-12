@@ -64,6 +64,7 @@ export function WaitingRoom({
 }: WaitingRoomProps) {
   const { t } = useI18n();
   const { theme, useSocialistTheme } = useGameStore();
+  const s = useSocialistTheme;
   const themeData = getTheme(theme);
   const layout = useLayout();
   const isCompact = layout === "compact";
@@ -161,7 +162,7 @@ export function WaitingRoom({
               onMouseLeave={(e) => {
                 e.currentTarget.style.color = "rgba(245,234,208,0.4)";
               }}
-              title="Leave room"
+              title={t.waiting.leaveRoom}
             >
               <ArrowLeft className="w-4 h-4" />
             </button>
@@ -174,7 +175,7 @@ export function WaitingRoom({
                 textTransform: "uppercase",
               }}
             >
-              Waiting Room
+              {t.waiting.waitingRoom}
             </div>
           </div>
           <div
@@ -217,7 +218,7 @@ export function WaitingRoom({
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "scale(1)";
               }}
-              title="Click to enlarge"
+              title={t.waiting.clickToEnlarge}
             >
               <RoomQrCode roomCode={gameState.id} size={isCompact ? 140 : 180} />
             </button>
@@ -230,7 +231,7 @@ export function WaitingRoom({
                 textTransform: "uppercase",
               }}
             >
-              Scan to join · tap to enlarge
+              {t.waiting.scanToJoin}
             </span>
           </div>
 
@@ -253,8 +254,8 @@ export function WaitingRoom({
               }}
             >
               <span>
-                {useSocialistTheme
-                  ? "Comrades"
+                {s
+                  ? t.socialist.players
                   : t.waiting.players}
               </span>
               <span>
@@ -268,14 +269,14 @@ export function WaitingRoom({
                 const isMe = player.id === playerId;
                 const isHostRow = i === 0 && !player.isBot;
                 const tag = player.isBot
-                  ? "CPU"
+                  ? t.waiting.cpu
                   : isHostRow
                     ? isMe
-                      ? "YOU · HOST"
-                      : "HOST"
+                      ? t.waiting.youHost
+                      : t.waiting.host
                     : isMe
-                      ? "YOU"
-                      : "PLAYER";
+                      ? t.waiting.you
+                      : t.waiting.player;
                 return (
                   <motion.div
                     key={player.id}
@@ -346,9 +347,9 @@ export function WaitingRoom({
                       <button
                         onClick={() => onRemovePlayer(player.id)}
                         title={
-                          useSocialistTheme
-                            ? "Remove comrade"
-                            : "Remove player"
+                          s
+                            ? t.socialist.removePlayer
+                            : t.waiting.removePlayer
                         }
                         style={{
                           width: 26,
@@ -393,7 +394,7 @@ export function WaitingRoom({
                   marginBottom: 6,
                 }}
               >
-                Your Name
+                {t.lobby.yourName}
               </label>
               <input
                 type="text"
@@ -438,9 +439,9 @@ export function WaitingRoom({
               >
                 {canStart
                   ? t.waiting.startGame
-                  : useSocialistTheme
-                    ? "Need Comrades"
-                    : t.waiting.needMorePlayers}
+                  : s
+                    ? t.socialist.needPlayers
+                    : t.waiting.needPlayers}
               </PrimaryButton>
             </div>
           ) : (
@@ -455,9 +456,9 @@ export function WaitingRoom({
                 textTransform: "uppercase",
               }}
             >
-              {useSocialistTheme
-                ? "Waiting for comrades…"
-                : t.waiting.waitingForPlayers}
+              {s
+                ? t.socialist.waitingForMore
+                : t.waiting.waitingForMore}
             </p>
           )}
         </div>
@@ -535,7 +536,7 @@ export function WaitingRoom({
                   textTransform: "uppercase",
                 }}
               >
-                Scan to join · tap anywhere to close
+                {t.waiting.scanToJoinClose}
               </span>
             </motion.div>
           </motion.div>

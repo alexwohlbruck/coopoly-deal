@@ -106,7 +106,7 @@ export function PlayerTurnBar({
                   </motion.div>
                 )}
                 {player.name.split(" ")[0]}
-                {isMe && " (you)"}
+                {isMe && ` (${t.common.you})`}
               </button>
             );
           })}
@@ -139,7 +139,7 @@ export function PlayerTurnBar({
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-gray-200 text-[7px] font-bold drop-shadow">
-                Discard
+                {t.game.discardPile}
               </span>
               <span className="text-white text-xs font-bold drop-shadow-lg">
                 {gameState.discardPile.length}
@@ -166,7 +166,7 @@ export function PlayerTurnBar({
           ) : isMyTurn ? (
             <div>
               <div className="flex items-center justify-center gap-1.5">
-                <p className="text-yellow-400 font-bold text-xs">Your Turn</p>
+                <p className="text-yellow-400 font-bold text-xs">{t.game.yourTurn}</p>
                 {timeLeft !== null && (
                   <span
                     className={`text-[10px] font-mono px-1 py-0.5 rounded ${timeLeft <= 10 ? "bg-red-500/20 text-red-400" : "bg-white/10 text-gray-300"}`}
@@ -176,7 +176,7 @@ export function PlayerTurnBar({
                 )}
               </div>
               <p className="text-gray-400 text-[10px]">
-                {cardsPlayed}/3 cards played
+                {cardsPlayed}/3 {t.game.cardsPlayed}
               </p>
             </div>
           ) : (
@@ -184,7 +184,7 @@ export function PlayerTurnBar({
               <div className="flex items-center justify-center gap-1.5">
                 <p className="text-gray-300 text-xs">
                   {currentTurnPlayer?.name}'s{" "}
-                  {useSocialistTheme ? "shift" : "turn"}
+                  {useSocialistTheme ? t.socialist.shift : t.common.turn}
                 </p>
                 {timeLeft !== null && (
                   <span
@@ -196,8 +196,8 @@ export function PlayerTurnBar({
               </div>
               <p className="text-gray-500 text-[10px]">
                 {turnPhase === TurnPhase.ActionPending
-                  ? "Waiting for responses..."
-                  : "Playing..."}
+                  ? t.game.waitingForResponses
+                  : t.game.playing}
               </p>
             </div>
           )}
@@ -292,7 +292,7 @@ export function PlayerTurnBar({
               textTransform: "uppercase",
             }}
           >
-            hover to peek · click to play
+            {t.game.hoverHint}
           </div>
         )}
       </div>

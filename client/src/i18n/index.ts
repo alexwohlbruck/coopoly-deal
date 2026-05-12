@@ -9,7 +9,7 @@ export interface Translations {
     title: string;
     subtitle: string;
     welcomeBack: string;
-    welcomeBackName: string; // "Welcome back, {name}" — uses {name} placeholder
+    welcomeBackName: string;
     createRoom: string;
     joinRoom: string;
     enterCode: string;
@@ -23,6 +23,9 @@ export interface Translations {
     credits: string;
     scanQrTitle: string;
     scanQrHint: string;
+    joiningRoom: string;
+    yourName: string;
+    joinGame: string;
   };
   waiting: {
     roomCode: string;
@@ -31,6 +34,19 @@ export interface Translations {
     addBot: string;
     waitingForPlayers: string;
     needMorePlayers: string;
+    leaveRoom: string;
+    waitingRoom: string;
+    scanToJoin: string;
+    scanToJoinClose: string;
+    clickToEnlarge: string;
+    cpu: string;
+    youHost: string;
+    host: string;
+    you: string;
+    player: string;
+    removePlayer: string;
+    needPlayers: string;
+    waitingForMore: string;
   };
   game: {
     yourTurn: string;
@@ -52,6 +68,31 @@ export interface Translations {
     waitingForResponses: string;
     playing: string;
     resign: string;
+    settings: string;
+    resignConfirm: string;
+    resignDescription: string;
+    leave: string;
+    table: string;
+    timesUp: string;
+    cannotPlay: string;
+    changeWildcardColor: string;
+    assignWildcardColor: string;
+    decideLater: string;
+    groupWithRainbow: string;
+    playAsColor: string;
+    addToExistingSet: string;
+    startNewSet: string;
+    howManyRainbow: string;
+    pickCardsToDiscard: string;
+    hoverHint: string;
+    newSet: string;
+    noProperties: string;
+    empty: string;
+    selectCardsToPayWith: string;
+    dev: string;
+    wildcardFlipInstruction: string;
+    wildcardAssignInstruction: string;
+    incompleteSetPrompt: string;
   };
   actions: {
     passGo: string;
@@ -78,6 +119,11 @@ export interface Translations {
     selectCards: string;
     cantPay: string;
     accept: string;
+    action: string;
+    yourCompleteSet: string;
+    yourCard: string;
+    playersCard: string;
+    actionPlayedAgainstYou: string;
   };
   finished: {
     youWin: string;
@@ -98,6 +144,15 @@ export interface Translations {
     shareOnThreads: string;
     shareCopy: string;
     shareNative: string;
+    winner: string;
+    rank: string;
+    gameOver: string;
+    finalStandings: string;
+    set: string;
+    completeSets: string;
+    noProperties: string;
+    bank: string;
+    players: string;
   };
   settings: {
     title: string;
@@ -125,7 +180,7 @@ export interface Translations {
     frontend: string;
     backend: string;
     analytics: string;
-    iconsBy: string; // small caption appended to lucide-react entry
+    iconsBy: string;
     madeBy: string;
   };
   rules: {
@@ -158,6 +213,62 @@ export interface Translations {
     turn: string;
     next: string;
     sourceCode: string;
+    cancel: string;
+    rules: string;
+    gameRules: string;
+    current: string;
+    best: string;
+    completesSet: string;
+    back: string;
+    add: string;
+    player: string;
+    players: string;
+    stolen: string;
+  };
+  gameSettings: {
+    title: string;
+    hostOnly: string;
+    maxHandSize: string;
+    turnTimer: string;
+    allowDuplicateSets: string;
+    allowDuplicateSetsHint: string;
+    wildcardFlipCountsAsMove: string;
+    wildcardFlipHint: string;
+    botSpeed: string;
+    slow: string;
+    normal: string;
+    fast: string;
+    instant: string;
+    hostOnlyNote: string;
+  };
+  socialist: {
+    title: string;
+    subtitle: string;
+    rulesTitle: string;
+    player: string;
+    players: string;
+    property: string;
+    properties: string;
+    bank: string;
+    rent: string;
+    rents: string;
+    action: string;
+    steal: string;
+    stolen: string;
+    shift: string;
+    comply: string;
+    contribute: string;
+    selectResources: string;
+    nothingToContribute: string;
+    stateAssetSets: string;
+    generalAssetWildcards: string;
+    counterIntelligence: string;
+    directive: string;
+    actionPlayedAgainstYou: string;
+    yourCompleteSet: string;
+    removePlayer: string;
+    needPlayers: string;
+    waitingForMore: string;
   };
 }
 

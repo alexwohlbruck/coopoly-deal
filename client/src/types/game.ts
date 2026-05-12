@@ -187,8 +187,8 @@ export const SOCIALIST_PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
   [PropertyColor.Yellow]: "Yellow",
   [PropertyColor.Green]: "Green",
   [PropertyColor.DarkBlue]: "Dark Blue",
-  [PropertyColor.Railroad]: "Railroads",
-  [PropertyColor.Utility]: "Utilities",
+  [PropertyColor.Railroad]: "Rail",
+  [PropertyColor.Utility]: "Energy",
   [PropertyColor.Unassigned]: "Rainbow",
 };
 
