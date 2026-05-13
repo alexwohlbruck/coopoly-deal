@@ -485,6 +485,7 @@ export function GameTable({
           draggingCard={draggingCard}
           onPlayToBank={onPlayToBank}
           onPlayToProperty={onPlayToProperty}
+          onPlayAction={handlePlayAction}
           onRainbowDrop={(card) => setRainbowDropData({ card })}
           onWildcardClick={handleWildcardClick}
           onRearrangeProperty={onRearrangeProperty}
@@ -506,6 +507,7 @@ export function GameTable({
             onWildcardClick={handleWildcardClick}
             onRearrangeProperty={onRearrangeProperty}
             onCardClick={handleCardClick}
+            onPlayAction={handlePlayAction}
             onEndTurn={handleEndTurn}
             setDraggingCard={setDraggingCard}
             peekResetSignal={peekResetSignal}

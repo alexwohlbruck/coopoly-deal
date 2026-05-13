@@ -32,6 +32,7 @@ interface GameTableDesktopProps {
   draggingCard: Card | null;
   onPlayToBank: (cardId: string) => void;
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
+  onPlayAction: (payload: Record<string, unknown>) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
   onRearrangeProperty?: (
@@ -50,6 +51,7 @@ export function GameTableDesktop({
   draggingCard,
   onPlayToBank,
   onPlayToProperty,
+  onPlayAction,
   onRainbowDrop,
   onWildcardClick,
   onRearrangeProperty,
@@ -419,6 +421,7 @@ export function GameTableDesktop({
             draggingCard={draggingCard}
             onPlayToBank={onPlayToBank}
             onPlayToProperty={onPlayToProperty}
+            onPlayAction={onPlayAction}
             onRainbowDrop={onRainbowDrop}
             onWildcardClick={onWildcardClick}
             onRearrangeProperty={onRearrangeProperty}
@@ -446,6 +449,7 @@ interface YourTableGridProps {
   draggingCard: Card | null;
   onPlayToBank: (cardId: string) => void;
   onPlayToProperty: (cardId: string, color: PropertyColor) => void;
+  onPlayAction: (payload: Record<string, unknown>) => void;
   onRainbowDrop: (card: Card) => void;
   onWildcardClick: (card: Card, currentColor: PropertyColor) => void;
   onRearrangeProperty?: (
@@ -464,6 +468,7 @@ function YourTableGrid({
   draggingCard,
   onPlayToBank,
   onPlayToProperty,
+  onPlayAction,
   onRainbowDrop,
   onWildcardClick,
   onRearrangeProperty,
@@ -518,11 +523,14 @@ function YourTableGrid({
           onDropToProperty={(cardId, color) => {
             const card = me.hand?.find((c) => c.id === cardId);
             if (!card) return;
+            if (card.type === CardType.House || card.type === CardType.Hotel) {
+              const action = card.type === CardType.House ? "house" : "hotel";
+              onPlayAction({ action, cardId, setColor: color });
+              return;
+            }
             if (
               card.type !== CardType.Property &&
-              card.type !== CardType.PropertyWildcard &&
-              card.type !== CardType.House &&
-              card.type !== CardType.Hotel
+              card.type !== CardType.PropertyWildcard
             ) {
               useGameStore.getState().setToast(
                 "Only property cards can be placed on a property set.",

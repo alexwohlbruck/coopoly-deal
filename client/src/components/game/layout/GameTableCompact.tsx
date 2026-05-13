@@ -56,6 +56,7 @@ interface GameTableCompactProps {
     createNewSet?: boolean,
   ) => void;
   onCardClick: (card: Card) => void;
+  onPlayAction: (payload: Record<string, unknown>) => void;
   onEndTurn: () => void;
   setDraggingCard: (card: Card | null) => void;
   peekResetSignal?: number | string | null;
@@ -74,6 +75,7 @@ export function GameTableCompact({
   onWildcardClick,
   onRearrangeProperty,
   onCardClick,
+  onPlayAction,
   onEndTurn,
   setDraggingCard,
   peekResetSignal = null,
@@ -361,7 +363,21 @@ export function GameTableCompact({
                 }}
                 onDropToProperty={(cardId, color) => {
                   const card = me.hand?.find((c) => c.id === cardId);
-                  if (card) onPlayToProperty(cardId, color);
+                  if (!card) return;
+                  // House/Hotel cards use the action flow, not playToProperty
+                  if (card.type === CardType.House || card.type === CardType.Hotel) {
+                    const action = card.type === CardType.House ? "house" : "hotel";
+                    onPlayAction({ action, cardId, setColor: color });
+                    return;
+                  }
+                  if (
+                    card.type !== CardType.Property &&
+                    card.type !== CardType.PropertyWildcard
+                  ) {
+                    setToast("Only property cards can be placed on a property set.");
+                    return;
+                  }
+                  onPlayToProperty(cardId, color);
                 }}
                 onDropToRainbow={onRainbowDrop}
                 onWildcardClick={onWildcardClick}
