@@ -402,7 +402,9 @@ export function GameTableCompact({
               // error on the next try). Toast a clear hint instead.
               if (
                 card.type !== CardType.Property &&
-                card.type !== CardType.PropertyWildcard
+                card.type !== CardType.PropertyWildcard &&
+                card.type !== CardType.House &&
+                card.type !== CardType.Hotel
               ) {
                 setToast(
                   "Only property cards can be placed on a property set.",

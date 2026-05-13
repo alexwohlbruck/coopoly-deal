@@ -520,7 +520,9 @@ function YourTableGrid({
             if (!card) return;
             if (
               card.type !== CardType.Property &&
-              card.type !== CardType.PropertyWildcard
+              card.type !== CardType.PropertyWildcard &&
+              card.type !== CardType.House &&
+              card.type !== CardType.Hotel
             ) {
               useGameStore.getState().setToast(
                 "Only property cards can be placed on a property set.",

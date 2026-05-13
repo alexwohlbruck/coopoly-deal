@@ -162,19 +162,23 @@ export function canPlayHotel(
     return { valid: false, reason: "Player not found" };
   }
 
-  const hasCompleteSetWithHouse = player.properties.some(
+  const requireHouse = gameState.settings.requireHouseBeforeHotel;
+
+  const hasEligibleSet = player.properties.some(
     (set) =>
       isSetComplete(set) &&
-      set.house &&
       !set.hotel &&
       set.color !== "railroad" &&
-      set.color !== "utility",
+      set.color !== "utility" &&
+      (!requireHouse || set.house),
   );
 
-  if (!hasCompleteSetWithHouse) {
+  if (!hasEligibleSet) {
     return {
       valid: false,
-      reason: "You need a complete set with a house but no hotel",
+      reason: requireHouse
+        ? "You need a complete set with a house but no hotel"
+        : "You need a complete set without a hotel (not Railroad/Utility)",
     };
   }
 
