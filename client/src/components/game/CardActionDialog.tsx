@@ -297,7 +297,7 @@ export function CardActionDialog({
           isSetComplete(s) &&
           s.color !== PC.Railroad &&
           s.color !== PC.Utility &&
-          s.house &&
+          (!settings.requireHouseBeforeHotel || s.house) &&
           !s.hotel,
       );
     }
@@ -461,7 +461,7 @@ export function CardActionDialog({
         const validSets =
           activeCard.type === CardType.House
             ? sets.filter((s) => !s.house)
-            : sets.filter((s) => s.house && !s.hotel);
+            : sets.filter((s) => (!settings.requireHouseBeforeHotel || s.house) && !s.hotel);
         if (validSets.length === 1) {
           const action = activeCard.type === CardType.House ? "house" : "hotel";
           markDispatchedAndClose();
@@ -673,7 +673,7 @@ export function CardActionDialog({
                     isSetComplete(s) &&
                     s.color !== PC.Railroad &&
                     s.color !== PC.Utility &&
-                    s.house &&
+                    (!settings.requireHouseBeforeHotel || s.house) &&
                     !s.hotel,
                 )
                 .map((s) => s.color)
