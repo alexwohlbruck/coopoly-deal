@@ -440,6 +440,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       .rearrangeProperty(game, playerId, cardId, toColor, createNewSet);
     sendStateToAll(roomCode);
     checkGameEnd(roomCode);
+    checkBotTurn(roomCode);
   }
 
   function handleAssignReceivedWildcard(
