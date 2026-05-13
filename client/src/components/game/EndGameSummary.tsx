@@ -478,12 +478,14 @@ function HeroPlaque({
   isYouWinner,
   bankTotal,
   completeSets,
+  setsToWin,
   gameSeed,
 }: {
   winner: ClientPlayer;
   isYouWinner: boolean;
   bankTotal: number;
   completeSets: number;
+  setsToWin: number;
   gameSeed: string | number;
 }) {
   const { t } = useI18n();
@@ -607,7 +609,7 @@ function HeroPlaque({
       >
         <StatReadout
           label={t.common.sets}
-          value={`${completeSets}/3`}
+          value={`${completeSets}/${setsToWin}`}
           mono={false}
           size="lg"
           accent="#f5ead0"
@@ -634,7 +636,7 @@ function StandingsRow({
   expanded,
   bankTotal,
   completeSets,
-  settings: _settings,
+  settings,
   gameSeed,
 }: {
   player: ClientPlayer;
@@ -759,7 +761,7 @@ function StandingsRow({
                 }}
               >
                 {completeSets}
-                <span style={{ opacity: 0.4, fontWeight: 600 }}>/3</span>
+                <span style={{ opacity: 0.4, fontWeight: 600 }}>/{settings.setsToWin}</span>
               </span>
             </div>
             <div
@@ -858,7 +860,7 @@ function MobileStandingsCard({
   expanded,
   bankTotal,
   completeSets,
-  settings: _settings,
+  settings,
 }: {
   player: ClientPlayer;
   rank: number;
@@ -952,7 +954,7 @@ function MobileStandingsCard({
                 fontWeight: 700,
               }}
             >
-              {completeSets}/3
+              {completeSets}/{settings.setsToWin}
             </span>
             <span style={{ color: "#7adb88", fontWeight: 700 }}>
               ${bankTotal}M
@@ -1131,7 +1133,7 @@ export function EndGameSummary({
                 <span
                   style={{ color: "var(--accent, #f0c14a)", fontWeight: 700 }}
                 >
-                  {winnerSets}/3 {t.common.sets}
+                  {winnerSets}/{settings.setsToWin} {t.common.sets}
                 </span>
                 <span style={{ color: "#7adb88", fontWeight: 700 }}>
                   ${winnerBank}M
@@ -1152,6 +1154,7 @@ export function EndGameSummary({
               isYouWinner={isYouWinner}
               bankTotal={winnerBank}
               completeSets={winnerSets}
+              setsToWin={settings.setsToWin}
               gameSeed={gameSeed}
             />
           </motion.div>
