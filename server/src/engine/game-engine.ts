@@ -325,12 +325,14 @@ export class GameEngine {
     this.assertCanPlay(state);
 
     const player = this.getPlayer(state, playerId);
-    const card = this.removeFromHand(player, cardId);
+    const card = player.hand.find((c) => c.id === cardId);
+    if (!card) throw new Error(`Card ${cardId} not in hand`);
 
     if (card.type === CardType.Property) {
       throw new Error("Property cards cannot be placed in the bank");
     }
 
+    this.removeFromHand(player, cardId);
     player.bank.push(card);
     this.incrementPlays(state);
     this.tryAutoEndTurn(state);
@@ -349,7 +351,8 @@ export class GameEngine {
     this.assertCanPlay(state);
 
     const player = this.getPlayer(state, playerId);
-    const card = this.removeFromHand(player, cardId);
+    const card = player.hand.find((c) => c.id === cardId);
+    if (!card) throw new Error(`Card ${cardId} not in hand`);
 
     if (
       card.type !== CardType.Property &&
@@ -357,6 +360,8 @@ export class GameEngine {
     ) {
       throw new Error("Only property cards can be played to the property area");
     }
+
+    this.removeFromHand(player, cardId);
 
     // Allow null color for multi-color wildcards only (unassigned)
     if (asColor !== null && asColor !== PropertyColor.Unassigned) {

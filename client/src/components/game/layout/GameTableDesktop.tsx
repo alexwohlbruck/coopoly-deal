@@ -10,6 +10,8 @@ import type {
   PropertyColor,
   ClientPlayer,
 } from "../../../types/game";
+import { CardType } from "../../../types/game";
+import { useGameStore } from "../../../hooks/useGameStore";
 import {
   OpponentRail,
   PlayerCrest,
@@ -515,7 +517,17 @@ function YourTableGrid({
           }}
           onDropToProperty={(cardId, color) => {
             const card = me.hand?.find((c) => c.id === cardId);
-            if (card) onPlayToProperty(cardId, color);
+            if (!card) return;
+            if (
+              card.type !== CardType.Property &&
+              card.type !== CardType.PropertyWildcard
+            ) {
+              useGameStore.getState().setToast(
+                "Only property cards can be placed on a property set.",
+              );
+              return;
+            }
+            onPlayToProperty(cardId, color);
           }}
           onDropToRainbow={onRainbowDrop}
           onWildcardClick={onWildcardClick}
