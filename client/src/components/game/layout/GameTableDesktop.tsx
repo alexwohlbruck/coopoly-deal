@@ -3,15 +3,13 @@
 // of boards center-left, deck+discard live center-right, and "you"
 // pin to the bottom in a gold platter.
 
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import type {
   ClientGameState,
   Card,
   PropertyColor,
   ClientPlayer,
 } from "../../../types/game";
-import { CardType } from "../../../types/game";
-import { useGameStore } from "../../../hooks/useGameStore";
 import {
   OpponentRail,
   PlayerCrest,
@@ -20,11 +18,11 @@ import { useI18n } from "../../../i18n";
 import { CardStack } from "./TableObjects";
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
 import { GameCard } from "../../cards/GameCard";
+import { OpponentCarousel } from "./OpponentCarousel";
 import {
-  toSeatPlayer,
-  useActiveOpponent,
-  OpponentCarousel,
-} from "./OpponentCarousel";
+  useGameTableState,
+  makePlayerBoardHandlers,
+} from "./useGameTableState";
 
 interface GameTableDesktopProps {
   gameState: ClientGameState;
@@ -59,46 +57,27 @@ export function GameTableDesktop({
   bottomBar,
 }: GameTableDesktopProps) {
   const { t } = useI18n();
-  const { opponents, activeOppId, setActiveOppId, activeOpp } =
-    useActiveOpponent(gameState, playerId);
-  const me = gameState.players.find((p) => p.id === playerId);
-  const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
+  const {
+    me,
+    opponents,
+    activeOppId,
+    setActiveOppId,
+    activeOpp,
+    seatPlayers,
+    activeOppStats,
+    allowDuplicateSets,
+    deckCount,
+    discardCount,
+    topDiscard,
+    isMyTurn,
+    setToast,
+  } = useGameTableState(gameState, playerId);
 
   const turnOwnerId = gameState.turn?.playerId;
-
-  const seatPlayers = useMemo(
-    () =>
-      opponents.map((p, i) =>
-        toSeatPlayer(p, i, allowDuplicateSets, gameState),
-      ),
-    [opponents, allowDuplicateSets, gameState],
-  );
-
-  const deckCount = gameState.deckCount ?? 0;
-  const discardPile = gameState.discardPile ?? [];
-  const discardCount = discardPile.length;
-  const topDiscard = discardPile[discardPile.length - 1];
-
-  // Active-opponent header subtitle: "X complete · Y partial · Z cards in hand"
-  const activeOppStats = activeOpp
-    ? (() => {
-        const complete = completeSetsCount(activeOpp, allowDuplicateSets);
-        const partial = activeOpp.properties.length - complete;
-        const setsToWin = gameState.settings.setsToWin - complete;
-        return {
-          complete,
-          partial,
-          handCount: activeOpp.hand?.length ?? 0,
-          setsToWin,
-        };
-      })()
-    : null;
 
   const myCompleteSets = me ? completeSetsCount(me, allowDuplicateSets) : 0;
   const myMoney = me ? me.bank.reduce((s, c) => s + c.value, 0) : 0;
   const myHandCount = me?.hand?.length ?? 0;
-
-  const isMyTurn = gameState.turn?.playerId === playerId;
 
   // ───────── Layout heights ─────────
   // top bar (56) → opp rail (78) at top:64 → center grid → bottom platter
@@ -426,6 +405,7 @@ export function GameTableDesktop({
             onWildcardClick={onWildcardClick}
             onRearrangeProperty={onRearrangeProperty}
             setDraggingCard={setDraggingCard}
+            setToast={setToast}
             bottomBar={bottomBar}
           />
         </div>
@@ -458,6 +438,7 @@ interface YourTableGridProps {
     createNewSet?: boolean,
   ) => void;
   setDraggingCard: (card: Card | null) => void;
+  setToast: (msg: string) => void;
   bottomBar: React.ReactNode;
 }
 
@@ -473,9 +454,19 @@ function YourTableGrid({
   onWildcardClick,
   onRearrangeProperty,
   setDraggingCard,
+  setToast,
   bottomBar,
 }: YourTableGridProps) {
   const setsColRef = useRef<HTMLDivElement | null>(null);
+
+  const boardHandlers = makePlayerBoardHandlers({
+    me,
+    onPlayToBank,
+    onPlayToProperty,
+    onPlayAction,
+    setToast,
+    setDraggingCard,
+  });
 
   return (
     <div
@@ -496,16 +487,11 @@ function YourTableGrid({
         style={{
           minWidth: 0,
           maxHeight: 320,
-          // Scroll horizontally if the row overflows; let it wrap to two
-          // rows on very tall platters (we keep wrap=false for now since
-          // the platter is ~280px tall).
           overflowX: "auto",
           overflowY: "hidden",
           alignSelf: "stretch",
           display: "flex",
           alignItems: "center",
-          // Padding so the bank border / card shadows don't get clipped
-          // at the overflow boundary.
           padding: "8px 4px",
         }}
         className="scrollbar-hide"
@@ -516,35 +502,12 @@ function YourTableGrid({
           isCurrentTurn={isMyTurn}
           settings={settings}
           draggingCard={draggingCard}
-          onDropToBank={(cardId) => {
-            const card = me.hand?.find((c) => c.id === cardId);
-            if (card) onPlayToBank(cardId);
-          }}
-          onDropToProperty={(cardId, color) => {
-            const card = me.hand?.find((c) => c.id === cardId);
-            if (!card) return;
-            if (card.type === CardType.House || card.type === CardType.Hotel) {
-              const action = card.type === CardType.House ? "house" : "hotel";
-              onPlayAction({ action, cardId, setColor: color });
-              return;
-            }
-            if (
-              card.type !== CardType.Property &&
-              card.type !== CardType.PropertyWildcard
-            ) {
-              useGameStore.getState().setToast(
-                "Only property cards can be placed on a property set.",
-              );
-              return;
-            }
-            onPlayToProperty(cardId, color);
-          }}
+          onDropToBank={boardHandlers.onDropToBank}
+          onDropToProperty={boardHandlers.onDropToProperty}
           onDropToRainbow={onRainbowDrop}
           onWildcardClick={onWildcardClick}
           onRearrangeProperty={onRearrangeProperty}
-          onDragActiveChange={(isDragging, card) =>
-            setDraggingCard(isDragging ? card : null)
-          }
+          onDragActiveChange={boardHandlers.onDragActiveChange}
         />
       </div>
       <div

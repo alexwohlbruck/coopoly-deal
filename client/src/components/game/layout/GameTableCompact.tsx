@@ -8,7 +8,7 @@
 //   Your sets+bank gold platter (compact)
 //   DragPeekHand (~152)
 
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import type {
   ClientGameState,
   Card,
@@ -21,23 +21,22 @@ import {
   PropertyColor as PropertyColorEnum,
   getPropertyColorLabel,
 } from "../../../types/game";
-import { useGameStore } from "../../../hooks/useGameStore";
 import { useI18n } from "../../../i18n";
 import {
   OpponentRail,
   TurnPill,
 } from "./Chrome";
 
-import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
+import { PlayerBoard } from "./PlayerBoard";
 import { CardHand } from "../CardHand";
 import { PrimaryButton } from "../../ui/Button";
 import { useTurnTimer } from "../../../hooks/useTurnTimer";
 import { useSoundManager } from "../../../hooks/useSoundManager";
+import { OpponentCarousel } from "./OpponentCarousel";
 import {
-  toSeatPlayer,
-  useActiveOpponent,
-  OpponentCarousel,
-} from "./OpponentCarousel";
+  useGameTableState,
+  makePlayerBoardHandlers,
+} from "./useGameTableState";
 
 interface GameTableCompactProps {
   gameState: ClientGameState;
@@ -81,28 +80,26 @@ export function GameTableCompact({
   peekResetSignal = null,
 }: GameTableCompactProps) {
   const { t } = useI18n();
-  const { opponents, activeOppId, setActiveOppId, activeOpp } =
-    useActiveOpponent(gameState, playerId);
-  const me = gameState.players.find((p) => p.id === playerId);
-  const allowDuplicateSets = !!gameState.settings.allowDuplicateSets;
-  const setToast = useGameStore((s) => s.setToast);
-  const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
-
-  const seatPlayers = useMemo(
-    () =>
-      opponents.map((p, i) =>
-        toSeatPlayer(p, i, allowDuplicateSets, gameState),
-      ),
-    [opponents, allowDuplicateSets, gameState],
-  );
+  const {
+    me,
+    opponents,
+    activeOppId,
+    setActiveOppId,
+    activeOpp,
+    seatPlayers,
+    activeOppStats,
+    deckCount,
+    discardCount,
+    isMyTurn,
+    useSocialistTheme,
+    setToast,
+  } = useGameTableState(gameState, playerId);
 
   const yourTableRef = useRef<HTMLDivElement | null>(null);
 
-  const isMyTurn = gameState.turn?.playerId === playerId;
+  // Compact-only: turn state for inline turn pill
   const turnPhase = gameState.turn?.phase;
   const cardsPlayed = gameState.turn?.cardsPlayed ?? 0;
-  const deckCount = gameState.deckCount ?? 0;
-  const discardCount = gameState.discardPile?.length ?? 0;
   const currentTurnPlayer = gameState.players.find(
     (p) => p.id === gameState.turn?.playerId,
   );
@@ -114,17 +111,15 @@ export function GameTableCompact({
     play,
   );
 
-  // Active-opponent header subtitle stats
-  const activeOppStats = activeOpp
-    ? (() => {
-        const complete = completeSetsCount(activeOpp, allowDuplicateSets);
-        const partial = activeOpp.properties.length - complete;
-        return {
-          complete,
-          partial,
-          handCount: activeOpp.hand?.length ?? 0,
-        };
-      })()
+  const boardHandlers = me
+    ? makePlayerBoardHandlers({
+        me,
+        onPlayToBank,
+        onPlayToProperty,
+        onPlayAction,
+        setToast,
+        setDraggingCard,
+      })
     : null;
 
   return (
@@ -357,34 +352,12 @@ export function GameTableCompact({
                 settings={gameState.settings}
                 draggingCard={draggingCard}
                 compact
-                onDropToBank={(cardId) => {
-                  const card = me.hand?.find((c) => c.id === cardId);
-                  if (card) onPlayToBank(cardId);
-                }}
-                onDropToProperty={(cardId, color) => {
-                  const card = me.hand?.find((c) => c.id === cardId);
-                  if (!card) return;
-                  // House/Hotel cards use the action flow, not playToProperty
-                  if (card.type === CardType.House || card.type === CardType.Hotel) {
-                    const action = card.type === CardType.House ? "house" : "hotel";
-                    onPlayAction({ action, cardId, setColor: color });
-                    return;
-                  }
-                  if (
-                    card.type !== CardType.Property &&
-                    card.type !== CardType.PropertyWildcard
-                  ) {
-                    setToast("Only property cards can be placed on a property set.");
-                    return;
-                  }
-                  onPlayToProperty(cardId, color);
-                }}
+                onDropToBank={boardHandlers!.onDropToBank}
+                onDropToProperty={boardHandlers!.onDropToProperty}
                 onDropToRainbow={onRainbowDrop}
                 onWildcardClick={onWildcardClick}
                 onRearrangeProperty={onRearrangeProperty}
-                onDragActiveChange={(isDragging, card) =>
-                  setDraggingCard(isDragging ? card : null)
-                }
+                onDragActiveChange={boardHandlers!.onDragActiveChange}
               />
             </div>
           </div>
