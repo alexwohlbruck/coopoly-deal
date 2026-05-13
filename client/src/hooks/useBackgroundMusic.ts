@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const MUSIC_TRACKS = [
   "/api/assets/mp3/soundtracks/casino-vip-music-minimal-casino-background-1-469423.mp3",
@@ -13,76 +13,161 @@ const MUSIC_TRACKS = [
   "/api/assets/mp3/soundtracks/casino-vip-music-minimal-casino-background-9-469435.mp3",
 ];
 
+// Cache decoded audio buffers so we don't re-fetch on every track switch.
+const bufferCache = new Map<string, AudioBuffer>();
+
+async function loadTrack(
+  ctx: AudioContext,
+  url: string,
+): Promise<AudioBuffer> {
+  const cached = bufferCache.get(url);
+  if (cached) return cached;
+
+  const resp = await fetch(url);
+  const arrayBuf = await resp.arrayBuffer();
+  const audioBuf = await ctx.decodeAudioData(arrayBuf);
+  bufferCache.set(url, audioBuf);
+  return audioBuf;
+}
+
 export function useBackgroundMusic() {
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrackIndex, setCurrentTrackIndex] = useState(() => {
-    // Start with a random track
-    return Math.floor(Math.random() * MUSIC_TRACKS.length);
-  });
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(() =>
+    Math.floor(Math.random() * MUSIC_TRACKS.length),
+  );
   const [volume, setVolume] = useState(0.3);
-  const isInitializedRef = useRef(false);
-  const hasAttemptedPlayRef = useRef(false);
-  const initialTrackRef = useRef(currentTrackIndex);
 
-  // Initialize audio on mount
-  useEffect(() => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.loop = false;
-      audioRef.current.volume = volume;
-      audioRef.current.src = MUSIC_TRACKS[initialTrackRef.current];
+  // Playback position tracking for pause/resume.
+  // `startedAt` = ctx.currentTime when we last called source.start().
+  // `offset` = the position within the track where playback began.
+  const startedAtRef = useRef(0);
+  const offsetRef = useRef(0);
 
-      audioRef.current.addEventListener("ended", () => {
-        setCurrentTrackIndex((prev) => (prev + 1) % MUSIC_TRACKS.length);
-      });
+  // Stable ref so callbacks always see the latest track index.
+  const trackIndexRef = useRef(currentTrackIndex);
+  trackIndexRef.current = currentTrackIndex;
 
-      isInitializedRef.current = true;
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
+
+  // ── helpers ──────────────────────────────────────────────────────
+
+  const getOrCreateCtx = useCallback(() => {
+    if (!ctxRef.current) {
+      ctxRef.current = new AudioContext();
+      const gain = ctxRef.current.createGain();
+      gain.gain.value = volume;
+      gain.connect(ctxRef.current.destination);
+      gainRef.current = gain;
     }
+    return ctxRef.current;
+  }, []); // volume is only the initial value; updates go via the effect below
 
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.src = "";
+  /** Stop the currently-playing source node (if any) without changing state. */
+  const stopSource = useCallback(() => {
+    if (sourceRef.current) {
+      try {
+        sourceRef.current.onended = null; // detach to avoid re-triggering advance
+        sourceRef.current.stop();
+      } catch {
+        /* already stopped */
       }
-    };
-  }, [volume]);
-
-  // Handle volume changes
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = volume;
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
     }
-  }, [volume]);
+  }, []);
 
-  // Pause music when the page is hidden / loses focus, resume when
-  // it comes back — but only if the user had it playing before.
-  // Without this, a backgrounded tab keeps the audio element going
-  // (annoying when the user has muted their phone but audio still
-  // chews battery).
-  useEffect(() => {
-    const wasPlayingRef = { current: false };
+  /** Start playback of `trackUrl` from `offset` seconds. */
+  const playTrack = useCallback(
+    async (trackUrl: string, offset = 0) => {
+      const ctx = getOrCreateCtx();
+      if (ctx.state === "suspended") {
+        await ctx.resume();
+      }
 
-    const onHide = () => {
-      if (!audioRef.current) return;
-      if (!audioRef.current.paused) {
-        wasPlayingRef.current = true;
-        audioRef.current.pause();
+      stopSource();
+
+      try {
+        const buffer = await loadTrack(ctx, trackUrl);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(gainRef.current!);
+
+        // When the track ends naturally, advance to the next one.
+        source.onended = () => {
+          // Only advance if we didn't manually stop (pause / skip).
+          if (sourceRef.current === source) {
+            sourceRef.current = null;
+            offsetRef.current = 0;
+            setCurrentTrackIndex(
+              (prev) => (prev + 1) % MUSIC_TRACKS.length,
+            );
+          }
+        };
+
+        source.start(0, offset);
+        sourceRef.current = source;
+        startedAtRef.current = ctx.currentTime;
+        offsetRef.current = offset;
+        setIsPlaying(true);
+      } catch (err) {
+        console.log("Music playback failed:", err);
         setIsPlaying(false);
       }
-    };
-    const onShow = () => {
-      if (!audioRef.current) return;
-      if (wasPlayingRef.current) {
-        wasPlayingRef.current = false;
-        audioRef.current.play().then(
-          () => setIsPlaying(true),
-          () => {
-            /* autoplay rejected — leave paused */
-          },
-        );
+    },
+    [getOrCreateCtx, stopSource],
+  );
+
+  // ── volume ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (gainRef.current) {
+      gainRef.current.gain.value = volume;
+    }
+  }, [volume]);
+
+  // ── track changes ────────────────────────────────────────────────
+
+  const prevTrackRef = useRef(currentTrackIndex);
+  useEffect(() => {
+    if (prevTrackRef.current === currentTrackIndex) return;
+    prevTrackRef.current = currentTrackIndex;
+
+    if (isPlayingRef.current) {
+      // Playing → switch to the new track from the start.
+      playTrack(MUSIC_TRACKS[currentTrackIndex], 0);
+    }
+  }, [currentTrackIndex, playTrack]);
+
+  // ── visibility: pause when hidden, resume when visible ───────────
+
+  useEffect(() => {
+    let wasPlaying = false;
+    let pausedOffset = 0;
+
+    const onHide = () => {
+      if (!isPlayingRef.current) return;
+      wasPlaying = true;
+      // Record where we are so we can resume later.
+      const ctx = ctxRef.current;
+      if (ctx) {
+        pausedOffset =
+          offsetRef.current + (ctx.currentTime - startedAtRef.current);
       }
+      stopSource();
+      setIsPlaying(false);
     };
+
+    const onShow = () => {
+      if (!wasPlaying) return;
+      wasPlaying = false;
+      playTrack(MUSIC_TRACKS[trackIndexRef.current], pausedOffset);
+    };
+
     const onVisibility = () => {
       if (document.hidden) onHide();
       else onShow();
@@ -91,8 +176,6 @@ export function useBackgroundMusic() {
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onHide);
     window.addEventListener("focus", onShow);
-    // pagehide is fired on tab close + iOS Safari "swipe away"; pause
-    // there too so we don't leave a dangling audio object running.
     window.addEventListener("pagehide", onHide);
 
     return () => {
@@ -101,74 +184,52 @@ export function useBackgroundMusic() {
       window.removeEventListener("focus", onShow);
       window.removeEventListener("pagehide", onHide);
     };
-  }, []);
+  }, [playTrack, stopSource]);
 
-  // Handle track changes — only when the track index changes, NOT on
-  // play/pause toggles. Previously this also depended on `isPlaying`,
-  // causing it to reset `src` (and restart from 0:00) every time the
-  // tab regained focus and `isPlaying` flipped back to true.
-  const prevTrackRef = useRef(currentTrackIndex);
+  // ── cleanup on unmount ───────────────────────────────────────────
+
   useEffect(() => {
-    if (!isInitializedRef.current || !audioRef.current) return;
-    if (prevTrackRef.current === currentTrackIndex) return;
-    prevTrackRef.current = currentTrackIndex;
+    return () => {
+      stopSource();
+      if (ctxRef.current) {
+        ctxRef.current.close().catch(() => {});
+        ctxRef.current = null;
+      }
+    };
+  }, [stopSource]);
 
-    audioRef.current.src = MUSIC_TRACKS[currentTrackIndex];
-    if (isPlaying) {
-      audioRef.current.play().catch(() => {
-        setIsPlaying(false);
-      });
-    }
-  }, [currentTrackIndex, isPlaying]);
+  // ── public API ───────────────────────────────────────────────────
 
-  const toggleMusic = () => {
-    if (!audioRef.current) return;
+  const startMusic = useCallback(() => {
+    if (isPlayingRef.current) return; // already playing
+    playTrack(MUSIC_TRACKS[trackIndexRef.current], 0);
+  }, [playTrack]);
 
-    if (isPlaying) {
-      audioRef.current.pause();
+  const toggleMusic = useCallback(() => {
+    if (isPlayingRef.current) {
+      // Pause — record offset so we can resume.
+      const ctx = ctxRef.current;
+      if (ctx) {
+        offsetRef.current += ctx.currentTime - startedAtRef.current;
+      }
+      stopSource();
       setIsPlaying(false);
     } else {
-      // Resume playing (don't change src)
-      audioRef.current.play().catch(() => {
-        setIsPlaying(false);
-      });
-      setIsPlaying(true);
+      playTrack(MUSIC_TRACKS[trackIndexRef.current], offsetRef.current);
     }
-  };
+  }, [playTrack, stopSource]);
 
-  const nextTrack = () => {
-    if (!audioRef.current) return;
+  const nextTrack = useCallback(() => {
+    offsetRef.current = 0;
     setCurrentTrackIndex((prev) => (prev + 1) % MUSIC_TRACKS.length);
-  };
+  }, []);
 
-  const previousTrack = () => {
-    if (!audioRef.current) return;
+  const previousTrack = useCallback(() => {
+    offsetRef.current = 0;
     setCurrentTrackIndex(
       (prev) => (prev - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length,
     );
-  };
-
-  const startMusic = () => {
-    if (!audioRef.current) return;
-    if (hasAttemptedPlayRef.current) return; // Only try once
-
-    hasAttemptedPlayRef.current = true;
-
-    // Ensure audio is ready with the initial random track
-    if (!audioRef.current.src) {
-      audioRef.current.src = MUSIC_TRACKS[initialTrackRef.current];
-    }
-
-    audioRef.current
-      .play()
-      .then(() => {
-        setIsPlaying(true);
-      })
-      .catch((error) => {
-        console.log("Music autoplay blocked:", error);
-        setIsPlaying(false);
-      });
-  };
+  }, []);
 
   return {
     isPlaying,
