@@ -437,7 +437,47 @@ export class GameEngine {
     if (!expected) throw new Error("Unknown action");
     this.assertCardType(card, expected);
 
-    // Pre-validate house/hotel placement so the card isn't lost on error
+    // Pre-validate action-specific conditions BEFORE removing from hand
+    // so the card isn't lost if a downstream check fails.
+    if (payload.action === "rentDual") {
+      if (!card.colors?.includes(payload.color)) {
+        throw new Error("Rent card does not match that color");
+      }
+      if (this.calculateRent(player, payload.color) === 0) {
+        throw new Error("You have no properties of that color");
+      }
+    }
+
+    if (payload.action === "rentWild") {
+      if (this.calculateRent(player, payload.color) === 0) {
+        throw new Error("You have no properties of that color");
+      }
+    }
+
+    if (payload.action === "forceDeal") {
+      const target = this.getPlayer(state, payload.targetPlayerId);
+      const myCard = this.findPropertyOnTable(player, payload.myCardId);
+      if (!myCard) throw new Error("Your card not found on table");
+      if (this.isCardInCompleteSet(player, payload.myCardId)) {
+        throw new Error("Cannot trade from a complete set");
+      }
+      const targetCard = this.findPropertyOnTable(target, payload.targetCardId);
+      if (!targetCard) throw new Error("Target card not found on table");
+      if (this.isCardInCompleteSet(target, payload.targetCardId)) {
+        throw new Error("Cannot take from a complete set");
+      }
+    }
+
+    if (payload.action === "dealBreaker") {
+      const target = this.getPlayer(state, payload.targetPlayerId);
+      const set = target.properties.find(
+        (s) => s.color === payload.targetSetColor && isSetComplete(s),
+      );
+      if (!set) {
+        throw new Error("Target does not have a complete set of that color");
+      }
+    }
+
     if (payload.action === "house" || payload.action === "hotel") {
       const setColor = payload.setColor;
       if (
@@ -921,10 +961,26 @@ export class GameEngine {
       );
     }
 
+    // Pre-validate: compute total payment and check all cards exist
+    // BEFORE moving anything, so cards aren't lost on error
     let totalPaid = 0;
+    const cardsToTransfer: Card[] = [];
     for (const cardId of cardIds) {
-      const card = this.removeCardFromTable(payer, cardId);
+      const card = this.findCardOnTable(payer, cardId);
+      if (!card) throw new Error(`Card ${cardId} not found on table`);
       totalPaid += card.value;
+      cardsToTransfer.push(card);
+    }
+
+    // Calculate remaining table value after these cards are removed
+    const remainingTableValue = this.totalTableValue(payer) - totalPaid;
+    if (totalPaid < action.amount && remainingTableValue > 0) {
+      throw new Error("You must pay more — you still have assets on the table");
+    }
+
+    // Validation passed — now transfer cards
+    for (const card of cardsToTransfer) {
+      this.removeCardFromTable(payer, card.id);
 
       if (
         card.type === CardType.Property ||
@@ -950,10 +1006,6 @@ export class GameEngine {
       } else {
         source.bank.push(card);
       }
-    }
-
-    if (totalPaid < action.amount && this.totalTableValue(payer) > 0) {
-      throw new Error("You must pay more — you still have assets on the table");
     }
 
     action.respondedPlayerIds.push(payerId);
@@ -1138,8 +1190,11 @@ export class GameEngine {
       }
     }
 
-    const card = this.removePropertyFromPlayer(player, cardId);
+    // Find the card on the table without removing it yet
+    const card = this.findPropertyOnTable(player, cardId);
+    if (!card) throw new Error("Card not found on table");
 
+    // Validate BEFORE removing so the card isn't lost on error
     if (card.type !== CardType.PropertyWildcard) {
       throw new Error("Only wildcards can be rearranged");
     }
@@ -1159,6 +1214,8 @@ export class GameEngine {
       );
     }
 
+    // Now safe to remove and re-add
+    this.removePropertyFromPlayer(player, cardId);
     this.addPropertyToPlayer(player, card, toColor, false, createNewSet);
 
     // After moving the wildcard, regroup any orphaned properties of the old color
@@ -1558,6 +1615,21 @@ export class GameEngine {
     }
 
     throw new Error("Card not found on table");
+  }
+
+  private findCardOnTable(player: Player, cardId: string): Card | null {
+    // Check bank
+    const bankCard = player.bank.find((c) => c.id === cardId);
+    if (bankCard) return bankCard;
+
+    // Check properties (cards, house, hotel)
+    for (const set of player.properties) {
+      if (set.house?.id === cardId) return set.house;
+      if (set.hotel?.id === cardId) return set.hotel;
+      const card = set.cards.find((c) => c.id === cardId);
+      if (card) return card;
+    }
+    return null;
   }
 
   private findPropertyOnTable(player: Player, cardId: string): Card | null {
