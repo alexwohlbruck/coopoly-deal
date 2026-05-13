@@ -103,13 +103,18 @@ export function useBackgroundMusic() {
     };
   }, []);
 
-  // Handle track changes (but not initial mount or play/pause changes)
+  // Handle track changes — only when the track index changes, NOT on
+  // play/pause toggles. Previously this also depended on `isPlaying`,
+  // causing it to reset `src` (and restart from 0:00) every time the
+  // tab regained focus and `isPlaying` flipped back to true.
+  const prevTrackRef = useRef(currentTrackIndex);
   useEffect(() => {
     if (!isInitializedRef.current || !audioRef.current) return;
+    if (prevTrackRef.current === currentTrackIndex) return;
+    prevTrackRef.current = currentTrackIndex;
 
-    // Only change track if we're already playing
+    audioRef.current.src = MUSIC_TRACKS[currentTrackIndex];
     if (isPlaying) {
-      audioRef.current.src = MUSIC_TRACKS[currentTrackIndex];
       audioRef.current.play().catch(() => {
         setIsPlaying(false);
       });
