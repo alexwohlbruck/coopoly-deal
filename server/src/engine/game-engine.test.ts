@@ -2199,7 +2199,7 @@ describe("GameEngine", () => {
       expect(chain!.targetPlayerId).toBe(playerB.id);
     });
 
-    it("initiatorTargetId persists after source counter-JSN", () => {
+    it("source counter-JSN auto-clears chain for payment actions", () => {
       const { state, engine, playerA, playerB } = setupMultiTargetRent();
       givePlayerCard(playerB, makeAction(CardType.JustSayNo, 4));
       engine.respondJustSayNo(state, playerB.id);
@@ -2207,10 +2207,11 @@ describe("GameEngine", () => {
       givePlayerCard(playerA, makeAction(CardType.JustSayNo, 4));
       engine.respondJustSayNo(state, playerA.id);
 
+      // After source counter-JSNs a payment action (rent), the even-depth
+      // chain is auto-cleared so the client goes straight to the payment
+      // card selector instead of showing a redundant accept/JSN prompt.
       const chain = state.turn!.pendingAction!.justSayNoChain;
-      expect(chain!.initiatorTargetId).toBe(playerB.id);
-      expect(chain!.targetPlayerId).toBe(playerA.id);
-      expect(chain!.depth).toBe(2);
+      expect(chain).toBeUndefined();
     });
 
     it("player who already paid cannot accept during JSN chain", () => {
@@ -2280,6 +2281,1222 @@ describe("GameEngine", () => {
       // Action fully resolved — both B (blocked) and C (paid) are done
       expect(state.turn!.pendingAction).toBeNull();
       expect(state.turn!.phase).toBe(TurnPhase.Play);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 16. Validation before removal (regression tests)
+  // -------------------------------------------------------------------------
+  describe("Validation before removal", () => {
+    it("card stays in hand when playCardToProperty rejects wrong color", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Red, 3),
+      );
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playCardToProperty(
+          state,
+          player.id,
+          card.id,
+          PropertyColor.Green,
+        ),
+      ).toThrow();
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === card.id)).toBe(true);
+    });
+
+    it("card stays in hand when playActionCard type doesn't match", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      // Give a PassGo card but try to play it as a house
+      const card = givePlayerCard(player, makeAction(CardType.PassGo, 1));
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "house",
+          cardId: card.id,
+          setColor: PropertyColor.Red,
+        }),
+      ).toThrow();
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === card.id)).toBe(true);
+    });
+
+    it("card stays in hand when rentDual color doesn't match", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const card = givePlayerCard(
+        player,
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
+      );
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "rentDual",
+          cardId: card.id,
+          color: PropertyColor.Green,
+        }),
+      ).toThrow("Rent card does not match that color");
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === card.id)).toBe(true);
+    });
+
+    it("card stays in hand when rentWild has no properties of that color", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+      const card = givePlayerCard(player, makeRentWild());
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "rentWild",
+          cardId: card.id,
+          color: PropertyColor.Pink,
+          targetPlayerId: target.id,
+        }),
+      ).toThrow("You have no properties of that color");
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === card.id)).toBe(true);
+    });
+
+    it("card stays in hand when forceDeal validation fails", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      // Give player a property to trade
+      const myProp: Card = {
+        id: "fd_my_prop",
+        type: CardType.Property,
+        value: 1,
+        colors: [PropertyColor.Brown],
+      };
+      player.properties.push({
+        color: PropertyColor.Brown,
+        cards: [myProp],
+        house: null,
+        hotel: null,
+      });
+
+      // Target has a complete set — can't take from it
+      const theirCards = giveCompleteSet(target, PropertyColor.DarkBlue);
+
+      const fd = givePlayerCard(player, makeAction(CardType.ForceDeal, 3));
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "forceDeal",
+          cardId: fd.id,
+          myCardId: "fd_my_prop",
+          targetPlayerId: target.id,
+          targetCardId: theirCards[0]!.id,
+        }),
+      ).toThrow("Cannot take from a complete set");
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === fd.id)).toBe(true);
+    });
+
+    it("card stays in hand when dealBreaker target has no complete set", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      const db = givePlayerCard(player, makeAction(CardType.DealBreaker, 5));
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "dealBreaker",
+          cardId: db.id,
+          targetPlayerId: target.id,
+          targetSetColor: PropertyColor.Green,
+        }),
+      ).toThrow("Target does not have a complete set");
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === db.id)).toBe(true);
+    });
+
+    it("card stays in hand when house/hotel validation fails", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      // No complete set — house should fail
+      const house = givePlayerCard(player, makeAction(CardType.House, 3));
+      const handBefore = player.hand.length;
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "house",
+          cardId: house.id,
+          setColor: PropertyColor.Red,
+        }),
+      ).toThrow("Set is not complete");
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === house.id)).toBe(true);
+    });
+
+    it("card stays on table when rearrangeProperty rejects non-wildcard", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      const prop: Card = {
+        id: "rearrange_prop",
+        type: CardType.Property,
+        value: 3,
+        colors: [PropertyColor.Red],
+      };
+      player.properties.push({
+        color: PropertyColor.Red,
+        cards: [prop],
+        house: null,
+        hotel: null,
+      });
+
+      expect(() =>
+        engine.rearrangeProperty(
+          state,
+          player.id,
+          "rearrange_prop",
+          PropertyColor.Yellow,
+        ),
+      ).toThrow("Only wildcards can be rearranged");
+
+      // Card should still be in the Red set
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Red,
+      )!;
+      expect(set.cards.some((c) => c.id === "rearrange_prop")).toBe(true);
+    });
+
+    it("cards stay on table when respondPayWithCards underpays", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      const dc = givePlayerCard(player, makeAction(CardType.DebtCollector, 3));
+      engine.playActionCard(state, player.id, {
+        action: "debtCollector",
+        cardId: dc.id,
+        targetPlayerId: target.id,
+      });
+
+      // Give target more than enough money
+      target.bank.push({ id: "pay_m1", type: CardType.Money, value: 2 });
+      target.bank.push({ id: "pay_m2", type: CardType.Money, value: 5 });
+      const bankBefore = target.bank.length;
+
+      // Try to underpay
+      expect(() =>
+        engine.respondPayWithCards(state, target.id, ["pay_m1"]),
+      ).toThrow("You must pay more");
+
+      // All cards should still be on table
+      expect(target.bank).toHaveLength(bankBefore);
+      expect(target.bank.some((c) => c.id === "pay_m1")).toBe(true);
+      expect(target.bank.some((c) => c.id === "pay_m2")).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 17. Settings variants
+  // -------------------------------------------------------------------------
+  describe("Settings variants", () => {
+    it("requireHouseBeforeHotel = false: hotel can be placed without house", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.requireHouseBeforeHotel = false;
+      const player = currentPlayer(state);
+      giveCompleteSet(player, PropertyColor.Green);
+
+      const hotel = givePlayerCard(player, makeAction(CardType.Hotel, 4));
+      engine.playActionCard(state, player.id, {
+        action: "hotel",
+        cardId: hotel.id,
+        setColor: PropertyColor.Green,
+      });
+
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Green,
+      )!;
+      expect(set.hotel).not.toBeNull();
+      expect(set.hotel!.id).toBe(hotel.id);
+    });
+
+    it("setsToWin = 5: game doesn't end at 3 complete sets, ends at 5", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.setsToWin = 5;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+      giveCompleteSet(player, PropertyColor.DarkBlue);
+      giveCompleteSet(player, PropertyColor.Utility);
+      expect(state.phase).toBe(GamePhase.Playing);
+
+      // 4th set — still not enough
+      giveCompleteSet(player, PropertyColor.Railroad);
+      // Trigger win check via playing a card
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.LightBlue, 1),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.LightBlue,
+      );
+      expect(state.phase).toBe(GamePhase.Playing);
+
+      // Build up to 5th complete set
+      player.properties.push({
+        color: PropertyColor.LightBlue,
+        cards: [
+          ...player.properties
+            .filter((s) => s.color === PropertyColor.LightBlue)
+            .flatMap((s) => s.cards),
+        ],
+        house: null,
+        hotel: null,
+      });
+      // Remove incomplete sets
+      player.properties = player.properties.filter(
+        (s) =>
+          s.color !== PropertyColor.LightBlue ||
+          s.cards.length >= SET_SIZE[PropertyColor.LightBlue],
+      );
+
+      // Give a 2nd LB card to approach completion
+      const lb2 = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.LightBlue, 1, "LB 2"),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        lb2.id,
+        PropertyColor.LightBlue,
+      );
+
+      // Need a 3rd LB to complete. Manually complete since we used moves.
+      // Instead just directly give 5th complete set
+      player.properties = player.properties.filter(
+        (s) => s.color !== PropertyColor.LightBlue,
+      );
+      giveCompleteSet(player, PropertyColor.LightBlue);
+
+      // Now add a trigger to check win via play
+      const pg = givePlayerCard(player, makeProperty(PropertyColor.Pink, 2));
+      // Need to reset cardsPlayed to allow more plays
+      state.turn!.cardsPlayed = 0;
+      engine.playCardToProperty(
+        state,
+        player.id,
+        pg.id,
+        PropertyColor.Pink,
+      );
+
+      expect(state.phase).toBe(GamePhase.Finished);
+      expect(state.winner).toBe(player.id);
+    });
+
+    it("setsToWin = 2: game ends at 2 complete sets", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.setsToWin = 2;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+
+      // Complete second set via play
+      player.properties.push({
+        color: PropertyColor.Utility,
+        cards: [
+          {
+            id: "u1_sw2",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const lastCard = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        lastCard.id,
+        PropertyColor.Utility,
+      );
+
+      expect(state.phase).toBe(GamePhase.Finished);
+      expect(state.winner).toBe(player.id);
+    });
+
+    it("movesPerTurn = 5: can play 5 cards, blocked at 6", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.movesPerTurn = 5;
+      const player = currentPlayer(state);
+
+      // Inflate hand to prevent auto-end
+      for (let i = 0; i < 15; i++) givePlayerCard(player, makeMoney(1));
+
+      const cards: Card[] = [];
+      for (let i = 0; i < 6; i++) {
+        cards.push(givePlayerCard(player, makeMoney(i + 1)));
+      }
+
+      // Play 5 — all should succeed
+      for (let i = 0; i < 5; i++) {
+        engine.playCardToBank(state, player.id, cards[i]!.id);
+      }
+      expect(state.turn!.cardsPlayed).toBe(5);
+
+      // 6th should fail
+      expect(() =>
+        engine.playCardToBank(state, player.id, cards[5]!.id),
+      ).toThrow("Already played maximum cards this turn");
+    });
+
+    it("drawCardsPerTurn = 5: draws 5 cards at turn start", () => {
+      const { state, engine, players } = startTestGame(2);
+      const p1 = players[0]!;
+      const p2 = players[1]!;
+
+      state.settings.drawCardsPerTurn = 5;
+      // P2 has 5 cards from deal, trim p1 hand to end turn
+      p1.hand = p1.hand.slice(0, state.settings.maxHandSize);
+
+      const p2HandBefore = p2.hand.length;
+      engine.endTurn(state, p1.id);
+
+      // P2 should draw 5 (drawCardsPerTurn) since they have cards
+      expect(p2.hand).toHaveLength(p2HandBefore + 5);
+    });
+
+    it("maxHandSize = 999: end turn works with 20 cards in hand", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.maxHandSize = 999;
+      const player = currentPlayer(state);
+
+      // Give player 20 cards
+      player.hand = [];
+      for (let i = 0; i < 20; i++) givePlayerCard(player, makeMoney(1));
+
+      // Should not throw
+      engine.endTurn(state, player.id);
+      expect(state.turn!.playerId).not.toBe(player.id);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 18. Wildcard assignment flow
+  // -------------------------------------------------------------------------
+  describe("Wildcard assignment", () => {
+    it("assignReceivedWildcard moves card from Unassigned to target color", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      // Set up: target has a dual wildcard on table (non-complete set)
+      const wildcard: Card = {
+        id: "wc_assign",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Pink, PropertyColor.Orange],
+      };
+      target.properties.push({
+        color: PropertyColor.Orange,
+        cards: [wildcard],
+        house: null,
+        hotel: null,
+      });
+
+      // Player steals it via sly deal
+      const sly = givePlayerCard(player, makeAction(CardType.SlyDeal, 3));
+      engine.playActionCard(state, player.id, {
+        action: "slyDeal",
+        cardId: sly.id,
+        targetPlayerId: target.id,
+        targetCardId: "wc_assign",
+      });
+      engine.respondAcceptAction(state, target.id);
+
+      // There should be a pending wildcard assignment for player
+      expect(state.turn!.pendingWildcardAssignment).not.toBeNull();
+      expect(state.turn!.pendingWildcardAssignment!.playerId).toBe(player.id);
+
+      // Assign to Pink
+      engine.assignReceivedWildcard(state, player.id, "wc_assign", PropertyColor.Pink);
+
+      // Card should now be in a Pink set
+      const pinkSet = player.properties.find(
+        (s) => s.color === PropertyColor.Pink,
+      );
+      expect(pinkSet).toBeDefined();
+      expect(pinkSet!.cards.some((c) => c.id === "wc_assign")).toBe(true);
+
+      // No longer in Unassigned
+      const unassigned = player.properties.find(
+        (s) => s.color === PropertyColor.Unassigned,
+      );
+      expect(
+        !unassigned || !unassigned.cards.some((c) => c.id === "wc_assign"),
+      ).toBe(true);
+    });
+
+    it("throws error when no pending assignment", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      expect(() =>
+        engine.assignReceivedWildcard(
+          state,
+          player.id,
+          "nonexistent",
+          PropertyColor.Pink,
+        ),
+      ).toThrow("No pending wildcard assignment");
+    });
+
+    it("throws error for wrong player", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      // Set up a pending assignment for player
+      const wildcard: Card = {
+        id: "wc_wrong_player",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Pink, PropertyColor.Orange],
+      };
+      target.properties.push({
+        color: PropertyColor.Orange,
+        cards: [wildcard],
+        house: null,
+        hotel: null,
+      });
+
+      const sly = givePlayerCard(player, makeAction(CardType.SlyDeal, 3));
+      engine.playActionCard(state, player.id, {
+        action: "slyDeal",
+        cardId: sly.id,
+        targetPlayerId: target.id,
+        targetCardId: "wc_wrong_player",
+      });
+      engine.respondAcceptAction(state, target.id);
+
+      // Target tries to assign — should fail since it's player's assignment
+      expect(() =>
+        engine.assignReceivedWildcard(
+          state,
+          target.id,
+          "wc_wrong_player",
+          PropertyColor.Pink,
+        ),
+      ).toThrow("Not your wildcard to assign or wrong card");
+    });
+
+    it("throws error for invalid color", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      const wildcard: Card = {
+        id: "wc_invalid_color",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Pink, PropertyColor.Orange],
+      };
+      target.properties.push({
+        color: PropertyColor.Orange,
+        cards: [wildcard],
+        house: null,
+        hotel: null,
+      });
+
+      const sly = givePlayerCard(player, makeAction(CardType.SlyDeal, 3));
+      engine.playActionCard(state, player.id, {
+        action: "slyDeal",
+        cardId: sly.id,
+        targetPlayerId: target.id,
+        targetCardId: "wc_invalid_color",
+      });
+      engine.respondAcceptAction(state, target.id);
+
+      // Try to assign to Green — not in the wildcard's colors
+      expect(() =>
+        engine.assignReceivedWildcard(
+          state,
+          player.id,
+          "wc_invalid_color",
+          PropertyColor.Green,
+        ),
+      ).toThrow("Invalid color for this wildcard");
+    });
+
+    it("multiple queued wildcard assignments processed in order", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      // Target has two wildcards in an incomplete set
+      const wc1: Card = {
+        id: "wc_multi_1",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Pink, PropertyColor.Orange],
+      };
+      const wc2: Card = {
+        id: "wc_multi_2",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Red, PropertyColor.Yellow],
+      };
+      target.properties.push({
+        color: PropertyColor.Orange,
+        cards: [wc1],
+        house: null,
+        hotel: null,
+      });
+      target.properties.push({
+        color: PropertyColor.Red,
+        cards: [wc2],
+        house: null,
+        hotel: null,
+      });
+
+      // Player pays debt with both wildcards
+      // Set up a debt scenario
+      const dc = givePlayerCard(player, makeAction(CardType.DebtCollector, 3));
+      engine.playActionCard(state, player.id, {
+        action: "debtCollector",
+        cardId: dc.id,
+        targetPlayerId: target.id,
+      });
+
+      // Target pays with both wildcards (they have no bank)
+      engine.respondPayWithCards(state, target.id, [
+        "wc_multi_1",
+        "wc_multi_2",
+      ]);
+
+      // Should have 2 pending assignments
+      expect(state.turn!.pendingWildcardAssignments).toHaveLength(2);
+
+      // Process first
+      const firstAssignment = state.turn!.pendingWildcardAssignments![0]!;
+      engine.assignReceivedWildcard(
+        state,
+        firstAssignment.playerId,
+        firstAssignment.cardId,
+        firstAssignment.availableColors[0]!,
+      );
+      expect(state.turn!.pendingWildcardAssignments).toHaveLength(1);
+
+      // Process second
+      const secondAssignment = state.turn!.pendingWildcardAssignments![0]!;
+      engine.assignReceivedWildcard(
+        state,
+        secondAssignment.playerId,
+        secondAssignment.cardId,
+        secondAssignment.availableColors[0]!,
+      );
+      expect(state.turn!.pendingWildcardAssignments).toHaveLength(0);
+    });
+
+    it("turn resumes after all assignments resolved", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      const wildcard: Card = {
+        id: "wc_resume",
+        type: CardType.PropertyWildcard,
+        value: 0,
+        colors: [PropertyColor.Pink, PropertyColor.Orange],
+      };
+      target.properties.push({
+        color: PropertyColor.Orange,
+        cards: [wildcard],
+        house: null,
+        hotel: null,
+      });
+
+      const sly = givePlayerCard(player, makeAction(CardType.SlyDeal, 3));
+      engine.playActionCard(state, player.id, {
+        action: "slyDeal",
+        cardId: sly.id,
+        targetPlayerId: target.id,
+        targetCardId: "wc_resume",
+      });
+      engine.respondAcceptAction(state, target.id);
+
+      expect(state.turn!.phase).toBe(TurnPhase.ActionPending);
+
+      engine.assignReceivedWildcard(
+        state,
+        player.id,
+        "wc_resume",
+        PropertyColor.Pink,
+      );
+
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 19. Rearrange property
+  // -------------------------------------------------------------------------
+  describe("Rearrange property", () => {
+    it("only wildcards can be rearranged", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      const prop: Card = {
+        id: "rp_prop",
+        type: CardType.Property,
+        value: 3,
+        colors: [PropertyColor.Red],
+      };
+      player.properties.push({
+        color: PropertyColor.Red,
+        cards: [prop],
+        house: null,
+        hotel: null,
+      });
+
+      expect(() =>
+        engine.rearrangeProperty(
+          state,
+          player.id,
+          "rp_prop",
+          PropertyColor.Yellow,
+        ),
+      ).toThrow("Only wildcards can be rearranged");
+    });
+
+    it("card cannot be used for invalid color", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue]),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      expect(() =>
+        engine.rearrangeProperty(
+          state,
+          player.id,
+          wildcard.id,
+          PropertyColor.Green,
+        ),
+      ).toThrow("Card cannot be used for that color");
+    });
+
+    it("rainbow set blocked when wildcardFlipCountsAsMove is true", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.wildcardFlipCountsAsMove = true;
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue]),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      expect(() =>
+        engine.rearrangeProperty(
+          state,
+          player.id,
+          wildcard.id,
+          PropertyColor.Unassigned,
+        ),
+      ).toThrow(
+        "Rainbow sets are disabled when wildcard flips count as moves",
+      );
+    });
+
+    it("moving from Unassigned does NOT cost a move", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.wildcardFlipCountsAsMove = true;
+      const player = currentPlayer(state);
+
+      // Place a multi-color wildcard in unassigned (needs wildcardFlipCountsAsMove=false temporarily)
+      state.settings.wildcardFlipCountsAsMove = false;
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard(
+          Object.values(PropertyColor).filter(
+            (c) => c !== PropertyColor.Unassigned,
+          ),
+        ),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Unassigned,
+      );
+
+      // Turn on the setting
+      state.settings.wildcardFlipCountsAsMove = true;
+      const playsBefore = state.turn!.cardsPlayed;
+
+      engine.rearrangeProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      // Moving from Unassigned should NOT cost a move
+      expect(state.turn!.cardsPlayed).toBe(playsBefore);
+    });
+
+    it("moving between colors costs a move when wildcardFlipCountsAsMove is true", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.wildcardFlipCountsAsMove = true;
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue]),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      const playsBefore = state.turn!.cardsPlayed;
+
+      engine.rearrangeProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.LightBlue,
+      );
+
+      expect(state.turn!.cardsPlayed).toBe(playsBefore + 1);
+    });
+
+    it("card stays on table when validation fails", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      const wildcard = givePlayerCard(
+        player,
+        makeWildcard([PropertyColor.Brown, PropertyColor.LightBlue]),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        wildcard.id,
+        PropertyColor.Brown,
+      );
+
+      expect(() =>
+        engine.rearrangeProperty(
+          state,
+          player.id,
+          wildcard.id,
+          PropertyColor.Green,
+        ),
+      ).toThrow("Card cannot be used for that color");
+
+      // Card should still be in Brown set
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Brown,
+      );
+      expect(set).toBeDefined();
+      expect(set!.cards.some((c) => c.id === wildcard.id)).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 20. Return to lobby
+  // -------------------------------------------------------------------------
+  describe("Return to lobby", () => {
+    it("resets phase to Waiting", () => {
+      const { state, engine } = startTestGame(2);
+      expect(state.phase).toBe(GamePhase.Playing);
+      engine.returnToLobby(state);
+      expect(state.phase).toBe(GamePhase.Waiting);
+    });
+
+    it("clears deck, discard, turn, winner", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      // Set up some game state
+      state.winner = player.id;
+      state.discardPile.push({
+        id: "dp1",
+        type: CardType.Money,
+        value: 1,
+      });
+
+      engine.returnToLobby(state);
+
+      expect(state.deck).toHaveLength(0);
+      expect(state.discardPile).toHaveLength(0);
+      expect(state.turn).toBeNull();
+      expect(state.winner).toBeNull();
+    });
+
+    it("resets all player state", () => {
+      const { state, engine, players } = startTestGame(2);
+      const player = players[0]!;
+
+      // Give player assets
+      player.bank.push({ id: "m_lobby", type: CardType.Money, value: 5 });
+      giveCompleteSet(player, PropertyColor.Brown);
+      player.connected = false;
+
+      engine.returnToLobby(state);
+
+      for (const p of state.players) {
+        expect(p.hand).toHaveLength(0);
+        expect(p.bank).toHaveLength(0);
+        expect(p.properties).toHaveLength(0);
+        expect(p.connected).toBe(true);
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 21. Hotel without house requirement
+  // -------------------------------------------------------------------------
+  describe("Hotel without house requirement", () => {
+    it("hotel can be placed on complete set without house when setting is off", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.requireHouseBeforeHotel = false;
+      const player = currentPlayer(state);
+      giveCompleteSet(player, PropertyColor.Red);
+
+      const hotel = givePlayerCard(player, makeAction(CardType.Hotel, 4));
+      engine.playActionCard(state, player.id, {
+        action: "hotel",
+        cardId: hotel.id,
+        setColor: PropertyColor.Red,
+      });
+
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Red,
+      )!;
+      expect(set.hotel).not.toBeNull();
+      expect(set.hotel!.id).toBe(hotel.id);
+      expect(set.house).toBeNull();
+    });
+
+    it("hotel still can't go on Railroad/Utility", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.requireHouseBeforeHotel = false;
+      const player = currentPlayer(state);
+      giveCompleteSet(player, PropertyColor.Railroad);
+
+      const hotel = givePlayerCard(player, makeAction(CardType.Hotel, 4));
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "hotel",
+          cardId: hotel.id,
+          setColor: PropertyColor.Railroad,
+        }),
+      ).toThrow("Cannot place hotels on Railroad or Utility");
+    });
+
+    it("hotel still can't be placed twice", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.requireHouseBeforeHotel = false;
+      const player = currentPlayer(state);
+      giveCompleteSet(player, PropertyColor.Orange);
+
+      const set = player.properties.find(
+        (s) => s.color === PropertyColor.Orange,
+      )!;
+      set.hotel = { id: "existing_hotel_2", type: CardType.Hotel, value: 4 };
+
+      const hotel = givePlayerCard(player, makeAction(CardType.Hotel, 4));
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "hotel",
+          cardId: hotel.id,
+          setColor: PropertyColor.Orange,
+        }),
+      ).toThrow("Set already has a hotel");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 22. Custom setsToWin
+  // -------------------------------------------------------------------------
+  describe("Custom setsToWin", () => {
+    it("win requires exactly setsToWin complete sets", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.setsToWin = 4;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+      giveCompleteSet(player, PropertyColor.DarkBlue);
+      giveCompleteSet(player, PropertyColor.Utility);
+
+      // Play a card to trigger win check (3 sets, need 4)
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.LightBlue, 1),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.LightBlue,
+      );
+
+      expect(state.phase).toBe(GamePhase.Playing);
+    });
+
+    it("2 complete sets doesn't win when setsToWin=3", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.setsToWin = 3;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+
+      // Complete second set via play
+      player.properties.push({
+        color: PropertyColor.Utility,
+        cards: [
+          {
+            id: "u1_3s",
+            type: CardType.Property,
+            value: 2,
+            colors: [PropertyColor.Utility],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.Utility, 2),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.Utility,
+      );
+
+      expect(state.phase).toBe(GamePhase.Playing);
+    });
+
+    it("2 complete sets DOES win when setsToWin=2", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.setsToWin = 2;
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+
+      player.properties.push({
+        color: PropertyColor.DarkBlue,
+        cards: [
+          {
+            id: "db1_2s",
+            type: CardType.Property,
+            value: 4,
+            colors: [PropertyColor.DarkBlue],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      const card = givePlayerCard(
+        player,
+        makeProperty(PropertyColor.DarkBlue, 4),
+      );
+      engine.playCardToProperty(
+        state,
+        player.id,
+        card.id,
+        PropertyColor.DarkBlue,
+      );
+
+      expect(state.phase).toBe(GamePhase.Finished);
+      expect(state.winner).toBe(player.id);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 23. Double The Rent edge cases
+  // -------------------------------------------------------------------------
+  describe("Double The Rent edge cases", () => {
+    it("cannot play DTR when already at max moves", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const playerId = player.id;
+
+      // Manually set cardsPlayed to max to simulate "all moves used"
+      // without triggering auto-end
+      state.turn!.cardsPlayed = state.settings.movesPerTurn;
+
+      const dtr = givePlayerCard(
+        player,
+        makeAction(CardType.DoubleTheRent, 1),
+      );
+      expect(() =>
+        engine.playActionCard(state, playerId, {
+          action: "doubleTheRent",
+          cardId: dtr.id,
+        }),
+      ).toThrow("Already played maximum cards this turn");
+    });
+
+    it("stacking doubles: 1 -> 2x, then another -> 4x", () => {
+      const { state, engine } = startTestGame(2);
+      state.settings.movesPerTurn = 5; // Allow more plays
+      const player = currentPlayer(state);
+
+      giveCompleteSet(player, PropertyColor.Brown);
+
+      const dtr1 = givePlayerCard(
+        player,
+        makeAction(CardType.DoubleTheRent, 1),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "doubleTheRent",
+        cardId: dtr1.id,
+      });
+      expect(state.turn!.rentMultiplier).toBe(2);
+
+      const dtr2 = givePlayerCard(
+        player,
+        makeAction(CardType.DoubleTheRent, 1),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "doubleTheRent",
+        cardId: dtr2.id,
+      });
+      expect(state.turn!.rentMultiplier).toBe(4);
+
+      // Now play rent — base rent for complete Brown = 2, x4 = 8
+      const rent = givePlayerCard(
+        player,
+        makeRentDual(PropertyColor.Brown, PropertyColor.LightBlue),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "rentDual",
+        cardId: rent.id,
+        color: PropertyColor.Brown,
+      });
+
+      expect(state.turn!.pendingAction!.amount).toBe(8);
+    });
+
+    it("multiplier resets after rent is played", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      player.properties.push({
+        color: PropertyColor.Red,
+        cards: [
+          {
+            id: "r_dtr",
+            type: CardType.Property,
+            value: 3,
+            colors: [PropertyColor.Red],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+
+      const dtr = givePlayerCard(
+        player,
+        makeAction(CardType.DoubleTheRent, 1),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "doubleTheRent",
+        cardId: dtr.id,
+      });
+      expect(state.turn!.rentMultiplier).toBe(2);
+
+      const rent = givePlayerCard(
+        player,
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "rentDual",
+        cardId: rent.id,
+        color: PropertyColor.Red,
+      });
+
+      // Multiplier should be reset after rent is played
+      expect(state.turn!.rentMultiplier).toBe(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 24. Rent pre-validation
+  // -------------------------------------------------------------------------
+  describe("Rent pre-validation", () => {
+    it("RentDual with mismatched color keeps card in hand", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+
+      const rent = givePlayerCard(
+        player,
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
+      );
+      const handBefore = player.hand.length;
+
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "rentDual",
+          cardId: rent.id,
+          color: PropertyColor.Green,
+        }),
+      ).toThrow("Rent card does not match that color");
+
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === rent.id)).toBe(true);
+    });
+
+    it("RentWild with no properties of that color keeps card in hand", () => {
+      const { state, engine } = startTestGame(2);
+      const player = currentPlayer(state);
+      const target = state.players.find((p) => p.id !== player.id)!;
+
+      const rent = givePlayerCard(player, makeRentWild());
+      const handBefore = player.hand.length;
+
+      expect(() =>
+        engine.playActionCard(state, player.id, {
+          action: "rentWild",
+          cardId: rent.id,
+          color: PropertyColor.Pink,
+          targetPlayerId: target.id,
+        }),
+      ).toThrow("You have no properties of that color");
+
+      expect(player.hand).toHaveLength(handBefore);
+      expect(player.hand.some((c) => c.id === rent.id)).toBe(true);
     });
   });
 });
