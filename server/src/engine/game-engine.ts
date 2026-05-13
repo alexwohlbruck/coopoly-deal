@@ -361,9 +361,7 @@ export class GameEngine {
       throw new Error("Only property cards can be played to the property area");
     }
 
-    this.removeFromHand(player, cardId);
-
-    // Allow null color for multi-color wildcards only (unassigned)
+    // Validate color BEFORE removing from hand so the card isn't lost on error
     if (asColor !== null && asColor !== PropertyColor.Unassigned) {
       if (card.colors && !card.colors.includes(asColor)) {
         throw new Error(`Card cannot be played as ${asColor}`);
@@ -384,6 +382,8 @@ export class GameEngine {
         );
       }
     }
+
+    this.removeFromHand(player, cardId);
 
     this.addPropertyToPlayer(
       player,
@@ -415,18 +415,62 @@ export class GameEngine {
     }
 
     const player = this.getPlayer(state, playerId);
-    const card = this.removeFromHand(player, payload.cardId);
+    const card = player.hand.find((c) => c.id === payload.cardId);
+    if (!card) throw new Error(`Card ${payload.cardId} not in hand`);
+
+    // Validate card type BEFORE removing from hand so the card isn't
+    // lost if the type doesn't match or a downstream check fails.
+    const expectedType: Record<string, CardType> = {
+      passGo: CardType.PassGo,
+      slyDeal: CardType.SlyDeal,
+      forceDeal: CardType.ForceDeal,
+      dealBreaker: CardType.DealBreaker,
+      debtCollector: CardType.DebtCollector,
+      birthday: CardType.Birthday,
+      rentDual: CardType.RentDual,
+      rentWild: CardType.RentWild,
+      doubleTheRent: CardType.DoubleTheRent,
+      house: CardType.House,
+      hotel: CardType.Hotel,
+    };
+    const expected = expectedType[payload.action];
+    if (!expected) throw new Error("Unknown action");
+    this.assertCardType(card, expected);
+
+    // Pre-validate house/hotel placement so the card isn't lost on error
+    if (payload.action === "house" || payload.action === "hotel") {
+      const setColor = payload.setColor;
+      if (
+        setColor === PropertyColor.Railroad ||
+        setColor === PropertyColor.Utility
+      ) {
+        throw new Error(
+          `Cannot place ${payload.action === "house" ? "houses" : "hotels"} on Railroad or Utility`,
+        );
+      }
+      const set = player.properties.find(
+        (s) => s.color === setColor && isSetComplete(s),
+      );
+      if (!set) throw new Error("Set is not complete");
+      if (payload.action === "house") {
+        if (set.house) throw new Error("Set already has a house");
+      } else {
+        if (state.settings.requireHouseBeforeHotel && !set.house)
+          throw new Error("Must have a house before placing a hotel");
+        if (set.hotel) throw new Error("Set already has a hotel");
+      }
+    }
+
+    this.removeFromHand(player, payload.cardId);
 
     switch (payload.action) {
       case "passGo":
-        this.assertCardType(card, CardType.PassGo);
         state.discardPile.push(card);
         this.drawCards(state, player, 2);
         this.incrementPlays(state);
         break;
 
       case "slyDeal":
-        this.assertCardType(card, CardType.SlyDeal);
         this.executeSlyDeal(
           state,
           player,
@@ -437,7 +481,6 @@ export class GameEngine {
         break;
 
       case "forceDeal":
-        this.assertCardType(card, CardType.ForceDeal);
         this.executeForceDeal(
           state,
           player,
@@ -449,7 +492,6 @@ export class GameEngine {
         break;
 
       case "dealBreaker":
-        this.assertCardType(card, CardType.DealBreaker);
         this.executeDealBreaker(
           state,
           player,
@@ -460,22 +502,18 @@ export class GameEngine {
         break;
 
       case "debtCollector":
-        this.assertCardType(card, CardType.DebtCollector);
         this.executeDebtCollector(state, player, card, payload.targetPlayerId);
         break;
 
       case "birthday":
-        this.assertCardType(card, CardType.Birthday);
         this.executeBirthday(state, player, card);
         break;
 
       case "rentDual":
-        this.assertCardType(card, CardType.RentDual);
         this.executeRentDual(state, player, card, payload.color);
         break;
 
       case "rentWild":
-        this.assertCardType(card, CardType.RentWild);
         this.executeRentWild(
           state,
           player,
@@ -486,17 +524,14 @@ export class GameEngine {
         break;
 
       case "doubleTheRent":
-        this.assertCardType(card, CardType.DoubleTheRent);
         this.executeDoubleTheRent(state, player, card);
         break;
 
       case "house":
-        this.assertCardType(card, CardType.House);
         this.executeHouse(state, player, card, payload.setColor);
         break;
 
       case "hotel":
-        this.assertCardType(card, CardType.Hotel);
         this.executeHotel(state, player, card, payload.setColor);
         break;
 
