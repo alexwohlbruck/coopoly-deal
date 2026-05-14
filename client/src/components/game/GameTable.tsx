@@ -375,51 +375,9 @@ export function GameTable({
     [rainbowDropData, onPlayToProperty, onRearrangeProperty],
   );
 
-  if (gameState.phase === GamePhase.Finished) {
-    return (
-      <>
-        <EndGameSummary
-          players={gameState.players}
-          winnerId={gameState.winner}
-          currentPlayerId={playerId}
-          settings={gameState.settings}
-          gameSeed={gameState.startedAt ?? gameState.id}
-          gameStartedAt={gameState.startedAt}
-          sessionStats={sessionStats}
-          onRematch={onRematch}
-          onReturnToLobby={onReturnToLobby}
-          onGoHome={onGoHome}
-          onShare={() => openModal("share")}
-        />
-        <ShareModal
-          isOpen={modal === "share"}
-          onClose={closeModal}
-          gameState={gameState}
-          playerId={playerId}
-          sessionStats={sessionStats}
-        />
-      </>
-    );
-  }
-
-  // Hand peek reset signal — encodes "an event happened that should clear
-  // any current peek state on the hand". Bumps when:
-  //   - a dialog opens (CardActionDialog, ActionPrompt, WildcardFlip,
-  //     RainbowGroup, Settings, DevTools)
-  //   - the hand size changes (a card just got played or drawn)
-  // Encoding all signals as one string keeps the prop stable when nothing
-  // is happening so the hand doesn't re-mount.
-  const peekResetSignal = [
-    selectedCard?.id ?? "",
-    pendingAction?.type ?? "",
-    wildcardFlipData ? "wf" : "",
-    rainbowDropData ? "rd" : "",
-    showSettings ? "s" : "",
-    showDevTools ? "d" : "",
-    me?.hand?.length ?? 0,
-  ].join("|");
-
   // ── Unified drop callbacks for pointer-drag (used by CardHand) ──
+  // These must be defined before the early return for GamePhase.Finished
+  // so the hook count is stable across renders (Rules of Hooks).
   const handleDropToProperty = useCallback(
     (card: Card, color: PropertyColor) => {
       if (
@@ -463,6 +421,50 @@ export function GameTable({
     },
     [me, onPlayToProperty, setToast, useSocialistTheme],
   );
+
+  if (gameState.phase === GamePhase.Finished) {
+    return (
+      <>
+        <EndGameSummary
+          players={gameState.players}
+          winnerId={gameState.winner}
+          currentPlayerId={playerId}
+          settings={gameState.settings}
+          gameSeed={gameState.startedAt ?? gameState.id}
+          gameStartedAt={gameState.startedAt}
+          sessionStats={sessionStats}
+          onRematch={onRematch}
+          onReturnToLobby={onReturnToLobby}
+          onGoHome={onGoHome}
+          onShare={() => openModal("share")}
+        />
+        <ShareModal
+          isOpen={modal === "share"}
+          onClose={closeModal}
+          gameState={gameState}
+          playerId={playerId}
+          sessionStats={sessionStats}
+        />
+      </>
+    );
+  }
+
+  // Hand peek reset signal — encodes "an event happened that should clear
+  // any current peek state on the hand". Bumps when:
+  //   - a dialog opens (CardActionDialog, ActionPrompt, WildcardFlip,
+  //     RainbowGroup, Settings, DevTools)
+  //   - the hand size changes (a card just got played or drawn)
+  // Encoding all signals as one string keeps the prop stable when nothing
+  // is happening so the hand doesn't re-mount.
+  const peekResetSignal = [
+    selectedCard?.id ?? "",
+    pendingAction?.type ?? "",
+    wildcardFlipData ? "wf" : "",
+    rainbowDropData ? "rd" : "",
+    showSettings ? "s" : "",
+    showDevTools ? "d" : "",
+    me?.hand?.length ?? 0,
+  ].join("|");
 
   // Bottom bar (turn pill + end turn + hand) — shared across both layouts.
   const bottomBar = me ? (
