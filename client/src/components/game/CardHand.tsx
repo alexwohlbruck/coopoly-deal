@@ -55,26 +55,51 @@ export function CardHand({
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
+  const dragCloneRef = useRef<HTMLElement | null>(null);
+
   const handleDragStart = (e: React.DragEvent, card: Card) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("cardId", card.id);
     e.dataTransfer.setData("cardData", JSON.stringify(card));
 
-    // Explicitly set the drag image so the ghost is always visible.
-    // Without this, some cards (especially wildcards with many small
-    // stripe elements) produce an invisible or garbled drag ghost in
-    // certain browsers because the automatic capture fails on complex
-    // CSS layouts / transforms.
+    // The drag source element (motion.div in HoverFanHand) often has
+    // CSS transforms (rotate, translateX with calc()) that cause the
+    // browser to produce an invisible or garbled drag ghost.  We clone
+    // the element, strip transforms, place the clone offscreen, and
+    // use it as the drag image instead.
     const el = e.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
-    e.dataTransfer.setDragImage(el, offsetX, offsetY);
+
+    // Clean up any previous clone
+    if (dragCloneRef.current) {
+      dragCloneRef.current.remove();
+      dragCloneRef.current = null;
+    }
+
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.position = "fixed";
+    clone.style.top = "-9999px";
+    clone.style.left = "-9999px";
+    clone.style.transform = "none";
+    clone.style.opacity = "1";
+    clone.style.pointerEvents = "none";
+    clone.style.width = `${rect.width}px`;
+    clone.style.height = `${rect.height}px`;
+    document.body.appendChild(clone);
+    dragCloneRef.current = clone;
+
+    e.dataTransfer.setDragImage(clone, offsetX, offsetY);
 
     onDragStart?.(card);
   };
 
   const handleDragEnd = () => {
+    if (dragCloneRef.current) {
+      dragCloneRef.current.remove();
+      dragCloneRef.current = null;
+    }
     onDragEnd?.();
   };
 
