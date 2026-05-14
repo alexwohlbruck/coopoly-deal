@@ -54,10 +54,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trigger Portainer redeploy
-        continue-on-error: true
-        run: curl -s -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
-
       - name: Create GitHub Release
         if: steps.version.outputs.new == 'true'
         env:
