@@ -54,6 +54,11 @@ export function useBackgroundMusic() {
   const isPlayingRef = useRef(false);
   isPlayingRef.current = isPlaying;
 
+  // Generation counter — incremented every time playTrack is called.
+  // After the async `loadTrack`, we bail out if the generation has
+  // changed, preventing orphaned AudioBufferSourceNodes from playing.
+  const playGenRef = useRef(0);
+
   // ── helpers ──────────────────────────────────────────────────────
 
   const getOrCreateCtx = useCallback(() => {
@@ -91,8 +96,17 @@ export function useBackgroundMusic() {
 
       stopSource();
 
+      // Capture a generation token. If another playTrack call fires
+      // while we await loadTrack, our token will be stale and we bail
+      // out — preventing an orphaned source node from playing.
+      const gen = ++playGenRef.current;
+
       try {
         const buffer = await loadTrack(ctx, trackUrl);
+
+        // Stale call — a newer playTrack superseded us during the await.
+        if (gen !== playGenRef.current) return;
+
         const source = ctx.createBufferSource();
         source.buffer = buffer;
         source.connect(gainRef.current!);
@@ -220,16 +234,18 @@ export function useBackgroundMusic() {
   }, [playTrack, stopSource]);
 
   const nextTrack = useCallback(() => {
+    stopSource(); // silence the old track immediately
     offsetRef.current = 0;
     setCurrentTrackIndex((prev) => (prev + 1) % MUSIC_TRACKS.length);
-  }, []);
+  }, [stopSource]);
 
   const previousTrack = useCallback(() => {
+    stopSource();
     offsetRef.current = 0;
     setCurrentTrackIndex(
       (prev) => (prev - 1 + MUSIC_TRACKS.length) % MUSIC_TRACKS.length,
     );
-  }, []);
+  }, [stopSource]);
 
   return {
     isPlaying,
