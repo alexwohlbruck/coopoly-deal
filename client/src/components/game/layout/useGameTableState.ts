@@ -21,7 +21,7 @@ export interface GameTableState {
   /** All opponents */
   opponents: ReturnType<typeof useActiveOpponent>["opponents"];
   /** Currently selected opponent id */
-  activeOppId: string;
+  activeOppId: string | null;
   /** Setter for active opponent */
   setActiveOppId: (id: string) => void;
   /** Currently selected opponent player object */
@@ -150,7 +150,7 @@ export function makePlayerBoardHandlers(deps: PlayerBoardHandlerDeps) {
       onPlayToProperty(cardId, color);
     },
 
-    onDragActiveChange: (isDragging: boolean, card: Card) =>
+    onDragActiveChange: (isDragging: boolean, card: Card | null) =>
       setDraggingCard(isDragging ? card : null),
   };
 }
