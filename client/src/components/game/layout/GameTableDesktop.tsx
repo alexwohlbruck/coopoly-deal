@@ -450,7 +450,7 @@ function YourTableGrid({
   onPlayToBank,
   onPlayToProperty,
   onPlayAction,
-  onRainbowDrop,
+  onRainbowDrop: _onRainbowDrop,
   onWildcardClick,
   onRearrangeProperty,
   setDraggingCard,

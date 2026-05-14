@@ -70,7 +70,7 @@ export function GameTableCompact({
   needsDiscard,
   onPlayToBank,
   onPlayToProperty,
-  onRainbowDrop,
+  onRainbowDrop: _onRainbowDrop,
   onWildcardClick,
   onRearrangeProperty,
   onCardClick,
