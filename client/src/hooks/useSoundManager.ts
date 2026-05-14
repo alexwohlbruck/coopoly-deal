@@ -1,13 +1,10 @@
 // useSoundManager — sfx + theme picker, powered by @web-kits/audio.
 //
-// The legacy version hand-rolled oscillators in Web Audio. Now sounds
-// are declarative defineSound() patches and the player can choose
-// between several "sound themes" in settings (classic / soft / arcade
-// / chiptune). The settings store persists the choice.
+// Sounds are declarative defineSound() patches and the player can
+// choose between several "sound themes" in settings. The settings
+// store persists the choice.
 //
-// All call sites still use the same `play("cardPlay")` API — only the
-// implementation changed. The optional second arg lets callers
-// override the theme one-off (rare).
+// All call sites use the same `play("cardPlay")` API.
 
 import { useCallback } from "react";
 import { create } from "zustand";
@@ -55,16 +52,12 @@ export const SOUND_THEME_HINT: Record<SoundTheme, string> = {
 
 interface SoundSettings {
   sfxEnabled: boolean;
-  musicEnabled: boolean;
   sfxVolume: number;
-  musicVolume: number;
   soundTheme: SoundTheme;
   hapticsEnabled: boolean;
   toggleSfx: () => void;
-  toggleMusic: () => void;
   toggleHaptics: () => void;
   setSfxVolume: (v: number) => void;
-  setMusicVolume: (v: number) => void;
   setSoundTheme: (t: SoundTheme) => void;
 }
 
@@ -72,16 +65,12 @@ export const useSoundSettings = create<SoundSettings>()(
   persist(
     (set) => ({
       sfxEnabled: true,
-      musicEnabled: false,
       sfxVolume: 0.5,
-      musicVolume: 0.2,
       soundTheme: "hum",
       hapticsEnabled: true,
       toggleSfx: () => set((s) => ({ sfxEnabled: !s.sfxEnabled })),
-      toggleMusic: () => set((s) => ({ musicEnabled: !s.musicEnabled })),
       toggleHaptics: () => set((s) => ({ hapticsEnabled: !s.hapticsEnabled })),
       setSfxVolume: (v) => set({ sfxVolume: v }),
-      setMusicVolume: (v) => set({ musicVolume: v }),
       setSoundTheme: (t) => set({ soundTheme: t }),
     }),
     { name: "coopoly-sound-settings" },
@@ -494,81 +483,6 @@ const THEMES: Record<SoundTheme, Record<SoundEffect, SoundDef>> = {
   hum,
   crispy,
 };
-
-// ── Background music (unchanged from before) ─────────────────────
-
-let audioCtx: AudioContext | null = null;
-function getAudioContext(): AudioContext {
-  if (!audioCtx) audioCtx = new AudioContext();
-  return audioCtx;
-}
-
-let musicOscillators: OscillatorNode[] = [];
-let musicGainNode: GainNode | null = null;
-let musicPlaying = false;
-
-export function startBackgroundMusic(volume: number = 0.1) {
-  if (musicPlaying) return;
-  const ctx = getAudioContext();
-  musicGainNode = ctx.createGain();
-  musicGainNode.gain.setValueAtTime(volume, ctx.currentTime);
-  musicGainNode.connect(ctx.destination);
-
-  const chords = [
-    [261.63, 329.63, 392.0],
-    [293.66, 369.99, 440.0],
-    [349.23, 440.0, 523.25],
-    [392.0, 493.88, 587.33],
-  ];
-  let chordIndex = 0;
-
-  function playNextChord() {
-    if (!musicPlaying || !musicGainNode) return;
-    const c = getAudioContext();
-    musicOscillators.forEach((o) => {
-      try {
-        o.stop();
-      } catch {
-        /* already stopped */
-      }
-    });
-    musicOscillators = [];
-
-    const chord = chords[chordIndex % chords.length];
-    for (const freq of chord) {
-      const osc = c.createOscillator();
-      const gain = c.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, c.currentTime);
-      gain.gain.setValueAtTime(0, c.currentTime);
-      gain.gain.linearRampToValueAtTime(0.05, c.currentTime + 0.5);
-      gain.gain.linearRampToValueAtTime(0, c.currentTime + 3.8);
-      osc.connect(gain);
-      gain.connect(musicGainNode!);
-      osc.start(c.currentTime);
-      osc.stop(c.currentTime + 4);
-      musicOscillators.push(osc);
-    }
-    chordIndex++;
-    setTimeout(playNextChord, 4000);
-  }
-
-  musicPlaying = true;
-  playNextChord();
-}
-
-export function stopBackgroundMusic() {
-  musicPlaying = false;
-  musicOscillators.forEach((o) => {
-    try {
-      o.stop();
-    } catch {
-      /* already stopped */
-    }
-  });
-  musicOscillators = [];
-  musicGainNode = null;
-}
 
 // ── Preview helper (non-hook) ─────────────────────────────────────
 // Plays a single effect from a SPECIFIC theme without going through
