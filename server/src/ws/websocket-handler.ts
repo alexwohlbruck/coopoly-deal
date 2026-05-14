@@ -34,12 +34,25 @@ type GameWebSocket = ServerWebSocket<WSData>;
 
 const playerSockets = new Map<string, GameWebSocket>();
 
+// All connected WebSockets (for online count broadcasting).
+const allSockets = new Set<GameWebSocket>();
+
 // Pending auto-end timers per room (cancelled if a human reconnects)
 const autoEndTimers = new Map<string, Timer>();
 
 export function createWebSocketHandlers(roomManager: RoomManager) {
   function send(ws: GameWebSocket, message: ServerMessage): void {
     ws.send(JSON.stringify(message));
+  }
+
+  function broadcastOnlineCount(): void {
+    const msg = JSON.stringify({
+      type: "ONLINE_COUNT",
+      payload: { count: allSockets.size },
+    });
+    for (const sock of allSockets) {
+      sock.send(msg);
+    }
   }
 
   function broadcastToRoom(
@@ -873,6 +886,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     open(ws: GameWebSocket) {
       ws.data.playerId = null;
       ws.data.roomCode = null;
+      allSockets.add(ws);
+      broadcastOnlineCount();
     },
     message(ws: GameWebSocket, message: string | Buffer) {
       const raw = typeof message === "string" ? message : message.toString();
@@ -880,6 +895,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     },
     close(ws: GameWebSocket) {
       handleClose(ws);
+      allSockets.delete(ws);
+      broadcastOnlineCount();
     },
   };
 }

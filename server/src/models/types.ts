@@ -337,4 +337,5 @@ export type ServerMessage =
   | { type: "ACTION_REQUIRED"; payload: { action: PendingAction } }
   | { type: "GAME_ENDED"; payload: { winnerId: string; winnerName: string } }
   | { type: "REMATCH_STARTED"; payload: { state: ClientGameState } }
-  | { type: "RETURNED_TO_LOBBY" };
+  | { type: "RETURNED_TO_LOBBY" }
+  | { type: "ONLINE_COUNT"; payload: { count: number } };

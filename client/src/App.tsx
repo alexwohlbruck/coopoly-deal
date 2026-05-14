@@ -105,6 +105,7 @@ function AppMain() {
     }
   });
 
+  const [onlineCount, setOnlineCount] = useState<number | null>(null);
   const sendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
 
   const { play } = useSoundManager();
@@ -189,6 +190,10 @@ function AppMain() {
           if (gameState?.id) {
             navigate(`/room/${gameState.id}`, { replace: true });
           }
+          break;
+
+        case "ONLINE_COUNT":
+          setOnlineCount(msg.payload.count);
           break;
 
         case "ERROR":
@@ -467,6 +472,7 @@ function AppMain() {
               onCreateRoom={handleCreateRoom}
               onJoinRoom={(code, name) => handleJoinRoom(code, name)}
               musicControls={musicProps}
+              onlineCount={onlineCount}
             />
           }
         />

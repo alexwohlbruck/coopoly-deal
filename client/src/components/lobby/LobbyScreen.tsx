@@ -24,12 +24,14 @@ interface LobbyScreenProps {
     onToggle: () => void;
     onNext: () => void;
   };
+  onlineCount?: number | null;
 }
 
 export function LobbyScreen({
   onCreateRoom,
   onJoinRoom,
   musicControls,
+  onlineCount,
 }: LobbyScreenProps) {
   const { t } = useI18n();
   const { playerName: savedPlayerName, theme, useSocialistTheme } = useGameStore();
@@ -130,6 +132,32 @@ export function LobbyScreen({
           >
             {useSocialistTheme ? "The socialist card game" : t.lobby.subtitle}
           </p>
+          {onlineCount != null && onlineCount > 0 && (
+            <div
+              style={{
+                marginTop: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.04em",
+                color: "rgba(245,234,208,0.5)",
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: "#4ade80",
+                  boxShadow: "0 0 6px rgba(74,222,128,0.5)",
+                  flexShrink: 0,
+                }}
+              />
+              {onlineCount} {onlineCount === 1 ? "player" : "players"} online
+            </div>
+          )}
         </div>
 
         <div
