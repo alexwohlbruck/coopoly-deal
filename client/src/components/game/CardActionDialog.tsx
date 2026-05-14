@@ -18,6 +18,7 @@ import { PrimaryButton } from "../ui/Button";
 import { RENT_VALUES } from "../../types/game";
 import {
   WildcardColorOption,
+  DecideLaterButton,
   rentGainFor,
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
@@ -847,40 +848,16 @@ export function CardActionDialog({
                 {isMulti &&
                   !settings.wildcardFlipCountsAsMove &&
                   availableColors.includes(PC.Unassigned) && (
-                    <button
-                      onClick={() => {
-                        markDispatchedAndClose();
-                        onPlayToProperty(activeCard.id, PC.Unassigned);
-                        onClose();
-                      }}
-                      style={{
-                        marginTop: 10,
-                        width: "100%",
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        fontFamily: "var(--font-display)",
-                        fontWeight: 800,
-                        fontSize: 14,
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                        color: "#fff",
-                        textShadow: "0 2px 4px rgba(0,0,0,0.8)",
-                        background: `linear-gradient(90deg, ${Object.values(
-                          PROPERTY_COLOR_HEX,
-                        )
-                          .map((c, i, arr) => {
-                            const a = (i / arr.length) * 100;
-                            const b = ((i + 1) / arr.length) * 100;
-                            return `${c} ${a}%, ${c} ${b}%`;
-                          })
-                          .join(", ")})`,
-                        border: "2px solid rgba(255,255,255,0.3)",
-                        cursor: "pointer",
-                        boxShadow: "var(--sh-object)",
-                      }}
-                    >
-                      {t.game.decideLater}
-                    </button>
+                    <div style={{ marginTop: 10 }}>
+                      <DecideLaterButton
+                        onClick={() => {
+                          markDispatchedAndClose();
+                          onPlayToProperty(activeCard.id, PC.Unassigned);
+                          onClose();
+                        }}
+                        label={t.game.decideLater}
+                      />
+                    </div>
                   )}
               </>
             );

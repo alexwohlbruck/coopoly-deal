@@ -248,11 +248,11 @@ export interface Translations {
     requireHouseBeforeHotelHint: string;
     drawCardsPerTurn: string;
     drawCardsPerTurnHint: string;
-    profile: string;
-    customProfile: string;
-    saveAsProfile: string;
-    deleteProfile: string;
-    profileName: string;
+    ruleSet: string;
+    customRuleSet: string;
+    saveAsRuleSet: string;
+    deleteRuleSet: string;
+    ruleSetName: string;
     custom: string;
   };
   socialist: {

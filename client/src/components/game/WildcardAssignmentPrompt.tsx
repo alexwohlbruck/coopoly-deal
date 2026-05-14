@@ -1,6 +1,5 @@
 import {
   PropertyColor,
-  PROPERTY_COLOR_HEX,
   type Card,
   type ClientPlayer,
   type PendingWildcardAssignment,
@@ -9,6 +8,7 @@ import {
 import { BottomSheet } from "../common/BottomSheet";
 import {
   WildcardColorOption,
+  DecideLaterButton,
   rentGainFor,
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
@@ -68,37 +68,12 @@ export function WildcardAssignmentPrompt({
       >
         {assignment.availableColors.map((color) => {
           if (color === PropertyColor.Unassigned) {
-            const wildcardColors = Object.values(PROPERTY_COLOR_HEX);
-            const gradientStops = wildcardColors
-              .map((c, i, arr) => {
-                const startPct = (i / arr.length) * 100;
-                const endPct = ((i + 1) / arr.length) * 100;
-                return `${c} ${startPct}%, ${c} ${endPct}%`;
-              })
-              .join(", ");
             return (
-              <button
+              <DecideLaterButton
                 key={color}
                 onClick={() => onAssign(assignment.cardId, color)}
-                style={{
-                  gridColumn: "span 2",
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 800,
-                  fontSize: 14,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#fff",
-                  textShadow: "0 2px 4px rgba(0,0,0,0.8)",
-                  background: `linear-gradient(90deg, ${gradientStops})`,
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  cursor: "pointer",
-                  boxShadow: "var(--sh-object)",
-                }}
-              >
-                {t.game.decideLater}
-              </button>
+                label={t.game.decideLater}
+              />
             );
           }
           return (

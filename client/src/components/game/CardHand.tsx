@@ -59,6 +59,18 @@ export function CardHand({
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("cardId", card.id);
     e.dataTransfer.setData("cardData", JSON.stringify(card));
+
+    // Explicitly set the drag image so the ghost is always visible.
+    // Without this, some cards (especially wildcards with many small
+    // stripe elements) produce an invisible or garbled drag ghost in
+    // certain browsers because the automatic capture fails on complex
+    // CSS layouts / transforms.
+    const el = e.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+    e.dataTransfer.setDragImage(el, offsetX, offsetY);
+
     onDragStart?.(card);
   };
 

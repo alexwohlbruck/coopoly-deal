@@ -1,4 +1,4 @@
-// GameSettingsPanel — host-controlled game-rules toggles with profile
+// GameSettingsPanel — host-controlled game-rules toggles with rule set
 // selector. Dark inset card with cream/accent text, Bricolage display
 // heading, JetBrains-Mono labels, accent-colored active states.
 
@@ -7,11 +7,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Settings } from "lucide-react";
 import {
   type GameSettings,
-  type SettingsProfile,
-  BUILT_IN_PROFILES,
-  getCustomProfiles,
-  saveCustomProfiles,
-  settingsMatchProfile,
+  type SettingsRuleSet,
+  BUILT_IN_RULE_SETS,
+  getCustomRuleSets,
+  saveCustomRuleSets,
+  settingsMatchRuleSet,
 } from "../../types/game";
 import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
@@ -58,22 +58,22 @@ export function GameSettingsPanel({
 }: GameSettingsPanelProps) {
   const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  const [customProfiles, setCustomProfiles] = useState<SettingsProfile[]>(
-    getCustomProfiles,
+  const [customRuleSets, setCustomRuleSets] = useState<SettingsRuleSet[]>(
+    getCustomRuleSets,
   );
   const [isEditingCustom, setIsEditingCustom] = useState(false);
-  const [newProfileName, setNewProfileName] = useState("");
+  const [newRuleSetName, setNewRuleSetName] = useState("");
 
-  const allProfiles = useMemo(
-    () => [...BUILT_IN_PROFILES, ...customProfiles],
-    [customProfiles],
+  const allRuleSets = useMemo(
+    () => [...BUILT_IN_RULE_SETS, ...customRuleSets],
+    [customRuleSets],
   );
 
-  // Find which profile matches the current settings (if any)
-  const activeProfileId = useMemo(() => {
-    const match = allProfiles.find((p) => settingsMatchProfile(settings, p));
+  // Find which rule set matches the current settings (if any)
+  const activeRuleSetId = useMemo(() => {
+    const match = allRuleSets.find((p) => settingsMatchRuleSet(settings, p));
     return match?.id ?? null;
-  }, [settings, allProfiles]);
+  }, [settings, allRuleSets]);
 
   const updateSetting = <K extends keyof GameSettings>(
     key: K,
@@ -82,30 +82,30 @@ export function GameSettingsPanel({
     onSettingsChange({ ...settings, [key]: value });
   };
 
-  const applyProfile = (profile: SettingsProfile) => {
-    onSettingsChange({ ...profile.settings });
+  const applyRuleSet = (ruleSet: SettingsRuleSet) => {
+    onSettingsChange({ ...ruleSet.settings });
   };
 
-  const handleSaveProfile = () => {
-    const name = newProfileName.trim();
+  const handleSaveRuleSet = () => {
+    const name = newRuleSetName.trim();
     if (!name) return;
     const id = `custom-${Date.now()}`;
-    const newProfile: SettingsProfile = {
+    const newRuleSet: SettingsRuleSet = {
       id,
       name,
       settings: { ...settings },
     };
-    const updated = [...customProfiles, newProfile];
-    setCustomProfiles(updated);
-    saveCustomProfiles(updated);
-    setNewProfileName("");
+    const updated = [...customRuleSets, newRuleSet];
+    setCustomRuleSets(updated);
+    saveCustomRuleSets(updated);
+    setNewRuleSetName("");
     setIsEditingCustom(false);
   };
 
-  const handleDeleteProfile = (id: string) => {
-    const updated = customProfiles.filter((p) => p.id !== id);
-    setCustomProfiles(updated);
-    saveCustomProfiles(updated);
+  const handleDeleteRuleSet = (id: string) => {
+    const updated = customRuleSets.filter((p) => p.id !== id);
+    setCustomRuleSets(updated);
+    saveCustomRuleSets(updated);
   };
 
   const accent = "var(--accent, #f0c14a)";
@@ -191,10 +191,10 @@ export function GameSettingsPanel({
                 borderTop: "1px solid rgba(255,255,255,0.06)",
               }}
             >
-              {/* ── Profile selector ── */}
+              {/* ── Rule set selector ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
-                  {t.gameSettings.profile}
+                  {t.gameSettings.ruleSet}
                 </div>
                 <div
                   style={{
@@ -203,9 +203,9 @@ export function GameSettingsPanel({
                     gap: 6,
                   }}
                 >
-                  {allProfiles.map((profile) => {
-                    const active = activeProfileId === profile.id;
-                    const canDelete = !profile.builtIn && isHost;
+                  {allRuleSets.map((ruleSet) => {
+                    const active = activeRuleSetId === ruleSet.id;
+                    const canDelete = !ruleSet.builtIn && isHost;
                     const pillBg = active
                       ? "linear-gradient(180deg, var(--accent, #f0c14a) 0%, color-mix(in oklab, var(--accent, #f0c14a) 70%, #000) 100%)"
                       : "rgba(255,255,255,0.05)";
@@ -220,7 +220,7 @@ export function GameSettingsPanel({
                       : "none";
                     return (
                       <div
-                        key={profile.id}
+                        key={ruleSet.id}
                         style={{
                           display: "flex",
                           alignItems: "stretch",
@@ -231,7 +231,7 @@ export function GameSettingsPanel({
                       >
                         <button
                           type="button"
-                          onClick={() => isHost && applyProfile(profile)}
+                          onClick={() => isHost && applyRuleSet(ruleSet)}
                           disabled={!isHost}
                           style={{
                             padding: "6px 10px",
@@ -250,13 +250,13 @@ export function GameSettingsPanel({
                               "background var(--d-quick) var(--ease-out-soft)",
                           }}
                         >
-                          {profile.name}
+                          {ruleSet.name}
                         </button>
                         {canDelete && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteProfile(profile.id)}
-                            title={t.gameSettings.deleteProfile}
+                            onClick={() => handleDeleteRuleSet(ruleSet.id)}
+                            title={t.gameSettings.deleteRuleSet}
                             style={{
                               padding: "0 7px",
                               border: "none",
@@ -279,8 +279,8 @@ export function GameSettingsPanel({
                       </div>
                     );
                   })}
-                  {/* Custom chip — click to name & save as profile */}
-                  {!activeProfileId && (
+                  {/* Custom chip — click to name & save as rule set */}
+                  {!activeRuleSetId && (
                     isEditingCustom && isHost ? (
                       <div
                         style={{
@@ -293,22 +293,22 @@ export function GameSettingsPanel({
                       >
                         <input
                           type="text"
-                          value={newProfileName}
-                          onChange={(e) => setNewProfileName(e.target.value)}
+                          value={newRuleSetName}
+                          onChange={(e) => setNewRuleSetName(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") handleSaveProfile();
+                            if (e.key === "Enter") handleSaveRuleSet();
                             if (e.key === "Escape") {
                               setIsEditingCustom(false);
-                              setNewProfileName("");
+                              setNewRuleSetName("");
                             }
                           }}
                           onBlur={() => {
-                            if (!newProfileName.trim()) {
+                            if (!newRuleSetName.trim()) {
                               setIsEditingCustom(false);
-                              setNewProfileName("");
+                              setNewRuleSetName("");
                             }
                           }}
-                          placeholder={t.gameSettings.profileName}
+                          placeholder={t.gameSettings.ruleSetName}
                           autoFocus
                           style={{
                             width: 90,
@@ -325,22 +325,22 @@ export function GameSettingsPanel({
                         <button
                           type="button"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => handleSaveProfile()}
-                          disabled={!newProfileName.trim()}
+                          onClick={() => handleSaveRuleSet()}
+                          disabled={!newRuleSetName.trim()}
                           style={{
                             padding: "0 8px",
                             border: "none",
                             borderLeft: "1px solid rgba(255,255,255,0.08)",
-                            background: newProfileName.trim()
+                            background: newRuleSetName.trim()
                               ? "var(--accent, #f0c14a)"
                               : "rgba(255,255,255,0.05)",
-                            color: newProfileName.trim()
+                            color: newRuleSetName.trim()
                               ? "#1a1208"
                               : "rgba(245,234,208,0.25)",
                             fontFamily: "var(--font-mono)",
                             fontSize: 9,
                             fontWeight: 700,
-                            cursor: newProfileName.trim()
+                            cursor: newRuleSetName.trim()
                               ? "pointer"
                               : "not-allowed",
                             display: "flex",

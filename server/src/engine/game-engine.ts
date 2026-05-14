@@ -991,14 +991,9 @@ export class GameEngine {
           card.colors &&
           card.colors.length > 1
         ) {
-          if (
-            card.colors.length > 2 &&
-            !state.settings.wildcardFlipCountsAsMove
-          ) {
-            this.addPropertyToPlayer(source, card, PropertyColor.Unassigned);
-          } else {
-            this.queueWildcardAssignment(state, source.id, card);
-          }
+          // Always prompt the receiver to choose a color for wildcards.
+          // They can pick "I'll decide later" to keep it unassigned.
+          this.queueWildcardAssignment(state, source.id, card);
         } else {
           const color = card.colors?.[0] ?? PropertyColor.Brown;
           this.addPropertyToPlayer(source, card, color);
@@ -1323,14 +1318,17 @@ export class GameEngine {
         ),
     );
 
-    if (!state.settings.wildcardFlipCountsAsMove) {
-      validColors.push(PropertyColor.Unassigned);
-    }
+    // Always allow "I'll decide later" (Unassigned) so the player
+    // can defer the choice.
+    validColors.push(PropertyColor.Unassigned);
 
-    // Fallback: if no valid colors are available (e.g. no existing sets and rainbow not allowed),
+    // Fallback: if the only option is Unassigned (no existing sets),
     // allow them to pick any color to start a new set.
-    if (validColors.length === 0) {
-      return card.colors.filter((c) => c !== PropertyColor.Unassigned);
+    if (validColors.length <= 1) {
+      return [
+        ...card.colors.filter((c) => c !== PropertyColor.Unassigned),
+        PropertyColor.Unassigned,
+      ];
     }
 
     return validColors;

@@ -66,17 +66,17 @@ export const DEFAULT_SETTINGS: GameSettings = {
   drawCardsPerTurn: 2,
 };
 
-export interface SettingsProfile {
+export interface SettingsRuleSet {
   id: string;
   name: string;
   settings: GameSettings;
   builtIn?: boolean;
 }
 
-export const BUILT_IN_PROFILES: SettingsProfile[] = [
+export const BUILT_IN_RULE_SETS: SettingsRuleSet[] = [
   {
-    id: "standard",
-    name: "Standard",
+    id: "house",
+    name: "House",
     settings: { ...DEFAULT_SETTINGS },
     builtIn: true,
   },
@@ -122,22 +122,22 @@ export const BUILT_IN_PROFILES: SettingsProfile[] = [
   },
 ];
 
-export function getCustomProfiles(): SettingsProfile[] {
+export function getCustomRuleSets(): SettingsRuleSet[] {
   try {
-    const raw = localStorage.getItem("customSettingsProfiles");
+    const raw = localStorage.getItem("customSettingsRuleSets") || localStorage.getItem("customSettingsProfiles");
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-export function saveCustomProfiles(profiles: SettingsProfile[]): void {
-  localStorage.setItem("customSettingsProfiles", JSON.stringify(profiles));
+export function saveCustomRuleSets(ruleSets: SettingsRuleSet[]): void {
+  localStorage.setItem("customSettingsRuleSets", JSON.stringify(ruleSets));
 }
 
-export function settingsMatchProfile(
+export function settingsMatchRuleSet(
   settings: GameSettings,
-  profile: SettingsProfile,
+  ruleSet: SettingsRuleSet,
 ): boolean {
   const keys: (keyof GameSettings)[] = [
     "maxHandSize",
@@ -150,7 +150,7 @@ export function settingsMatchProfile(
     "requireHouseBeforeHotel",
     "drawCardsPerTurn",
   ];
-  return keys.every((k) => settings[k] === profile.settings[k]);
+  return keys.every((k) => settings[k] === ruleSet.settings[k]);
 }
 
 export interface PropertySet {

@@ -5,13 +5,13 @@ import type {
   GameSettings,
 } from "../../types/game";
 import {
-  PROPERTY_COLOR_HEX,
   PropertyColor as PC,
   SET_SIZE,
 } from "../../types/game";
 import { BottomSheet } from "../common/BottomSheet";
 import {
   WildcardColorOption,
+  DecideLaterButton,
   rentGainFor,
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
@@ -111,58 +111,17 @@ export function WildcardFlipDialog({
       >
         {availableColors.map((color) => {
           if (color === PC.Unassigned) {
-            // Rainbow gradient — keep the existing visual since this
-            // option doesn't map to a single color's rent table.
-            const wildcardColors = Object.values(PROPERTY_COLOR_HEX);
-            const gradientStops = wildcardColors
-              .map((c, i, arr) => {
-                const startPct = (i / arr.length) * 100;
-                const endPct = ((i + 1) / arr.length) * 100;
-                return `${c} ${startPct}%, ${c} ${endPct}%`;
-              })
-              .join(", ");
             return (
-              <button
+              <DecideLaterButton
                 key={color}
                 onClick={() => {
                   onFlip(color);
                   onClose();
                 }}
                 disabled={color === currentColor}
-                style={{
-                  gridColumn: "span 2",
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 800,
-                  fontSize: 14,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#fff",
-                  textShadow: "0 2px 4px rgba(0,0,0,0.8)",
-                  background: `linear-gradient(90deg, ${gradientStops})`,
-                  border: "2px solid rgba(255,255,255,0.3)",
-                  cursor: color === currentColor ? "not-allowed" : "pointer",
-                  opacity: color === currentColor ? 0.5 : 1,
-                  boxShadow: "var(--sh-object)",
-                }}
-              >
-                {t.game.decideLater}
-                {color === currentColor && (
-                  <span
-                    style={{
-                      display: "block",
-                      fontSize: 10,
-                      fontWeight: 600,
-                      marginTop: 2,
-                      letterSpacing: "0.08em",
-                      opacity: 0.85,
-                    }}
-                  >
-                    {t.common.current}
-                  </span>
-                )}
-              </button>
+                label={t.game.decideLater}
+                subtitle={color === currentColor ? t.common.current : undefined}
+              />
             );
           }
 

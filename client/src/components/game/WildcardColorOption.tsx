@@ -247,3 +247,98 @@ export function WildcardColorOption({
     </button>
   );
 }
+
+// ────────────────────────────────────────────────────────────────────
+// DecideLaterButton — "I'll decide later" button that matches the
+// WildcardColorOption tile style: rainbow strip at the top, paper
+// body below. Replaces the old full-rainbow-gradient buttons for
+// visual consistency.
+// ────────────────────────────────────────────────────────────────────
+
+interface DecideLaterButtonProps {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  /** Shown below the label (e.g. "Current" when already unassigned). */
+  subtitle?: string;
+}
+
+export function DecideLaterButton({
+  label,
+  onClick,
+  disabled = false,
+  subtitle,
+}: DecideLaterButtonProps) {
+  const rainbowStops = Object.values(PROPERTY_COLOR_HEX)
+    .map((c, i, arr) => {
+      const a = (i / arr.length) * 100;
+      const b = ((i + 1) / arr.length) * 100;
+      return `${c} ${a}%, ${c} ${b}%`;
+    })
+    .join(", ");
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        gridColumn: "span 2",
+        padding: 0,
+        borderRadius: 12,
+        background: "var(--card-paper)",
+        color: "var(--card-ink)",
+        overflow: "hidden",
+        border: "none",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        boxShadow: "var(--sh-object), inset 0 0 0 1px rgba(0,0,0,0.08)",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {/* Rainbow strip header */}
+      <div
+        style={{
+          background: `linear-gradient(90deg, ${rainbowStops})`,
+          height: 8,
+          width: "100%",
+          flexShrink: 0,
+          boxShadow:
+            "inset 0 1px 0 rgba(255,255,255,0.18), inset 0 -1px 0 rgba(0,0,0,0.18)",
+        }}
+      />
+      {/* Label body */}
+      <div
+        className="paper-grain"
+        style={{
+          flex: 1,
+          padding: "10px 14px",
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          fontSize: 14,
+          letterSpacing: "0.04em",
+          textTransform: "uppercase",
+          textAlign: "center",
+          background:
+            "linear-gradient(180deg, var(--card-paper) 0%, var(--card-paper-2) 100%)",
+        }}
+      >
+        {label}
+        {subtitle && (
+          <span
+            style={{
+              display: "block",
+              fontSize: 10,
+              fontWeight: 600,
+              marginTop: 2,
+              letterSpacing: "0.08em",
+              opacity: 0.65,
+            }}
+          >
+            {subtitle}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
