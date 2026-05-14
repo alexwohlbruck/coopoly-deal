@@ -64,13 +64,12 @@ jobs:
         run: |
           VERSION="v${{ steps.version.outputs.version }}"
           PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -1)
-          git tag "$VERSION"
-          git push origin "$VERSION"
           if [ -n "$PREV_TAG" ]; then
             NOTES=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges)
           else
             NOTES="Initial release"
           fi
           gh release create "$VERSION" \
+            --target "$GITHUB_SHA" \
             --title "$VERSION" \
             --notes "$NOTES"
