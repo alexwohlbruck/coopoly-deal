@@ -717,6 +717,13 @@ export function DragPeekHand({
               onTouchMove={onCardTouchMove}
               onTouchEnd={(e) => onCardTouchEnd(e)}
               onTouchCancel={(e) => onCardTouchEnd(e)}
+              onPointerDown={item.draggable ? (e: React.PointerEvent) => {
+                // Only use the pointer drag hook for mouse — touch has
+                // its own DragPeekHand lift gesture via onTouchStart.
+                if (e.pointerType === "mouse" && item.onPointerDown) {
+                  item.onPointerDown(e);
+                }
+              } : undefined}
               draggable={false}
               onClick={item.onClick}
               style={{

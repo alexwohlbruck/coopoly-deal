@@ -82,8 +82,6 @@ export function CardHand({
     onDrop: handleCardDrop,
     onDragStart,
     onDragEnd,
-    cardWidth: fanMode ? fanCardWidth : 96,
-    cardHeight: fanMode ? fanCardHeight : 144,
   });
 
   // ───────── Fan rendering (HoverFanHand desktop / DragPeekHand mobile) ─────

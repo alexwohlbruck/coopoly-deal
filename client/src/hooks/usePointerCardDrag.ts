@@ -1,9 +1,9 @@
 // Unified pointer-based card drag hook.
 // Replaces the HTML5 drag-and-drop system with pointer events that
-// work identically on mouse and touch. Creates a ghost clone that
-// follows the pointer and uses the same [data-touch-drop] zone
-// detection as the touch drag (DragPeekHand) and wildcard rearrangement
-// (PropertySetDisplay).
+// work identically on mouse and touch. Creates a ghost clone appended
+// to document.body so it escapes any overflow-clipping containers,
+// and uses the same [data-touch-drop] zone detection as touch drag
+// and wildcard rearrangement (PropertySetDisplay).
 
 import { useRef, useEffect, useCallback } from "react";
 import type { Card } from "../types/game";
@@ -22,6 +22,11 @@ interface DragState {
   isDragging: boolean;
   ghostEl: HTMLElement | null;
   sourceEl: HTMLElement;
+  /** Viewport position of the source element at drag start. */
+  initialX: number;
+  initialY: number;
+  /** Original source opacity so we can restore on cleanup. */
+  origOpacity: string;
   activeZone: HTMLElement | null;
 }
 
@@ -32,9 +37,6 @@ export interface PointerCardDragOptions {
   onDragStart?: (card: Card) => void;
   /** Called when drag ends (drop or cancel). */
   onDragEnd?: () => void;
-  /** Card dimensions for ghost sizing/centering. */
-  cardWidth?: number;
-  cardHeight?: number;
 }
 
 /**
@@ -47,16 +49,12 @@ export function usePointerCardDrag({
   onDrop,
   onDragStart,
   onDragEnd,
-  cardWidth = 116,
-  cardHeight = 174,
 }: PointerCardDragOptions) {
   // Keep callbacks in refs so the document-level listeners never
   // reference stale closures.
   const onDropRef = useRef(onDrop);
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
-  const cardWRef = useRef(cardWidth);
-  const cardHRef = useRef(cardHeight);
 
   useEffect(() => {
     onDropRef.current = onDrop;
@@ -67,12 +65,6 @@ export function usePointerCardDrag({
   useEffect(() => {
     onDragEndRef.current = onDragEnd;
   }, [onDragEnd]);
-  useEffect(() => {
-    cardWRef.current = cardWidth;
-  }, [cardWidth]);
-  useEffect(() => {
-    cardHRef.current = cardHeight;
-  }, [cardHeight]);
 
   const stateRef = useRef<DragState | null>(null);
 
@@ -84,7 +76,7 @@ export function usePointerCardDrag({
       s.ghostEl = null;
     }
     if (s.sourceEl) {
-      s.sourceEl.style.opacity = "";
+      s.sourceEl.style.opacity = s.origOpacity;
     }
     setActiveDropZone(s.activeZone, null);
     if (s.isDragging) {
@@ -107,36 +99,42 @@ export function usePointerCardDrag({
       s.isDragging = true;
       onDragStartRef.current?.(s.card);
 
-      // Create ghost clone
+      // Snapshot the source element's viewport position so the ghost
+      // starts right on top of it.
+      const rect = s.sourceEl.getBoundingClientRect();
+      s.initialX = rect.left;
+      s.initialY = rect.top;
+
+      // Create ghost clone — appended to body so it escapes any
+      // overflow-clipping ancestors (e.g. the hand column).
       const ghost = s.sourceEl.cloneNode(true) as HTMLElement;
-      const cw = cardWRef.current;
       ghost.style.cssText = `
         position: fixed;
+        left: 0px;
+        top: 0px;
+        width: ${rect.width}px;
+        height: ${rect.height}px;
         pointer-events: none;
         z-index: 9999;
-        width: ${cw}px;
-        opacity: 0.92;
         filter: drop-shadow(0 8px 16px rgba(0,0,0,0.45));
-        transform-origin: center center;
-        transform: translate(${e.clientX - cw / 2}px, ${e.clientY - cardHRef.current / 2}px) rotate(-3deg) scale(1.08);
+        transform: translate(${rect.left + dx}px, ${rect.top + dy}px) scale(1.08);
         transition: none;
         will-change: transform;
       `;
       document.body.appendChild(ghost);
       s.ghostEl = ghost;
 
-      // Dim the source card
-      s.sourceEl.style.opacity = "0.35";
+      // Hide the source card (keeps layout space so siblings don't shift)
+      s.sourceEl.style.opacity = "0";
     }
 
     // Update ghost position
     if (s.ghostEl) {
-      const cw = cardWRef.current;
-      const ch = cardHRef.current;
-      s.ghostEl.style.transform = `translate(${e.clientX - cw / 2}px, ${e.clientY - ch / 2}px) rotate(-3deg) scale(1.08)`;
+      s.ghostEl.style.transform = `translate(${s.initialX + dx}px, ${s.initialY + dy}px) scale(1.08)`;
     }
 
-    // Detect drop zone under pointer
+    // Detect drop zone under pointer (ghost has pointer-events:none so
+    // elementsFromPoint sees through it).
     const zone = findDropZoneAt(e.clientX, e.clientY);
     setActiveDropZone(s.activeZone, zone?.el ?? null);
     s.activeZone = zone?.el ?? null;
@@ -186,13 +184,18 @@ export function usePointerCardDrag({
       if (e.button !== 0) return;
       e.preventDefault();
 
+      const el = e.currentTarget as HTMLElement;
+
       stateRef.current = {
         card,
         startX: e.clientX,
         startY: e.clientY,
         isDragging: false,
         ghostEl: null,
-        sourceEl: e.currentTarget as HTMLElement,
+        sourceEl: el,
+        initialX: 0,
+        initialY: 0,
+        origOpacity: el.style.opacity,
         activeZone: null,
       };
 

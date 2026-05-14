@@ -117,6 +117,9 @@ export function PropertySetDisplay({
     isDragging: boolean;
     ghostEl: HTMLElement | null;
     sourceEl: HTMLElement | null;
+    /** Viewport position of source element at drag start. */
+    initialX: number;
+    initialY: number;
     activeZone: HTMLElement | null;
   } | null>(null);
 
@@ -158,6 +161,8 @@ export function PropertySetDisplay({
         isDragging: false,
         ghostEl: null,
         sourceEl,
+        initialX: 0,
+        initialY: 0,
         activeZone: null,
       };
 
@@ -185,20 +190,25 @@ export function PropertySetDisplay({
         onDragActiveChange?.(true, s.card);
         // Dim source card
         if (s.sourceEl) {
-          s.sourceEl.style.opacity = "0.35";
+          s.sourceEl.style.opacity = "0";
         }
         // Create ghost by cloning the source card element
         if (s.sourceEl) {
+          const rect = s.sourceEl.getBoundingClientRect();
+          s.initialX = rect.left;
+          s.initialY = rect.top;
+
           const ghost = s.sourceEl.cloneNode(true) as HTMLElement;
           ghost.style.cssText = `
             position: fixed;
+            left: 0px;
+            top: 0px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
             pointer-events: none;
             z-index: 9999;
-            width: ${cardW}px;
-            opacity: 0.9;
             filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4));
-            transform-origin: center center;
-            transform: translate(${e.clientX - cardW / 2}px, ${e.clientY - cardH / 2}px) rotate(-3deg) scale(1.08);
+            transform: translate(${rect.left + dx}px, ${rect.top + dy}px) scale(1.08);
             transition: none;
             will-change: transform;
           `;
@@ -209,7 +219,7 @@ export function PropertySetDisplay({
 
       // Update ghost position (direct DOM mutation for 60fps)
       if (s.ghostEl) {
-        s.ghostEl.style.transform = `translate(${e.clientX - cardW / 2}px, ${e.clientY - cardH / 2}px) rotate(-3deg) scale(1.08)`;
+        s.ghostEl.style.transform = `translate(${s.initialX + dx}px, ${s.initialY + dy}px) scale(1.08)`;
       }
 
       // Detect drop zone under pointer
@@ -226,7 +236,6 @@ export function PropertySetDisplay({
       if (!s) return;
 
       if (s.isDragging) {
-        // Detect final drop zone
         const zone = findDropZoneAt(e.clientX, e.clientY);
         if (zone && onWildcardDrop) {
           onWildcardDrop(s.card, set.color, zone.spec);
@@ -340,13 +349,20 @@ export function PropertySetDisplay({
                 initial={{ opacity: 0, y: -18, scale: 0.94 }}
                 animate={{
                   opacity:
-                    draggingCardId === card.id ? 0.35 : 1,
+                    draggingCardId === card.id ? 0 : 1,
                   y: 0,
                   scale: 1,
                   rotate: tilt,
                 }}
                 exit={{ opacity: 0, y: 14, scale: 0.94 }}
-                transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 320,
+                  damping: 26,
+                  opacity: draggingCardId === card.id
+                    ? { duration: 0 }
+                    : undefined,
+                }}
                 style={{
                   position: "absolute",
                   left: 0,
