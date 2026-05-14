@@ -356,10 +356,6 @@ export function HoverFanHand({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               onMouseEnter={() => setHovered(i)}
-              draggable={item.draggable}
-              onDragStart={(e) => item.onDragStart?.(e as unknown as React.DragEvent)}
-              onDragEnd={() => item.onDragEnd?.()}
-              onClick={item.onClick}
               style={{
                 position: "absolute",
                 bottom: 0,
@@ -376,7 +372,17 @@ export function HoverFanHand({
                     : "none",
               }}
             >
-              {item.node}
+              {/* Separate plain div for native HTML5 drag — keeping drag
+                  props off the motion.div prevents framer-motion's gesture
+                  system from intercepting the native drag events. */}
+              <div
+                draggable={item.draggable}
+                onDragStart={(e) => item.onDragStart?.(e)}
+                onDragEnd={() => item.onDragEnd?.()}
+                onClick={item.onClick}
+              >
+                {item.node}
+              </div>
             </motion.div>
           );
         })}
