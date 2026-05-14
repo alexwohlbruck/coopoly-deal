@@ -1,6 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { Card, ClientGameState, PropertyColor } from "../../types/game";
-import { GamePhase, TurnPhase, CardType } from "../../types/game";
+import {
+  GamePhase,
+  TurnPhase,
+  CardType,
+  PropertyColor as PropertyColorEnum,
+  isSetComplete,
+  getPropertyColorLabel,
+} from "../../types/game";
 import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
 import { useTurnTimer } from "../../hooks/useTurnTimer";
 import { useGameStore } from "../../hooks/useGameStore";
@@ -412,6 +419,51 @@ export function GameTable({
     me?.hand?.length ?? 0,
   ].join("|");
 
+  // ── Unified drop callbacks for pointer-drag (used by CardHand) ──
+  const handleDropToProperty = useCallback(
+    (card: Card, color: PropertyColor) => {
+      if (
+        card.type !== CardType.Property &&
+        card.type !== CardType.PropertyWildcard &&
+        card.type !== CardType.House &&
+        card.type !== CardType.Hotel
+      ) {
+        setToast("Only property cards can be placed on a property set.");
+        return;
+      }
+      onPlayToProperty(card.id, color);
+    },
+    [onPlayToProperty, setToast],
+  );
+
+  const handleCreateNewSet = useCallback(
+    (card: Card) => {
+      // Wildcards / rainbow cards have no inherent single color — defer
+      // to the tap-to-play dialog (CardActionDialog) which lets the
+      // player pick a color.
+      if (card.type !== CardType.Property) {
+        handleCardClick(card);
+        return;
+      }
+      const color = card.colors?.[0];
+      if (!color || color === PropertyColorEnum.Unassigned) return;
+      // Block creating a new set if there's already an incomplete
+      // same-color set on the table.
+      const existing = me?.properties.find(
+        (s) => s.color === color && !isSetComplete(s),
+      );
+      if (existing) {
+        const label = getPropertyColorLabel(color, !!useSocialistTheme);
+        setToast(
+          `You already have an incomplete ${label} set — drop on it to add the card.`,
+        );
+        return;
+      }
+      onPlayToProperty(card.id, color);
+    },
+    [me, onPlayToProperty, setToast, useSocialistTheme],
+  );
+
   // Bottom bar (turn pill + end turn + hand) — shared across both layouts.
   const bottomBar = me ? (
     <div ref={turnControlsRef}>
@@ -427,6 +479,8 @@ export function GameTable({
         onEndTurn={handleEndTurn}
         onCardClick={handleCardClick}
         onPlayToBank={onPlayToBank}
+        onDropToProperty={handleDropToProperty}
+        onCreateNewSet={handleCreateNewSet}
         setDraggingCard={setDraggingCard}
         hideRedundantChrome={layoutMode === "table"}
         peekResetSignal={peekResetSignal}
@@ -510,6 +564,8 @@ export function GameTable({
             onPlayAction={handlePlayAction}
             onEndTurn={handleEndTurn}
             setDraggingCard={setDraggingCard}
+            onDropToProperty={handleDropToProperty}
+            onCreateNewSet={handleCreateNewSet}
             peekResetSignal={peekResetSignal}
           />
           {gameState.turn && gameState.turn.rentMultiplier > 1 && (

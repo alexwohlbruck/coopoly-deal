@@ -502,9 +502,6 @@ function YourTableGrid({
           isCurrentTurn={isMyTurn}
           settings={settings}
           draggingCard={draggingCard}
-          onDropToBank={boardHandlers.onDropToBank}
-          onDropToProperty={boardHandlers.onDropToProperty}
-          onDropToRainbow={onRainbowDrop}
           onWildcardClick={onWildcardClick}
           onRearrangeProperty={onRearrangeProperty}
           onDragActiveChange={boardHandlers.onDragActiveChange}

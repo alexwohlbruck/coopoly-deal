@@ -7,7 +7,8 @@ import {
   type HandRenderItem,
   type TouchDropSpec,
 } from "../cards/FannedCards";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { usePointerCardDrag } from "../../hooks/usePointerCardDrag";
 
 interface CardHandProps {
   cards: Card[];
@@ -17,13 +18,9 @@ interface CardHandProps {
   disabled?: boolean;
   needsDiscard?: boolean;
   onDragToBank?: (card: Card) => void;
-  /** Touch-only: fired when the user drags a card and releases over a
-   *  property-set drop zone in DragPeekHand. Mirrors the desktop
-   *  HTML5 drop-on-property-set pipeline. */
+  /** Fired when the user drags a card onto a property-set drop zone. */
   onDropToProperty?: (card: Card, color: PropertyColor) => void;
-  /** Touch-only: fired when the user drops a card on the "new set"
-   *  drop zone — caller decides whether the spawn is allowed (e.g.
-   *  refuse + toast if there's already an incomplete same-color set). */
+  /** Fired when the user drops a card on the "new set" drop zone. */
   onCreateNewSet?: (card: Card) => void;
   onDragStart?: (card: Card) => void;
   onDragEnd?: () => void;
@@ -55,49 +52,15 @@ export function CardHand({
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
-  const handleDragStart = (e: React.DragEvent, card: Card) => {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("cardId", card.id);
-    e.dataTransfer.setData("cardData", JSON.stringify(card));
-    onDragStart?.(card);
-  };
+  // ── Unified drop dispatch ─────────────────────────────────────────
+  // Route a drop spec → the appropriate play action. Used by both the
+  // pointer-drag hook (desktop HoverFanHand / grid) and the touch-drag
+  // system (mobile DragPeekHand).
+  const cardByIdRef = useRef(new Map<string, Card>());
+  cardByIdRef.current = new Map(cards.map((c) => [c.id, c]));
 
-  const handleDragEnd = () => {
-    onDragEnd?.();
-  };
-
-  // ───────── Fan rendering (HoverFanHand desktop / DragPeekHand mobile) ─────
-  if (fanMode) {
-    const draggable = !disabled && !needsDiscard && onDragToBank !== undefined;
-    const cardWidth = fanMode === "hover" ? 116 : 96;
-    const cardHeight = Math.round(cardWidth * 1.5);
-    // Map of card-id → card for touch-drop dispatch.
-    const cardById = new Map(cards.map((c) => [c.id, c]));
-    const items: HandRenderItem[] = cards.map((card) => ({
-      id: card.id,
-      legal: !disabled,
-      draggable,
-      onClick: () => onCardClick(card),
-      onDragStart: (e) => handleDragStart(e, card),
-      onDragEnd: handleDragEnd,
-      node: (
-        <div className={card.id === shakingCardId ? "animate-shake" : undefined}>
-          <GameCard
-            card={card}
-            selected={card.id === selectedCardId}
-            disabled={disabled}
-            useSocialistTheme={useSocialistTheme}
-            width={cardWidth}
-            disableHover
-          />
-        </div>
-      ),
-    }));
-
-    // Route a touch-drop spec → the appropriate play action.
-    const handleTouchDrop = (item: HandRenderItem, spec: TouchDropSpec) => {
-      const card = cardById.get(item.id);
-      if (!card) return;
+  const handleCardDrop = useCallback(
+    (card: Card, spec: TouchDropSpec) => {
       if (spec.kind === "bank") {
         onDragToBank?.(card);
       } else if (spec.kind === "set") {
@@ -105,6 +68,53 @@ export function CardHand({
       } else if (spec.kind === "new-set") {
         onCreateNewSet?.(card);
       }
+    },
+    [onDragToBank, onDropToProperty, onCreateNewSet],
+  );
+
+  // ── Pointer-based card drag (mouse + touch) ───────────────────────
+  const draggable = !disabled && !needsDiscard && onDragToBank !== undefined;
+
+  const fanCardWidth = fanMode === "hover" ? 116 : 96;
+  const fanCardHeight = Math.round(fanCardWidth * 1.5);
+
+  const { startDrag } = usePointerCardDrag({
+    onDrop: handleCardDrop,
+    onDragStart,
+    onDragEnd,
+    cardWidth: fanMode ? fanCardWidth : 96,
+    cardHeight: fanMode ? fanCardHeight : 144,
+  });
+
+  // ───────── Fan rendering (HoverFanHand desktop / DragPeekHand mobile) ─────
+  if (fanMode) {
+    const items: HandRenderItem[] = cards.map((card) => ({
+      id: card.id,
+      legal: !disabled,
+      draggable,
+      onClick: () => onCardClick(card),
+      onPointerDown: draggable
+        ? (e: React.PointerEvent) => startDrag(e, card)
+        : undefined,
+      node: (
+        <div className={card.id === shakingCardId ? "animate-shake" : undefined}>
+          <GameCard
+            card={card}
+            selected={card.id === selectedCardId}
+            disabled={disabled}
+            useSocialistTheme={useSocialistTheme}
+            width={fanCardWidth}
+            disableHover
+          />
+        </div>
+      ),
+    }));
+
+    // Route a DragPeekHand touch-drop spec → the same dispatch.
+    const handleTouchDrop = (item: HandRenderItem, spec: TouchDropSpec) => {
+      const card = cardByIdRef.current.get(item.id);
+      if (!card) return;
+      handleCardDrop(card, spec);
     };
 
     return (
@@ -113,19 +123,19 @@ export function CardHand({
           <HoverFanHand
             items={items}
             selectedId={selectedCardId}
-            cardWidth={cardWidth}
-            cardHeight={cardHeight}
+            cardWidth={fanCardWidth}
+            cardHeight={fanCardHeight}
             resetSignal={peekResetSignal}
           />
         ) : (
           <DragPeekHand
             items={items}
             selectedId={selectedCardId}
-            cardWidth={cardWidth}
-            cardHeight={cardHeight}
+            cardWidth={fanCardWidth}
+            cardHeight={fanCardHeight}
             resetSignal={peekResetSignal}
             onTouchDragStart={(item) => {
-              const card = cardById.get(item.id);
+              const card = cardByIdRef.current.get(item.id);
               if (card) onDragStart?.(card);
             }}
             onTouchDragEnd={() => onDragEnd?.()}
@@ -149,11 +159,11 @@ export function CardHand({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const updateWidth = () => {
       setContainerWidth(containerRef.current!.offsetWidth);
     };
-    
+
     updateWidth();
     window.addEventListener("resize", updateWidth);
     return () => window.removeEventListener("resize", updateWidth);
@@ -163,37 +173,29 @@ export function CardHand({
     rowDistribution = [];
   } else {
     // Determine max cards per row based on container width
-    // Breakpoints: mobile (<640px), tablet (640-1024px), desktop (1024-1536px), large (1536px+)
     let maxCardsPerRow: number;
-    
+
     if (containerWidth < 640) {
-      // Mobile: conservative layout
       maxCardsPerRow = 4;
     } else if (containerWidth < 1024) {
-      // Tablet: 6-7 cards per row
       maxCardsPerRow = 7;
     } else if (containerWidth < 1536) {
-      // Desktop: 8-10 cards per row
       maxCardsPerRow = 10;
     } else {
-      // Large screens: 12+ cards per row
       maxCardsPerRow = 12;
     }
 
-    // Distribute cards across rows (max 2 rows)
     const MAX_ROWS = 2;
-    
+
     if (numCards <= maxCardsPerRow) {
-      rowDistribution = [numCards]; // Single row
+      rowDistribution = [numCards];
     } else {
-      // Calculate optimal row distribution with max 2 rows
       const numRows = Math.min(MAX_ROWS, Math.ceil(numCards / maxCardsPerRow));
       const basePerRow = Math.floor(numCards / numRows);
       const remainder = numCards % numRows;
-      
+
       rowDistribution = [];
       for (let i = 0; i < numRows; i++) {
-        // Distribute remainder cards to first rows for better balance
         rowDistribution.push(basePerRow + (i < remainder ? 1 : 0));
       }
     }
@@ -207,12 +209,8 @@ export function CardHand({
 
     const updateScale = () => {
       const currentWidth = containerRef.current!.offsetWidth;
-
-      // Calculate required width for the widest row at full scale
       const requiredWidth =
         maxCardsInRow * CARD_WIDTH + (maxCardsInRow - 1) * GAP;
-
-      // Calculate scale needed to fit
       const newScale = Math.min(1, currentWidth / requiredWidth);
       setScale(newScale);
     };
@@ -259,20 +257,21 @@ export function CardHand({
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -50, scale: 0.8 }}
                     transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                    draggable={
-                      !disabled && !needsDiscard && onDragToBank !== undefined
-                    }
-                    onDragStart={(e) => {
-                      if ("dataTransfer" in e) {
-                        handleDragStart(e as unknown as React.DragEvent, card);
-                      }
-                    }}
-                    onDragEnd={handleDragEnd}
-                    className={`cursor-grab active:cursor-grabbing touch-none ${card.id === shakingCardId ? "animate-shake" : ""}`}
+                    className={`${draggable ? "cursor-grab active:cursor-grabbing" : ""} ${card.id === shakingCardId ? "animate-shake" : ""}`}
                     style={{
                       width: `${scaledCardWidth}px`,
                       height: `${scaledCardHeight}px`,
+                      touchAction: draggable ? "none" : undefined,
                     }}
+                    onPointerDown={
+                      draggable
+                        ? (e) =>
+                            startDrag(
+                              e as unknown as React.PointerEvent,
+                              card,
+                            )
+                        : undefined
+                    }
                   >
                     <div
                       style={{

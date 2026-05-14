@@ -407,9 +407,6 @@ export interface PropertySetsRowProps {
   isYou?: boolean;
   isCurrentTurn?: boolean;
   useSocialistTheme?: boolean;
-  onSetDragOver?: (color: PropertyColor, e: React.DragEvent) => void;
-  onSetDragLeave?: (color: PropertyColor, e: React.DragEvent) => void;
-  onSetDrop?: (color: PropertyColor, e: React.DragEvent) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
   /** Fired when a wildcard is pointer-dragged onto a drop zone. */
   onWildcardDrop?: (
@@ -419,7 +416,6 @@ export interface PropertySetsRowProps {
   ) => void;
   /** Fired when wildcard drag starts/ends (for parent to track draggingCard). */
   onDragActiveChange?: (isDragging: boolean, card: Card | null) => void;
-  dragOverColor?: PropertyColor | null;
 }
 
 export interface PropertySetsRowExtraProps {
@@ -451,13 +447,9 @@ export function PropertySetsRow({
   isYou = false,
   isCurrentTurn = false,
   useSocialistTheme = false,
-  onSetDragOver,
-  onSetDragLeave,
-  onSetDrop,
   onWildcardClick,
   onWildcardDrop,
   onDragActiveChange,
-  dragOverColor,
   wrap = false,
   touchDropEnabled = false,
   isDragInProgress = false,
@@ -541,15 +533,11 @@ export function PropertySetsRow({
             justifyContent: "center",
             flexShrink: 0,
           }}
-          onDragOver={(e) => onSetDragOver?.(s.color, e)}
-          onDragLeave={(e) => onSetDragLeave?.(s.color, e)}
-          onDrop={(e) => onSetDrop?.(s.color, e)}
         >
           <PropertySetDisplay
             set={s}
             isYou={isYou}
             isCurrentTurn={isCurrentTurn}
-            isDragOver={dragOverColor === s.color}
             useSocialistTheme={useSocialistTheme}
             onWildcardClick={onWildcardClick}
             onWildcardDrop={onWildcardDrop}

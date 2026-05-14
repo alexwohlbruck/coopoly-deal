@@ -6,14 +6,14 @@
 // Replaces re-using <PlayerArea> for these slots, which carried the old
 // hand+bank+stats chrome we don't want here.
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import type {
   ClientPlayer,
   Card,
   PropertyColor,
   GameSettings,
 } from "../../../types/game";
-import { isSetComplete, CardType } from "../../../types/game";
+import { isSetComplete } from "../../../types/game";
 import { PropertySetsRow } from "./TableObjects";
 import type { TouchDropSpec } from "../../../utils/drop-zone";
 import { useGameStore } from "../../../hooks/useGameStore";
@@ -24,9 +24,6 @@ interface PlayerBoardProps {
   isCurrentTurn: boolean;
   settings: GameSettings;
   draggingCard?: Card | null;
-  onDropToBank?: (cardId: string) => void;
-  onDropToProperty?: (cardId: string, color: PropertyColor) => void;
-  onDropToRainbow?: (card: Card) => void;
   onWildcardClick?: (card: Card, currentColor: PropertyColor) => void;
   onRearrangeProperty?: (
     cardId: string,
@@ -48,9 +45,6 @@ export function PlayerBoard({
   isCurrentTurn,
   settings: _settings,
   draggingCard,
-  onDropToBank,
-  onDropToProperty,
-  onDropToRainbow,
   onWildcardClick,
   onRearrangeProperty,
   onDragActiveChange,
@@ -58,71 +52,12 @@ export function PlayerBoard({
   wrap = false,
 }: PlayerBoardProps) {
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
-  const [dragOverColor, setDragOverColor] = useState<PropertyColor | null>(
-    null,
-  );
-  const [isDragOverBank, setIsDragOverBank] = useState(false);
 
   const bankCards = player.bank;
 
-  // Drop handlers — only wired for "you" + onDrop*-handlers provided.
-  const canDropProp = isYou && isCurrentTurn && !!onDropToProperty;
-  const canDropBank = isYou && isCurrentTurn && !!onDropToBank;
-
-  const handleSetDragOver = (color: PropertyColor, e: React.DragEvent) => {
-    if (!canDropProp) return;
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverColor(color);
-  };
-  const handleSetDragLeave = () => setDragOverColor(null);
-  const handleSetDrop = (color: PropertyColor, e: React.DragEvent) => {
-    if (!canDropProp) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverColor(null);
-    const cardId = e.dataTransfer.getData("cardId");
-    const cardData = e.dataTransfer.getData("cardData");
-    const sourceColor = e.dataTransfer.getData("sourceColor");
-    if (!cardId) return;
-
-    // If the card was dragged from an existing property set (sourceColor
-    // is present), this is a rearrange rather than a new play from hand.
-    if (sourceColor && onRearrangeProperty) {
-      onRearrangeProperty(cardId, color);
-      return;
-    }
-
-    let card: Card | null = null;
-    try {
-      card = cardData ? (JSON.parse(cardData) as Card) : null;
-    } catch {
-      // ignore
-    }
-    // Rainbow → goes via onDropToRainbow when target is unassigned/wild rainbow
-    if (color === "unassigned" && card && onDropToRainbow) {
-      onDropToRainbow(card);
-      return;
-    }
-    onDropToProperty?.(cardId, color);
-  };
-
-  const handleBankDragOver = (e: React.DragEvent) => {
-    if (!canDropBank) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOverBank(true);
-  };
-  const handleBankDragLeave = () => setIsDragOverBank(false);
-  const handleBankDrop = (e: React.DragEvent) => {
-    if (!canDropBank) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOverBank(false);
-    const cardId = e.dataTransfer.getData("cardId");
-    if (cardId) onDropToBank?.(cardId);
-  };
+  // Drop handlers — only wired for "you" + relevant handlers provided.
+  const canDropProp = isYou && isCurrentTurn;
+  const canDropBank = isYou && isCurrentTurn;
 
   // ── Pointer-based wildcard rearrangement ────────────────────────
   // When a wildcard is dragged from one property set to a drop zone,
@@ -138,26 +73,8 @@ export function PlayerBoard({
     [onRearrangeProperty],
   );
 
-  // Bank cell drop overlay (we wrap PropertySetsRow's first cell with handlers
-  // via a DOM listener — easier here is to just put a layered drop zone over
-  // the whole row when dragging money. For now we attach to the row root.)
-  const isDraggingMoney =
-    draggingCard?.type === CardType.Money ||
-    (draggingCard?.type !== CardType.Property &&
-      draggingCard?.type !== CardType.PropertyWildcard &&
-      draggingCard != null);
-
   return (
-    <div
-      onDragOver={isDraggingMoney ? handleBankDragOver : undefined}
-      onDragLeave={isDraggingMoney ? handleBankDragLeave : undefined}
-      onDrop={isDraggingMoney ? handleBankDrop : undefined}
-      style={{
-        borderRadius: 8,
-        boxShadow: isDragOverBank ? "0 0 0 2px #7adb88" : undefined,
-        transition: "box-shadow var(--d-quick) var(--ease-out-soft)",
-      }}
-    >
+    <div>
       <PropertySetsRow
         sets={player.properties}
         bank={bankCards}
@@ -167,13 +84,9 @@ export function PlayerBoard({
         isYou={isYou}
         isCurrentTurn={isCurrentTurn}
         useSocialistTheme={useSocialistTheme}
-        onSetDragOver={handleSetDragOver}
-        onSetDragLeave={handleSetDragLeave}
-        onSetDrop={handleSetDrop}
         onWildcardClick={onWildcardClick}
         onWildcardDrop={handleWildcardDrop}
         onDragActiveChange={onDragActiveChange}
-        dragOverColor={dragOverColor}
         touchDropEnabled={canDropProp || canDropBank}
         // Show the "+ NEW" drop slot only while a drag is in flight
         // so it doesn't clutter the row at rest.

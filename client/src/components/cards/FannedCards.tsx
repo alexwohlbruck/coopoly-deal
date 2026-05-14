@@ -20,8 +20,7 @@ interface FannedCardsProps {
   showBacks?: boolean;
   maxVisible?: number;
   onCardClick?: (card: Card) => void;
-  onDragStart?: (e: React.DragEvent, card: Card) => void;
-  onDragEnd?: () => void;
+  onPointerDown?: (e: React.PointerEvent, card: Card) => void;
   draggable?: (card: Card) => boolean;
   orientation?: "top" | "bottom";
   getCardOrientation?: (card: Card) => "top" | "bottom" | undefined;
@@ -34,8 +33,7 @@ export function FannedCards({
   showBacks = false,
   maxVisible = 10,
   onCardClick,
-  onDragStart,
-  onDragEnd,
+  onPointerDown,
   draggable,
   orientation,
   getCardOrientation,
@@ -154,17 +152,11 @@ export function FannedCards({
             initial={{ opacity: 1 }}
             animate={getTransform(index)}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            draggable={isDraggable}
-            onDragStart={(e) => {
-              if (isDraggable && onDragStart) {
-                onDragStart(e as unknown as React.DragEvent, card);
-              }
-            }}
-            onDragEnd={() => {
-              if (isDraggable && onDragEnd) {
-                onDragEnd();
-              }
-            }}
+            onPointerDown={
+              isDraggable && onPointerDown
+                ? (e) => onPointerDown(e as unknown as React.PointerEvent, card)
+                : undefined
+            }
             style={{
               transformOrigin: "center center",
               left: "50%",
@@ -219,11 +211,11 @@ export interface HandRenderItem {
   node: React.ReactNode;
   /** Whether this card is legal to play this turn. Drives illegal styling AND blocks drag/click. */
   legal?: boolean;
-  /** Drag/drop hooks (per-card, optional). */
+  /** Whether this card can be dragged. */
   draggable?: boolean;
   onClick?: () => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDragEnd?: () => void;
+  /** Pointer-based drag initiation (replaces HTML5 drag). */
+  onPointerDown?: (e: React.PointerEvent) => void;
 }
 
 interface HoverFanHandProps {
@@ -365,21 +357,19 @@ export function HoverFanHand({
                 zIndex: z,
                 transition:
                   "transform var(--d-base, 220ms) var(--ease-out-soft, cubic-bezier(.22,.9,.32,1))",
-                cursor: item.onClick || item.draggable ? "pointer" : "default",
                 filter:
                   hovered != null && hovered !== i
                     ? "brightness(0.88)"
                     : "none",
               }}
             >
-              {/* Separate plain div for native HTML5 drag — keeping drag
-                  props off the motion.div prevents framer-motion's gesture
-                  system from intercepting the native drag events. */}
               <div
-                draggable={item.draggable}
-                onDragStart={(e) => item.onDragStart?.(e)}
-                onDragEnd={() => item.onDragEnd?.()}
                 onClick={item.onClick}
+                onPointerDown={item.draggable ? item.onPointerDown : undefined}
+                style={{
+                  touchAction: item.draggable ? "none" : undefined,
+                  cursor: item.onClick || item.draggable ? "pointer" : "default",
+                }}
               >
                 {item.node}
               </div>

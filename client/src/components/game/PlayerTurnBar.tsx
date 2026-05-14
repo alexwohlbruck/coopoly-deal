@@ -1,4 +1,4 @@
-import type { ClientGameState, Card } from "../../types/game";
+import type { ClientGameState, Card, PropertyColor } from "../../types/game";
 import { TurnPhase, isPlayerWaitingForAction } from "../../types/game";
 import { CardBack } from "../cards/GameCard";
 import { CardHand } from "./CardHand";
@@ -19,6 +19,10 @@ interface PlayerTurnBarProps {
   onEndTurn: () => void;
   onCardClick: (card: Card) => void;
   onPlayToBank: (cardId: string) => void;
+  /** Fired when a card is dropped on a property set zone. */
+  onDropToProperty?: (card: Card, color: PropertyColor) => void;
+  /** Fired when a card is dropped on the "new set" zone. */
+  onCreateNewSet?: (card: Card) => void;
   setDraggingCard: (card: Card | null) => void;
   /** When true, hide the redundant player-switcher pill and mini deck/discard
    * (which are already provided by OpponentRail and the right-rail pile in the
@@ -40,6 +44,8 @@ export function PlayerTurnBar({
   onEndTurn,
   onCardClick,
   onPlayToBank,
+  onDropToProperty,
+  onCreateNewSet,
   setDraggingCard,
   hideRedundantChrome = false,
   peekResetSignal = null,
@@ -273,6 +279,8 @@ export function PlayerTurnBar({
             disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
             needsDiscard={needsDiscard}
             onDragToBank={(card) => onPlayToBank(card.id)}
+            onDropToProperty={onDropToProperty}
+            onCreateNewSet={onCreateNewSet}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={useSocialistTheme}

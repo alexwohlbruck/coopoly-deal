@@ -16,10 +16,6 @@ import type {
 } from "../../../types/game";
 import {
   TurnPhase,
-  CardType,
-  isSetComplete,
-  PropertyColor as PropertyColorEnum,
-  getPropertyColorLabel,
 } from "../../../types/game";
 import { useI18n } from "../../../i18n";
 import {
@@ -58,6 +54,10 @@ interface GameTableCompactProps {
   onPlayAction: (payload: Record<string, unknown>) => void;
   onEndTurn: () => void;
   setDraggingCard: (card: Card | null) => void;
+  /** Unified drop callback for pointer-drag onto property sets. */
+  onDropToProperty?: (card: Card, color: PropertyColor) => void;
+  /** Unified drop callback for pointer-drag onto "new set" zone. */
+  onCreateNewSet?: (card: Card) => void;
   peekResetSignal?: number | string | null;
 }
 
@@ -77,6 +77,8 @@ export function GameTableCompact({
   onPlayAction,
   onEndTurn,
   setDraggingCard,
+  onDropToProperty: onDropToPropertyCb,
+  onCreateNewSet: onCreateNewSetCb,
   peekResetSignal = null,
 }: GameTableCompactProps) {
   const { t } = useI18n();
@@ -352,9 +354,6 @@ export function GameTableCompact({
                 settings={gameState.settings}
                 draggingCard={draggingCard}
                 compact
-                onDropToBank={boardHandlers!.onDropToBank}
-                onDropToProperty={boardHandlers!.onDropToProperty}
-                onDropToRainbow={onRainbowDrop}
                 onWildcardClick={onWildcardClick}
                 onRearrangeProperty={onRearrangeProperty}
                 onDragActiveChange={boardHandlers!.onDragActiveChange}
@@ -383,52 +382,8 @@ export function GameTableCompact({
             disabled={!isMyTurn || turnPhase === TurnPhase.ActionPending}
             needsDiscard={needsDiscard}
             onDragToBank={(card) => onPlayToBank(card.id)}
-            onDropToProperty={(card, color) => {
-              // Only properties / property wildcards can be played to
-              // a property set. Reject other types client-side so we
-              // never dispatch a doomed-to-fail server play that has
-              // historically left the hand desync'd ("not in hand"
-              // error on the next try). Toast a clear hint instead.
-              if (
-                card.type !== CardType.Property &&
-                card.type !== CardType.PropertyWildcard &&
-                card.type !== CardType.House &&
-                card.type !== CardType.Hotel
-              ) {
-                setToast(
-                  "Only property cards can be placed on a property set.",
-                );
-                return;
-              }
-              onPlayToProperty(card.id, color);
-            }}
-            onCreateNewSet={(card) => {
-              // Wildcards / rainbow cards have no inherent single
-              // color — defer to the existing tap-to-play dialog
-              // (CardActionDialog) which lets the player pick. From
-              // there they can choose to create a new set or assign
-              // to an existing one.
-              if (card.type !== CardType.Property) {
-                onCardClick(card);
-                return;
-              }
-              const color = card.colors?.[0];
-              if (!color || color === PropertyColorEnum.Unassigned) return;
-              // Block creating a new set if there's already an
-              // INCOMPLETE same-color set on the table — the user almost
-              // certainly meant to add to the existing one.
-              const existing = me?.properties.find(
-                (s) => s.color === color && !isSetComplete(s),
-              );
-              if (existing) {
-                const label = getPropertyColorLabel(color, useSocialistTheme);
-                setToast(
-                  `You already have an incomplete ${label} set — drop on it to add the card.`,
-                );
-                return;
-              }
-              onPlayToProperty(card.id, color);
-            }}
+            onDropToProperty={onDropToPropertyCb}
+            onCreateNewSet={onCreateNewSetCb}
             onDragStart={setDraggingCard}
             onDragEnd={() => setDraggingCard(null)}
             useSocialistTheme={useSocialistTheme}
