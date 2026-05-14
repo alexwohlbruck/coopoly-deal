@@ -55,6 +55,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trigger Portainer redeploy
+        continue-on-error: true
         run: curl -s -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}"
 
       - name: Create GitHub Release
@@ -63,8 +64,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="v${{ steps.version.outputs.version }}"
+          PREV_TAG=$(git tag --sort=-v:refname | grep '^v' | head -1)
           git tag "$VERSION"
           git push origin "$VERSION"
+          if [ -n "$PREV_TAG" ]; then
+            NOTES=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges)
+          else
+            NOTES="Initial release"
+          fi
           gh release create "$VERSION" \
             --title "$VERSION" \
-            --generate-notes
+            --notes "$NOTES"
