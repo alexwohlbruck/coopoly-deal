@@ -195,6 +195,56 @@ export class GameEngine {
     const turn = state.turn;
     const now = Date.now();
 
+    // Watchdog: if a bot's turn has been inactive for 30+ seconds,
+    // force-advance regardless of turn timer settings. This prevents
+    // bot turns from getting permanently stuck due to edge cases in
+    // action resolution or Just Say No chains.
+    const BOT_WATCHDOG_MS = 30_000;
+    const currentPlayer = state.players[state.currentPlayerIndex];
+    if (
+      currentPlayer?.isBot &&
+      now - state.lastActivityAt > BOT_WATCHDOG_MS
+    ) {
+      // Clear any stuck pending state
+      if (turn.pendingAction) {
+        const action = turn.pendingAction;
+        for (const targetId of action.targetPlayerIds) {
+          if (!action.respondedPlayerIds.includes(targetId)) {
+            try {
+              this.respondAcceptAction(state, targetId);
+            } catch {
+              action.respondedPlayerIds.push(targetId);
+            }
+          }
+        }
+        this.tryResolveAction(state);
+      }
+      if (
+        turn.pendingWildcardAssignments &&
+        turn.pendingWildcardAssignments.length > 0
+      ) {
+        for (const assignment of [...turn.pendingWildcardAssignments]) {
+          try {
+            this.assignReceivedWildcard(
+              state,
+              assignment.playerId,
+              assignment.cardId,
+              assignment.availableColors[0]!,
+            );
+          } catch {}
+        }
+      }
+      // Force advance if still stuck
+      if (turn.playerId === currentPlayer.id) {
+        turn.pendingAction = null;
+        turn.pendingWildcardAssignments = [];
+        turn.pendingWildcardAssignment = null;
+        turn.phase = TurnPhase.Play as any;
+        this.advanceTurn(state);
+        return true;
+      }
+    }
+
     if (!turn.expiresAt || now < turn.expiresAt) return false;
 
     let changed = false;
