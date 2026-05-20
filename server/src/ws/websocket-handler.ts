@@ -475,6 +475,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   const botPlayer = new BotPlayer(roomManager.getEngine());
 
   const botTurnLocks = new Map<string, boolean>();
+  const pendingBotChecks = new Set<string>();
 
   function handleAddBot(ws: GameWebSocket): void {
     const { roomCode } = ws.data;
@@ -524,13 +525,20 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   async function checkBotTurn(roomCode: string): Promise<void> {
-    if (botTurnLocks.get(roomCode)) return;
+    if (botTurnLocks.get(roomCode)) {
+      pendingBotChecks.add(roomCode);
+      return;
+    }
     botTurnLocks.set(roomCode, true);
 
     try {
       await runBotTurnLoop(roomCode);
     } finally {
       botTurnLocks.delete(roomCode);
+      if (pendingBotChecks.has(roomCode)) {
+        pendingBotChecks.delete(roomCode);
+        checkBotTurn(roomCode);
+      }
     }
   }
 
