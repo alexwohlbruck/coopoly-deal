@@ -643,6 +643,21 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
               roomManager.getEngine().respondAcceptAction(game, bot.id);
             } catch {}
           }
+
+          // Safety: if pending action still exists and this bot still hasn't
+          // responded, force-accept to prevent stuck turns
+          const currentAction = game.turn?.pendingAction;
+          if (
+            currentAction &&
+            !currentAction.respondedPlayerIds.includes(bot.id) &&
+            currentAction.targetPlayerIds.includes(bot.id)
+          ) {
+            console.warn(`[Bot] ${bot.name} failed to respond, force-accepting`);
+            try {
+              roomManager.getEngine().respondAcceptAction(game, bot.id);
+            } catch {}
+          }
+
           sendStateToAll(roomCode);
           checkGameEnd(roomCode);
         }
