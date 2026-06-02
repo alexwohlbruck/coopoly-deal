@@ -20,6 +20,7 @@ import { PrimaryButton } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
 import { useGameStore, isMonopolyDealDomain } from "../../hooks/useGameStore";
+import { GoldStar } from "../ui/GoldStar";
 
 interface GameRulesModalProps {
   isOpen: boolean;
@@ -320,7 +321,7 @@ export function GameRulesModal({
                     }}
                     onClick={() => setUseSocialistTheme(!useSocialistTheme)}
                   >
-                    ☭ {t.socialist.title}
+                    <GoldStar size={11} /> {t.socialist.title}
                   </span>
                 </div>
               )}

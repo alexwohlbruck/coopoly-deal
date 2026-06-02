@@ -513,26 +513,6 @@ export function GameTable({
         }
       />
 
-      {/* Soviet watermark — very subtle ☭ behind the felt */}
-      {useSocialistTheme && (
-        <div
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            fontSize: layoutMode === "compact" ? 280 : 420,
-            lineHeight: 1,
-            color: "rgba(255,255,255,0.03)",
-            pointerEvents: "none",
-            userSelect: "none",
-            zIndex: 1,
-          }}
-        >
-          ☭
-        </div>
-      )}
-
       {/* Game area — branches on layout mode */}
       {layoutMode === "table" ? (
         <GameTableDesktop
