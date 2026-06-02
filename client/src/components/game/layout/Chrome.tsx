@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Settings, Hourglass } from "lucide-react";
 import { useI18n } from "../../../i18n";
+import { GoldStar } from "../../ui/GoldStar";
 
 // ────────────────────────────────────────────────────────────────────
 // IconButton — small dark glass button (Music / Settings / nav arrows).
@@ -101,7 +102,7 @@ export function TopBar({
             textShadow: "0 1px 0 rgba(0,0,0,0.5)",
           }}
         >
-          {useSocialistTheme ? `☭ ${t.socialist.title}` : t.lobby.title}
+          {useSocialistTheme ? <><GoldStar size={compact ? 16 : 19} /> {t.socialist.title}</> : t.lobby.title}
         </div>
         <div
           style={{

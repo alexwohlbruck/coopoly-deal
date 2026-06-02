@@ -15,6 +15,7 @@ import {
 import { previewHaptic } from "../../hooks/useHaptics";
 import { useModalParam } from "../../hooks/useModalParam";
 import { Toggle } from "../ui/Toggle";
+import { GoldStar } from "../ui/GoldStar";
 
 // ─── Shared inline styles ──────────────────────────────────────────
 
@@ -170,7 +171,7 @@ export function SettingsPanel({
           {/* Co-Opoly Deal mode — inline with theme swatches */}
           {!isMonopolyDealDomain && (
             <div style={{ ...ROW_STYLE, marginTop: 12 }}>
-              <span style={{ ...ROW_LABEL_STYLE, fontSize: 12 }}>☭ Co-Opoly Deal</span>
+              <span style={{ ...ROW_LABEL_STYLE, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 4 }}><GoldStar size={13} /> Co-Opoly Deal</span>
               <Toggle
                 checked={useSocialistTheme}
                 onChange={(next) => setUseSocialistTheme(next)}
