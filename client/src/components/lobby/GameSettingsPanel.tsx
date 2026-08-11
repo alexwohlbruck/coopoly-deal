@@ -435,7 +435,7 @@ export function GameSettingsPanel({
                   <CheckTile
                     checked={settings.turnTimer > 0}
                     onChange={(next) =>
-                      updateSetting("turnTimer", next ? 20 : 0)
+                      updateSetting("turnTimer", next ? 60 : 0)
                     }
                     disabled={!isHost}
                   />
