@@ -12,6 +12,7 @@ import { GameRulesModal } from "../common/GameRulesModal";
 import { RulesButton } from "../common/RulesButton";
 import { GameSettingsPanel } from "./GameSettingsPanel";
 import { RoomQrCode } from "./RoomQrCode";
+import { CopyRoomLinkButton } from "./CopyRoomLinkButton";
 import { useModalParam } from "../../hooks/useModalParam";
 import { type GameSettings } from "../../types/game";
 import { useI18n } from "../../i18n";
@@ -189,18 +190,28 @@ export function WaitingRoom({
               marginBottom: 14,
             }}
           >
+            {/* Room code + copy-the-join-link pill. */}
             <div
               style={{
-                fontFamily: "var(--font-display)",
-                fontSize: isCompact ? 40 : 48,
-                fontWeight: 800,
-                color: "#f5ead0",
-                letterSpacing: "0.08em",
-                fontVariantNumeric: "tabular-nums",
-                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
               }}
             >
-              {gameState.id}
+              <div
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: isCompact ? 40 : 48,
+                  fontWeight: 800,
+                  color: "#f5ead0",
+                  letterSpacing: "0.08em",
+                  fontVariantNumeric: "tabular-nums",
+                  lineHeight: 1,
+                }}
+              >
+                {gameState.id}
+              </div>
+              <CopyRoomLinkButton roomCode={gameState.id} />
             </div>
             <button
               onClick={() => setQrEnlarged(true)}

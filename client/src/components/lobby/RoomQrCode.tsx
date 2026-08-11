@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import { getJoinUrl } from "../../utils/room-link";
 
 interface RoomQrCodeProps {
   roomCode: string;
@@ -13,8 +14,7 @@ export function RoomQrCode({ roomCode, size = 160 }: RoomQrCodeProps) {
   const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const url = `${window.location.origin}/join/${roomCode}`;
-    QRCode.toDataURL(url, {
+    QRCode.toDataURL(getJoinUrl(roomCode), {
       width: size * 2, // 2x for retina
       margin: 2,
       color: {
