@@ -12,6 +12,7 @@ import { getQuirkySaying } from "../../utils/quirkySayings";
 import { PrimaryButton, DangerButton } from "../ui/Button";
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
+import { fmt } from "../../i18n/format";
 
 interface ActionPromptProps {
   action: PendingAction;
@@ -148,38 +149,71 @@ export function ActionPrompt({
     if (isJSNChain) {
       const jsnPlayerName =
         players.find((p) => p.id === isJSNChain.targetPlayerId)?.name ??
-        "Someone";
+        t.prompts.someone;
       const jsnLabel = useSocialistTheme ? t.socialist.counterIntelligence : t.actions.justSayNo;
 
       // If the current player is the source, they see that opponent countered
       if (isSource) {
-        return `${jsnPlayerName} played ${jsnLabel}! ${useSocialistTheme ? t.socialist.comply : t.prompts.accept} to let them counter your ${useSocialistTheme ? "directive" : "action"}.`;
+        return fmt(t.prompts.jsnCounterYours, {
+          name: jsnPlayerName,
+          card: jsnLabel,
+          accept: useSocialistTheme ? t.socialist.comply : t.prompts.accept,
+          action: useSocialistTheme ? t.socialist.action : t.cardFaces.action.toLowerCase(),
+        });
       }
 
       // If the current player is the target, they see that opponent countered the JSN
       if (isTarget) {
-        return `${sourcePlayer?.name ?? "Someone"} played ${jsnLabel}! ${useSocialistTheme ? t.socialist.comply : t.prompts.accept} to let them counter.`;
+        return fmt(t.prompts.jsnCounter, {
+          name: sourcePlayer?.name ?? t.prompts.someone,
+          card: jsnLabel,
+          accept: useSocialistTheme ? t.socialist.comply : t.prompts.accept,
+        });
       }
     }
 
     // Regular action descriptions
     switch (action.type) {
       case "rent":
-        return `${sourcePlayer?.name ?? "Someone"} is charging ${amountDue}M ${useSocialistTheme ? "levy" : "rent"}!`;
+        return fmt(t.prompts.rentCharge, {
+          name: sourcePlayer?.name ?? t.prompts.someone,
+          amount: amountDue,
+          rent: useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase(),
+        });
       case "debtCollector":
-        return `${sourcePlayer?.name ?? "Someone"} demands ${amountDue}M!`;
+        return fmt(t.prompts.debtDemand, {
+          name: sourcePlayer?.name ?? t.prompts.someone,
+          amount: amountDue,
+        });
       case "birthday":
-        return useSocialistTheme
-          ? `Comrade ${sourcePlayer?.name ?? "someone"} demands ${amountDue}M in union dues!`
-          : `It's ${sourcePlayer?.name ?? "someone"}'s birthday! Pay ${amountDue}M.`;
+        return fmt(
+          useSocialistTheme ? t.socialist.birthdayPay : t.prompts.birthdayPay,
+          { name: sourcePlayer?.name ?? t.prompts.someone, amount: amountDue },
+        );
       case "slyDeal":
-        return `${sourcePlayer?.name ?? "Someone"} wants to ${useSocialistTheme ? "expropriate" : "steal"} your property!`;
+        return fmt(
+          useSocialistTheme ? t.socialist.stealProperty : t.prompts.stealProperty,
+          {
+            name: sourcePlayer?.name ?? t.prompts.someone,
+            property: useSocialistTheme
+              ? t.socialist.property
+              : t.cardTypes.property.toLowerCase(),
+          },
+        );
       case "forceDeal":
-        return useSocialistTheme
-          ? `Central planning demands a resource reallocation with ${sourcePlayer?.name ?? "someone"}!`
-          : `${sourcePlayer?.name ?? "Someone"} wants to swap properties!`;
+        return fmt(
+          useSocialistTheme ? t.socialist.swapProperty : t.prompts.swapProperty,
+          {
+            name: sourcePlayer?.name ?? t.prompts.someone,
+            properties: useSocialistTheme
+              ? t.socialist.properties
+              : t.common.properties.toLowerCase(),
+          },
+        );
       case "dealBreaker":
-        return `${sourcePlayer?.name ?? "Someone"} is taking your complete set!`;
+        return fmt(t.prompts.stealSet, {
+          name: sourcePlayer?.name ?? t.prompts.someone,
+        });
       default:
         return useSocialistTheme ? t.socialist.actionPlayedAgainstYou : t.prompts.actionPlayedAgainstYou;
     }

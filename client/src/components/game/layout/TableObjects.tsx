@@ -27,6 +27,7 @@ interface BankStackProps {
 }
 
 export function BankStack({ cards, compact = false, useSocialistTheme = false }: BankStackProps) {
+  const { t } = useI18n();
   const total = cards.reduce((a, b) => a + b.value, 0);
   // Sort descending so the largest denomination shows on top.
   const sorted = [...cards].sort((a, b) => b.value - a.value);
@@ -91,7 +92,9 @@ export function BankStack({ cards, compact = false, useSocialistTheme = false }:
             flexShrink: 0,
           }}
         />
-        <span style={{ lineHeight: 1 }}>BANK</span>
+        <span style={{ lineHeight: 1 }}>
+          {(useSocialistTheme ? t.socialist.bank : t.common.bank).toUpperCase()}
+        </span>
         <span style={{ marginLeft: 2, fontSize: 9, lineHeight: 1, fontWeight: 700 }}>
           ${total}M
         </span>
@@ -119,7 +122,7 @@ export function BankStack({ cards, compact = false, useSocialistTheme = false }:
               letterSpacing: "0.12em",
             }}
           >
-            empty
+            {t.game.empty.toLowerCase()}
           </div>
         )}
         <AnimatePresence initial={false}>
@@ -363,7 +366,7 @@ export function MiniPile({ kind, count }: MiniPileProps) {
                 letterSpacing: "0.06em",
               }}
             >
-              empty
+              {t.game.empty.toLowerCase()}
             </div>
           )}
         </div>
@@ -454,6 +457,7 @@ export function PropertySetsRow({
   touchDropEnabled = false,
   isDragInProgress = false,
 }: PropertySetsRowProps & PropertySetsRowExtraProps) {
+  const { t } = useI18n();
   const hasBank = Array.isArray(bank) && bank.length > 0;
   // Show the bank cell whenever the player can interact with this board
   // (their own table) — even when empty — so it can serve as a touch
@@ -476,7 +480,7 @@ export function PropertySetsRow({
           letterSpacing: "0.08em",
         }}
       >
-        no sets played
+        {t.game.noSetsPlayed}
       </div>
     );
   }

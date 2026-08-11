@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+jobs:
+  client:
+    name: Client typecheck + lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install
+        working-directory: client
+        run: npm ci
+
+      # This is the locale-completeness gate. Every file in client/src/i18n
+      # is declared `: Translations`, so a locale missing a key — or carrying
+      # one that no longer exists — is a type error, not a silent fallback to
+      # English at runtime. Adding a string to the interface fails CI until
+      # all ten locales have it.
+      - name: Typecheck
+        working-directory: client
+        run: npx tsc -b --noEmit
+
+      # Lint is deliberately scoped to the locale files. `npm run lint` over
+      # the whole client currently reports 33 pre-existing errors on main
+      # (mostly react-hooks/immutability and set-state-in-effect), so running
+      # it repo-wide would land this job permanently red. Widen this step once
+      # that backlog is cleared.
+      - name: Lint locales
+        working-directory: client
+        run: npx eslint src/i18n

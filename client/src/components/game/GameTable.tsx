@@ -12,6 +12,7 @@ import { useSoundSettings, useSoundManager } from "../../hooks/useSoundManager";
 import { useTurnTimer } from "../../hooks/useTurnTimer";
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
+import { fmt } from "../../i18n/format";
 import { getTheme } from "../../theme/colors";
 import { validateActionCard } from "../../utils/card-validation";
 import { PlayerTurnBar } from "./PlayerTurnBar";
@@ -267,9 +268,14 @@ export function GameTable({
     // it should be dragged to the bank if they want to bank it.
     if (card.type === CardType.JustSayNo) {
       setToast(
-        useSocialistTheme
-          ? `${t.socialist.counterIntelligence.replace("!", "")} can only be played when a directive is played against you, or banked.`
-          : `${t.actions.justSayNo} can only be played when an action is played against you, or banked.`,
+        fmt(t.cardActions.justSayNoOnlyInResponse, {
+          card: useSocialistTheme
+            ? t.socialist.counterIntelligence.replace("!", "")
+            : t.actions.justSayNo,
+          action: useSocialistTheme
+            ? t.socialist.action
+            : t.cardFaces.action.toLowerCase(),
+        }),
       );
       setShakingCardId(card.id);
       play("error");
@@ -386,7 +392,13 @@ export function GameTable({
         card.type !== CardType.House &&
         card.type !== CardType.Hotel
       ) {
-        setToast("Only property cards can be placed on a property set.");
+        setToast(
+          fmt(t.cardActions.onlyPropertyCards, {
+            property: useSocialistTheme
+              ? t.socialist.property
+              : t.cardTypes.property.toLowerCase(),
+          }),
+        );
         return;
       }
       onPlayToProperty(card.id, color);
@@ -411,10 +423,8 @@ export function GameTable({
         (s) => s.color === color && !isSetComplete(s),
       );
       if (existing) {
-        const label = getPropertyColorLabel(color, !!useSocialistTheme);
-        setToast(
-          `You already have an incomplete ${label} set — drop on it to add the card.`,
-        );
+        const label = getPropertyColorLabel(t, color, !!useSocialistTheme);
+        setToast(fmt(t.cardActions.incompleteSetDropHint, { color: label }));
         return;
       }
       onPlayToProperty(card.id, color);

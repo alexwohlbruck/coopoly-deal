@@ -23,6 +23,7 @@ import {
 } from "./WildcardColorOption";
 import { useGameStore } from "../../hooks/useGameStore";
 import { useI18n } from "../../i18n";
+import { fmt } from "../../i18n/format";
 
 /**
  * Card + caption tile used in steal / swap pickers. Shows the card
@@ -49,6 +50,7 @@ function CardWithSetStats({
   onClick?: () => void;
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   // Locate the set this card belongs to, to compute the contextual
   // stats. Fall back gracefully if not found.
   const owningSet = player.properties.find((s) =>
@@ -59,7 +61,7 @@ function CardWithSetStats({
   const setSize = SET_SIZE[color] ?? 3;
   const rents = RENT_VALUES[color] ?? [];
   const currentRent = cardsInSet > 0 ? (rents[cardsInSet - 1] ?? 0) : 0;
-  const setLabel = getPropertyColorLabel(color, !!useSocialistTheme);
+  const setLabel = getPropertyColorLabel(t, color, !!useSocialistTheme);
   const accentHex = PROPERTY_COLOR_HEX[color] ?? "#888";
 
   return (
@@ -959,7 +961,7 @@ export function CardActionDialog({
                     </span>
                   )}
                   <span>
-                    {getPropertyColorLabel(color, useSocialistTheme)}
+                    {getPropertyColorLabel(t, color, useSocialistTheme)}
                   </span>
                   {finalRent !== null && (
                     <span className="text-xs mt-1 opacity-90">
@@ -1009,7 +1011,7 @@ export function CardActionDialog({
               marginBottom: 8,
             }}
           >
-            Each row shows their bank, hand size, and complete sets.
+            {t.cardActions.eachRowShows}
           </p>
           <div className="space-y-2">
             {(() => {
@@ -1175,7 +1177,7 @@ export function CardActionDialog({
               marginBottom: 8,
             }}
           >
-            Each card shows its set's progress and current rent.
+            {t.cardActions.eachCardShows}
           </p>
           <div className="flex flex-wrap gap-2 max-h-[40vh] overflow-y-auto p-2 justify-center">
             {selectedTarget.properties
@@ -1209,7 +1211,7 @@ export function CardActionDialog({
               marginBottom: 8,
             }}
           >
-            Pick what hurts least — stats show what you'd give up.
+            {t.cardActions.pickWhatHurtsLeast}
           </p>
           <div className="flex flex-wrap gap-2 max-h-[40vh] overflow-y-auto p-2 justify-center">
             {player.properties
@@ -1264,17 +1266,20 @@ export function CardActionDialog({
         <div className="flex flex-col items-center space-y-4 px-4 w-full">
           <div className="w-full text-left">
             <h3 className="text-lg font-semibold text-white mb-2">
-              {useSocialistTheme ? "Collect the Mandatory State Levy" : "Play Rent Cards"}
+              {useSocialistTheme ? t.socialist.collectLevyTitle : t.cardActions.playRentCards}
             </h3>
             
             {useSocialistTheme && (
               <div className="bg-yellow-500/10 border-l-4 border-yellow-500 p-2 text-sm italic text-yellow-200/80 mb-4">
-                "The state demands its fair share. Combine directives to maximize your expropriation."
+                "{t.socialist.levyFlavor}"
               </div>
             )}
             
             <p className="text-gray-300 text-sm">
-              Select a {useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase()} card and any multipliers you wish to use. You can play up to {3 - cardsPlayed} cards total.
+              {fmt(t.cardActions.rentIntro, {
+                rent: useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase(),
+                n: 3 - cardsPlayed,
+              })}
             </p>
           </div>
 
@@ -1307,25 +1312,25 @@ export function CardActionDialog({
                 return (
                   <div className="flex items-center justify-center gap-3 w-full">
                     <div className="flex flex-col items-center bg-black/30 rounded-lg py-2 px-4 flex-1">
-                      <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">Base</span>
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mb-0.5">{t.cardActions.base}</span>
                       <span className="text-sm font-bold text-white">
-                        {!isExactBase && <span className="text-xs font-normal text-gray-400 mr-1">Up to</span>}${baseRent}M
+                        {!isExactBase && <span className="text-xs font-normal text-gray-400 mr-1">{t.cardActions.upTo}</span>}${baseRent}M
                       </span>
                     </div>
                     
                     <span className="text-lg text-gray-500 font-bold">×</span>
                     
                     <div className={`flex flex-col items-center rounded-lg py-2 px-4 flex-1 border ${selectedDtrCardIds.length > 0 ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-black/30 border-transparent'}`}>
-                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-yellow-500' : 'text-gray-400'}`}>Multiplier</span>
+                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-yellow-500' : 'text-gray-400'}`}>{t.cardActions.multiplier}</span>
                       <span className={`text-sm font-bold ${selectedDtrCardIds.length > 0 ? 'text-yellow-400' : 'text-white'}`}>{multiplier}x</span>
                     </div>
                     
                     <span className="text-lg text-gray-500 font-bold">=</span>
                     
                     <div className={`flex flex-col items-center rounded-lg py-2 px-4 flex-1 border ${selectedDtrCardIds.length > 0 ? 'bg-green-500/20 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.15)]' : 'bg-black/30 border-transparent'}`}>
-                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-green-500' : 'text-gray-400'}`}>Total</span>
+                      <span className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${selectedDtrCardIds.length > 0 ? 'text-green-500' : 'text-gray-400'}`}>{t.cardActions.total}</span>
                       <span className={`text-base font-bold ${selectedDtrCardIds.length > 0 ? 'text-green-400' : 'text-white'}`}>
-                        {!isExactBase && <span className="text-[10px] font-normal text-gray-400 mr-1">Up to</span>}${baseRent * multiplier}M
+                        {!isExactBase && <span className="text-[10px] font-normal text-gray-400 mr-1">{t.cardActions.upTo}</span>}${baseRent * multiplier}M
                       </span>
                     </div>
                   </div>
@@ -1414,7 +1419,10 @@ export function CardActionDialog({
             )}
             {((selectedRentCardId ? 1 : 0) + selectedDtrCardIds.length) > 3 - cardsPlayed && (
               <p className="text-red-400 text-xs text-center">
-                You only have {3 - cardsPlayed} {3 - cardsPlayed === 1 ? "move" : "moves"} left this turn.
+                {fmt(t.cardActions.movesLeft, {
+                  n: 3 - cardsPlayed,
+                  moves: 3 - cardsPlayed === 1 ? t.common.move : t.common.moves,
+                })}
               </p>
             )}
           </div>
@@ -1434,7 +1442,7 @@ export function CardActionDialog({
                 className="py-2 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                 style={{ backgroundColor: PROPERTY_COLOR_HEX[set.color] }}
               >
-                {getPropertyColorLabel(set.color, useSocialistTheme)}
+                {getPropertyColorLabel(t, set.color, useSocialistTheme)}
               </button>
             ))}
           </div>
@@ -1707,7 +1715,7 @@ function ForceDealSwapStep({
             marginBottom: 6,
           }}
         >
-          Give from your sets
+          {t.cardActions.giveFromYourSets}
         </div>
         <div className="flex flex-wrap gap-2 max-h-[28vh] overflow-y-auto p-2 justify-center">
           {myCards.map((c) => (

@@ -155,7 +155,9 @@ export function LobbyScreen({
                   flexShrink: 0,
                 }}
               />
-              {onlineCount} {onlineCount === 1 ? "player" : "players"} online
+              {onlineCount}{" "}
+              {onlineCount === 1 ? t.common.player : t.common.players}{" "}
+              {t.common.online}
             </div>
           )}
         </div>
@@ -187,13 +189,13 @@ export function LobbyScreen({
                 marginBottom: 6,
               }}
             >
-              Your Name
+              {t.lobby.yourName}
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Enter your name"
+              placeholder={t.lobby.enterName}
               maxLength={20}
               style={{
                 width: "100%",
@@ -263,6 +265,10 @@ export function LobbyScreen({
               inputMode="numeric"
               style={{
                 flex: 1,
+                // Without this the input can't shrink below its placeholder
+                // width, so locales with a longer "Room code · 6 digits" or
+                // "Join" push the submit button off screen.
+                minWidth: 0,
                 padding: "13px 14px",
                 borderRadius: 10,
                 background: "rgba(255,255,255,0.04)",

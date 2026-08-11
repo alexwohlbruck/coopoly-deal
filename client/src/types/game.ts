@@ -1,3 +1,5 @@
+import type { Translations, CardTypeLabels } from "../i18n";
+
 export const PropertyColor = {
   Brown: "brown",
   LightBlue: "lightBlue",
@@ -287,13 +289,24 @@ export const SOCIALIST_PROPERTY_COLOR_LABEL: Record<PropertyColor, string> = {
   [PropertyColor.Unassigned]: "Rainbow",
 };
 
+/**
+ * Localized property-color name.
+ *
+ * `t` is threaded in rather than read from the store so this stays a pure
+ * function — components already hold `t` from useI18n(), and that keeps them
+ * re-rendering on a locale switch. The English maps above remain as the
+ * fallback for dev tooling that has no translations handy.
+ */
 export function getPropertyColorLabel(
+  t: Translations,
   color: PropertyColor,
   useSocialistTheme: boolean,
 ): string {
-  return useSocialistTheme
-    ? SOCIALIST_PROPERTY_COLOR_LABEL[color]
-    : PROPERTY_COLOR_LABEL[color];
+  const key = color === PropertyColor.Unassigned ? "rainbow" : color;
+  if (useSocialistTheme && (key === "railroad" || key === "utility")) {
+    return t.socialist.colors[key];
+  }
+  return t.colors[key as keyof Translations["colors"]];
 }
 
 export const SOCIALIST_PROPERTY_NAMES: Record<string, string> = {
@@ -399,13 +412,33 @@ export const SOCIALIST_CARD_TYPE_LABEL: Record<CardType, string> = {
   [CardType.Hotel]: "Lenin Mausoleum",
 };
 
+/** Card-type key → the key used in `Translations["cardTypes"]`. */
+const CARD_TYPE_KEY: Record<CardType, keyof CardTypeLabels> = {
+  [CardType.Money]: "money",
+  [CardType.Property]: "property",
+  [CardType.PropertyWildcard]: "wildProperty",
+  [CardType.RentDual]: "rent",
+  [CardType.RentWild]: "wildRent",
+  [CardType.PassGo]: "passGo",
+  [CardType.SlyDeal]: "slyDeal",
+  [CardType.ForceDeal]: "forceDeal",
+  [CardType.DealBreaker]: "dealBreaker",
+  [CardType.DebtCollector]: "debtCollector",
+  [CardType.Birthday]: "birthday",
+  [CardType.JustSayNo]: "justSayNo",
+  [CardType.DoubleTheRent]: "doubleRent",
+  [CardType.House]: "house",
+  [CardType.Hotel]: "hotel",
+};
+
+/** Localized card name. See `getPropertyColorLabel` on why `t` is a param. */
 export function getCardTypeLabel(
+  t: Translations,
   type: CardType,
   useSocialistTheme: boolean,
 ): string {
-  return useSocialistTheme
-    ? SOCIALIST_CARD_TYPE_LABEL[type]
-    : CARD_TYPE_LABEL[type];
+  const key = CARD_TYPE_KEY[type];
+  return useSocialistTheme ? t.socialist.cardTypes[key] : t.cardTypes[key];
 }
 
 export const RENT_VALUES: Record<PropertyColor, number[]> = {
