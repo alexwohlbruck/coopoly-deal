@@ -217,7 +217,8 @@ export class GameEngine {
             }
           }
         }
-        this.tryResolveAction(state);
+        // The loop above may already have resolved the action.
+        if (turn.pendingAction) this.tryResolveAction(state);
       }
       if (
         turn.pendingWildcardAssignments &&
@@ -1162,7 +1163,11 @@ export class GameEngine {
 
   private tryResolveAction(state: GameState): void {
     const turn = this.getTurn(state);
-    const action = turn.pendingAction!;
+    const action = turn.pendingAction;
+    // Responding to an action can resolve it as a side effect, so callers
+    // can reach here with nothing left to resolve. That's a no-op, not an
+    // error — this used to assert non-null and take the process down.
+    if (!action) return;
 
     const allResponded = action.targetPlayerIds.every((id) =>
       action.respondedPlayerIds.includes(id),
