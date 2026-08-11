@@ -7,7 +7,7 @@ interface ModalCloseButtonProps {
 
 export function ModalCloseButton({
   onClick,
-  ariaLabel = "Close",
+  ariaLabel,
 }: ModalCloseButtonProps) {
   return (
     <button

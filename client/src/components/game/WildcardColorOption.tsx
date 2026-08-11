@@ -152,7 +152,7 @@ export function WildcardColorOption({
               textOverflow: "ellipsis",
             }}
           >
-            {getPropertyColorLabel(color, useSocialistTheme)}
+            {getPropertyColorLabel(t, color, useSocialistTheme)}
           </span>
         </div>
         <span

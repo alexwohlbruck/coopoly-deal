@@ -95,7 +95,7 @@ export function RainbowGroupDialog({
                   className="py-3 rounded-lg text-white font-semibold text-sm hover:opacity-80"
                   style={{ backgroundColor: PROPERTY_COLOR_HEX[color] }}
                 >
-                  {getPropertyColorLabel(color, useSocialistTheme)}
+                  {getPropertyColorLabel(t, color, useSocialistTheme)}
                 </button>
               ))}
             </div>
@@ -105,7 +105,7 @@ export function RainbowGroupDialog({
         {step === "set" && selectedColor && (
           <div>
             <p className="text-gray-300 text-sm mb-4 text-center">
-              {t.game.incompleteSetPrompt.replace("{color}", getPropertyColorLabel(selectedColor, useSocialistTheme))}
+              {t.game.incompleteSetPrompt.replace("{color}", getPropertyColorLabel(t, selectedColor, useSocialistTheme))}
             </p>
             <div className="grid grid-cols-1 gap-2">
               <button

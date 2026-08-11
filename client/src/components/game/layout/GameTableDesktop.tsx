@@ -15,6 +15,7 @@ import {
   PlayerCrest,
 } from "./Chrome";
 import { useI18n } from "../../../i18n";
+import { fmt } from "../../../i18n/format";
 import { CardStack } from "./TableObjects";
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
 import { GameCard } from "../../cards/GameCard";
@@ -171,7 +172,7 @@ export function GameTableDesktop({
                 textTransform: "uppercase",
               }}
             >
-              {activeOpp ? `${activeOpp.name}'s ${t.game.table.toLowerCase()}` : "No opponent"}
+              {activeOpp ? fmt(t.ui.playersTable, { name: activeOpp.name, table: t.game.table.toLowerCase() }) : t.ui.noOpponent}
               {turnOwnerId === activeOppId && " · in play"}
               {activeOppStats &&
                 activeOppStats.setsToWin > 0 &&
@@ -208,7 +209,7 @@ export function GameTableDesktop({
                     textTransform: "uppercase",
                   }}
                 >
-                  scroll to switch
+                  {t.ui.scrollToSwitch}
                 </div>
               )}
             </div>
@@ -386,7 +387,7 @@ export function GameTableDesktop({
                 textTransform: "uppercase",
               }}
             >
-              Your sets · {myCompleteSets} complete · bank
+              {fmt(t.ui.yourSetsCompleteBank, { n: myCompleteSets })}
             </div>
           </div>
 

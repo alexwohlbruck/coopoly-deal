@@ -19,6 +19,8 @@ import {
 import { PrimaryButton } from "../ui/Button";
 import { Toggle } from "../ui/Toggle";
 import { useI18n } from "../../i18n";
+import { fmt, capitalize, type Vars } from "../../i18n/format";
+import { RichText } from "../../i18n/RichText";
 import { useGameStore, isMonopolyDealDomain } from "../../hooks/useGameStore";
 import { GoldStar } from "../ui/GoldStar";
 
@@ -176,6 +178,7 @@ function RentRow({
   color: PropertyColor;
   useSocialistTheme: boolean;
 }) {
+  const { t } = useI18n();
   const rents = RENT_VALUES[color] ?? [];
   const setSize = SET_SIZE[color] ?? 3;
   return (
@@ -186,7 +189,7 @@ function RentRow({
     >
       <td style={ROW_LABEL_COL}>
         <ColorPip color={color} />
-        <span>{getPropertyColorLabel(color, useSocialistTheme)}</span>
+        <span>{getPropertyColorLabel(t, color, useSocialistTheme)}</span>
       </td>
       <td style={ROW_NUM_COL}>{setSize}</td>
       {[0, 1, 2, 3].map((i) => (
@@ -228,6 +231,39 @@ export function GameRulesModal({
   const { t } = useI18n();
   const useSocialistTheme = useGameStore((s) => s.useSocialistTheme);
   const setUseSocialistTheme = useGameStore((s) => s.setUseSocialistTheme);
+
+  // Every dynamic noun the rules copy can splice in. Built once here so the
+  // locale strings stay declarative and the Co-Opoly wording swap happens in
+  // exactly one place rather than inline at 30 call sites.
+  const soc = useSocialistTheme;
+  const property = soc ? t.socialist.property : t.cardTypes.property.toLowerCase();
+  const players = soc ? t.socialist.players : t.common.players;
+  const steal = soc ? t.socialist.steal : t.common.steal;
+  const vars: Vars = {
+    game: soc ? t.socialist.title : t.lobby.title,
+    player: soc ? t.socialist.player : t.common.player,
+    players,
+    Players: capitalize(players),
+    property,
+    Property: capitalize(property),
+    properties: soc ? t.socialist.properties : t.common.properties.toLowerCase(),
+    bank: soc ? t.socialist.bank : t.common.bank.toLowerCase(),
+    action: soc ? t.socialist.action : t.cardFaces.action.toLowerCase(),
+    rent: soc ? t.socialist.rent : t.actions.rent.toLowerCase(),
+    rents: soc ? t.socialist.rents : t.actions.rent.toLowerCase(),
+    steal,
+    Steal: capitalize(steal),
+    money: soc ? t.socialist.cardTypes.money : t.cardTypes.money,
+    house: getCardTypeLabel(t, CardType.House, soc),
+    hotel: getCardTypeLabel(t, CardType.Hotel, soc),
+    railroad: getPropertyColorLabel(t, PropertyColor.Railroad, soc),
+    utility: getPropertyColorLabel(t, PropertyColor.Utility, soc),
+    n: 3,
+    max: maxHandSize === 999 ? t.rulesBody.unlimitedCards : maxHandSize,
+    diffColors: allowDuplicateSets ? "" : t.rulesBody.ofDifferentColors,
+  };
+  // Emphasised runs inside the rules copy render as the existing <Hi> style.
+  const hi = (children: React.ReactNode, key: number) => <Hi key={key}>{children}</Hi>;
 
   if (!isOpen) return null;
 
@@ -348,21 +384,11 @@ export function GameRulesModal({
             <section>
               <SectionHeading>{t.rules.overview}</SectionHeading>
               <p style={{ margin: 0 }}>
-                {useSocialistTheme ? t.socialist.title : t.lobby.title} is a card game for 2–6{" "}
-                {useSocialistTheme ? t.socialist.players : t.common.players}. The goal is to be
-                the first {useSocialistTheme ? t.socialist.player : t.common.player} to collect{" "}
-                <Hi>
-                  3 complete {useSocialistTheme ? t.socialist.property : "property"} sets
-                  {allowDuplicateSets ? "" : " of different colors"}
-                </Hi>{" "}
-                on the table in front of you.{" "}
-                {(useSocialistTheme ? t.socialist.players : t.common.players).replace(/^./, c => c.toUpperCase())} take turns drawing
-                cards, playing cards, and using{" "}
-                {useSocialistTheme ? t.socialist.action : "action"} cards to collect{" "}
-                {useSocialistTheme ? t.socialist.rents : t.actions.rent.toLowerCase()},{" "}
-                {useSocialistTheme ? t.socialist.steal : "steal"}{" "}
-                {useSocialistTheme ? t.socialist.properties : t.common.properties.toLowerCase()}, and
-                block opponents.
+                <RichText
+                  text={soc ? t.socialist.overview : t.rulesBody.overview}
+                  vars={vars}
+                  emphasis={hi}
+                />
               </p>
             </section>
 
@@ -380,16 +406,10 @@ export function GameRulesModal({
                 }}
               >
                 {[
-                  "Shuffle the full 106-card deck.",
-                  <>
-                    Deal <Hi>5 cards</Hi> face-down to each{" "}
-                    {useSocialistTheme ? t.socialist.player : t.common.player}.
-                  </>,
-                  "Place the remaining cards face-down in the center as the draw pile.",
-                  <>
-                    The first {useSocialistTheme ? t.socialist.player : t.common.player} is
-                    chosen randomly. Play proceeds clockwise.
-                  </>,
+                  t.rulesBody.setupShuffle,
+                  t.rulesBody.setupDeal,
+                  t.rulesBody.setupDrawPile,
+                  t.rulesBody.setupFirstPlayer,
                 ].map((text, i) => (
                   <li
                     key={i}
@@ -400,7 +420,9 @@ export function GameRulesModal({
                     }}
                   >
                     <StepNumber n={i + 1} />
-                    <span style={{ paddingTop: 2 }}>{text}</span>
+                    <span style={{ paddingTop: 2 }}>
+                      <RichText text={text} vars={vars} emphasis={hi} />
+                    </span>
                   </li>
                 ))}
               </ol>
@@ -411,26 +433,13 @@ export function GameRulesModal({
               <SectionHeading>{t.rules.turnStructure}</SectionHeading>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <SubCard title={t.rules.drawPhase}>
-                  Draw <Hi>2 cards</Hi> from the draw pile. If you have{" "}
-                  <Hi>0 cards</Hi> in hand at the start of your turn, draw{" "}
-                  <Hi>5 cards</Hi> instead.
+                  <RichText text={t.rulesBody.drawPhase} vars={{ ...vars, n: 2 }} emphasis={hi} />
                 </SubCard>
                 <SubCard title={t.rules.playPhase}>
-                  Play <Hi>up to 3 cards</Hi> from your hand. Cards can go to
-                  your {useSocialistTheme ? t.socialist.bank : t.common.bank.toLowerCase()}, your{" "}
-                  {useSocialistTheme ? t.socialist.property : "property"} area, or be
-                  played as {useSocialistTheme ? t.socialist.action : "action"} cards.
+                  <RichText text={t.rulesBody.playPhase} vars={vars} emphasis={hi} />
                 </SubCard>
                 <SubCard title={t.rules.discardPhase}>
-                  You may have{" "}
-                  <Hi>
-                    no more than{" "}
-                    {maxHandSize === 999
-                      ? "an unlimited number of"
-                      : maxHandSize}{" "}
-                    cards
-                  </Hi>{" "}
-                  in hand. Discard excess cards to the discard pile.
+                  <RichText text={t.rulesBody.discardPhase} vars={vars} emphasis={hi} />
                 </SubCard>
               </div>
             </section>
@@ -439,11 +448,8 @@ export function GameRulesModal({
             <section>
               <SectionHeading>{t.rules.winning}</SectionHeading>
               <p style={{ margin: 0 }}>
-                The first {useSocialistTheme ? t.socialist.player : t.common.player} to have{" "}
-                <Hi>3 complete {useSocialistTheme ? t.socialist.property : "property"} sets</Hi>{" "}
-                on the table wins immediately.{" "}
-                {(useSocialistTheme ? t.socialist.property : "property").replace(/^./, c => c.toUpperCase())} sets must be on
-                the table — cards in your hand do not count.
+                <RichText text={t.rulesBody.winning} vars={vars} emphasis={hi} />{" "}
+                <RichText text={t.rulesBody.winningSetsOnTable} vars={vars} emphasis={hi} />
               </p>
             </section>
 
@@ -476,8 +482,8 @@ export function GameRulesModal({
                       }}
                     >
                       {[
-                        "Color",
-                        "Set",
+                        t.rulesBody.tableColor,
+                        t.rulesBody.tableSet,
                         `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 1`,
                         `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 2`,
                         `${useSocialistTheme ? t.socialist.rent : t.actions.rent} 3`,
@@ -523,10 +529,7 @@ export function GameRulesModal({
                   marginBottom: 0,
                 }}
               >
-                ★ {useSocialistTheme
-                  ? `${getCardTypeLabel(CardType.House, true)} adds +3M, ${getCardTypeLabel(CardType.Hotel, true)} adds +4M to complete sets (not available for ${getPropertyColorLabel(PropertyColor.Railroad, true)} / ${getPropertyColorLabel(PropertyColor.Utility, true)}).`
-                  : `Houses add +3M, hotels add +4M to complete sets (not available for ${getPropertyColorLabel(PropertyColor.Railroad, false)} / ${getPropertyColorLabel(PropertyColor.Utility, false)}).`
-                }
+                ★ {fmt(t.rulesBody.houseHotelNote, vars)}
               </p>
             </section>
 
@@ -544,41 +547,26 @@ export function GameRulesModal({
                   gap: 8,
                 }}
               >
-                <SubCard title={getCardTypeLabel(CardType.PassGo, useSocialistTheme)} small>
-                  Draw 2 cards from the deck.
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.SlyDeal, useSocialistTheme)} small>
-                  {useSocialistTheme ? t.socialist.steal : "Steal"} one{" "}
-                  {useSocialistTheme ? t.socialist.property : "property"} card from any
-                  opponent (not from complete sets).
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.ForceDeal, useSocialistTheme)} small>
-                  Swap one of your {useSocialistTheme ? t.socialist.properties : t.common.properties.toLowerCase()}{" "}
-                  for one of an opponent's (neither from complete sets).
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.DealBreaker, useSocialistTheme)} small>
-                  {useSocialistTheme ? t.socialist.steal : "Steal"} an entire
-                  complete {useSocialistTheme ? t.socialist.property : "property"} set from an opponent.
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.DebtCollector, useSocialistTheme)} small>
-                  Charge one {useSocialistTheme ? t.socialist.player : t.common.player} 5M.
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.Birthday, useSocialistTheme)} small>
-                  All other {useSocialistTheme ? t.socialist.players : t.common.players} pay you
-                  2M.
-                </SubCard>
-                <SubCard title={getCardTypeLabel(CardType.JustSayNo, useSocialistTheme)} small>
-                  Cancel any {useSocialistTheme ? t.socialist.action : "action"} card
-                  played against you. Can be chained!
-                </SubCard>
-                <SubCard
-                  title={getCardTypeLabel(CardType.DoubleTheRent, useSocialistTheme)}
-                  small
-                >
-                  Play with a {useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase()} card to
-                  double it. Can stack 2 cards for 4×{" "}
-                  {useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase()}!
-                </SubCard>
+                {(
+                  [
+                    [CardType.PassGo, t.rulesBody.cardPassGo],
+                    [CardType.SlyDeal, t.rulesBody.cardSlyDeal],
+                    [CardType.ForceDeal, t.rulesBody.cardForceDeal],
+                    [CardType.DealBreaker, t.rulesBody.cardDealBreaker],
+                    [CardType.DebtCollector, t.rulesBody.cardDebtCollector],
+                    [CardType.Birthday, t.rulesBody.cardBirthday],
+                    [CardType.JustSayNo, t.rulesBody.cardJustSayNo],
+                    [CardType.DoubleTheRent, t.rulesBody.cardDoubleRent],
+                  ] as [CardType, string][]
+                ).map(([type, body]) => (
+                  <SubCard
+                    key={type}
+                    title={getCardTypeLabel(t, type, useSocialistTheme)}
+                    small
+                  >
+                    <RichText text={body} vars={vars} emphasis={hi} />
+                  </SubCard>
+                ))}
               </div>
             </section>
 
@@ -596,30 +584,11 @@ export function GameRulesModal({
                 }}
               >
                 {[
-                  <>
-                    The{" "}
-                    <Hi>paying {useSocialistTheme ? t.socialist.player : t.common.player}</Hi>{" "}
-                    decides which cards to use for payment.
-                  </>,
-                  <>
-                    You can only pay with cards <Hi>on the table</Hi>, not from
-                    your hand.
-                  </>,
-                  <>
-                    <Hi>
-                      {useSocialistTheme ? "Ledger" : "Money"} /{" "}
-                      {useSocialistTheme ? t.socialist.action : "action"} cards
-                    </Hi>{" "}
-                    go to the recipient's {useSocialistTheme ? t.socialist.bank : t.common.bank.toLowerCase()}.
-                  </>,
-                  <>
-                    <Hi>{(useSocialistTheme ? t.socialist.property : "property").replace(/^./, c => c.toUpperCase())} cards</Hi>{" "}
-                    go to the recipient's {useSocialistTheme ? t.socialist.property : "property"} area.
-                  </>,
-                  <>
-                    <Hi>No change is given</Hi> — overpayment goes to the
-                    recipient.
-                  </>,
+                  t.rulesBody.payPayerDecides,
+                  t.rulesBody.payOnTableOnly,
+                  t.rulesBody.payMoneyToBank,
+                  t.rulesBody.payPropertyToArea,
+                  t.rulesBody.payNoChange,
                 ].map((text, i) => (
                   <li
                     key={i}
@@ -630,7 +599,9 @@ export function GameRulesModal({
                     }}
                   >
                     <Bullet />
-                    <span>{text}</span>
+                    <span>
+                      <RichText text={text} vars={vars} emphasis={hi} />
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -652,21 +623,10 @@ export function GameRulesModal({
                 }}
               >
                 {[
-                  <>
-                    <Hi>Dual-color wildcards</Hi> can be either of the two
-                    colors shown.
-                  </>,
-                  <>
-                    <Hi>Multi-color wildcards</Hi> can represent any color.
-                  </>,
-                  <>
-                    Wildcards can be{" "}
-                    <Hi>moved between your {useSocialistTheme ? t.socialist.property : "property"} sets during your turn</Hi>.
-                  </>,
-                  <>
-                    Multi-color wildcards have <Hi>no monetary value</Hi> and
-                    cannot be used for payment.
-                  </>,
+                  t.rulesBody.wildDual,
+                  t.rulesBody.wildMulti,
+                  t.rulesBody.wildMoveDuringTurn,
+                  t.rulesBody.wildNoValue,
                 ].map((text, i) => (
                   <li
                     key={i}
@@ -677,7 +637,9 @@ export function GameRulesModal({
                     }}
                   >
                     <Bullet />
-                    <span>{text}</span>
+                    <span>
+                      <RichText text={text} vars={vars} emphasis={hi} />
+                    </span>
                   </li>
                 ))}
               </ul>

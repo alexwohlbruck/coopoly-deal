@@ -11,6 +11,7 @@ import type {
 import { isPlayerWaitingForAction } from "../../../types/game";
 import { type OpponentSeatPlayer } from "./Chrome";
 import { PlayerBoard, completeSetsCount } from "./PlayerBoard";
+import { useI18n } from "../../../i18n";
 
 // ────────────────────────────────────────────────────────────────────
 // Shared utilities
@@ -108,6 +109,7 @@ export function OpponentCarousel({
   draggingCard,
   compact = false,
 }: OpponentCarouselProps) {
+  const { t } = useI18n();
   const carouselRef = useRef<HTMLDivElement | null>(null);
   const skipNextProgScroll = useRef(false);
   const userScrollDebounce = useRef<number | null>(null);
@@ -186,7 +188,7 @@ export function OpponentCarousel({
           color: "rgba(245,234,208,0.4)",
         }}
       >
-        no opponents
+        {t.ui.noOpponents}
       </div>
     );
   }
