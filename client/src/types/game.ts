@@ -88,7 +88,7 @@ export const BUILT_IN_RULE_SETS: SettingsRuleSet[] = [
       wildcardFlipCountsAsMove: true,
       requireHouseBeforeHotel: false,
       maxHandSize: 999,
-      turnTimer: 20,
+      turnTimer: 60,
     },
     builtIn: true,
   },
