@@ -39,6 +39,9 @@ export interface Translations {
     scanToJoin: string;
     scanToJoinClose: string;
     clickToEnlarge: string;
+    copyLink: string;
+    copyLinkHint: string;
+    copied: string;
     cpu: string;
     youHost: string;
     host: string;
