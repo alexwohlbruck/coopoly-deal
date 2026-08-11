@@ -3499,4 +3499,56 @@ describe("GameEngine", () => {
       expect(player.hand.some((c) => c.id === rent.id)).toBe(true);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // 25. Bot turn watchdog
+  // -------------------------------------------------------------------------
+  describe("Bot turn watchdog", () => {
+    it("survives an action the accept loop already resolved", () => {
+      const { state, engine } = startTestGame(2);
+      const bot = currentPlayer(state);
+      bot.isBot = true;
+      const target = state.players.find((p) => p.id !== bot.id)!;
+
+      const dc = givePlayerCard(bot, makeAction(CardType.DebtCollector, 3));
+      engine.playActionCard(state, bot.id, {
+        action: "debtCollector",
+        cardId: dc.id,
+        targetPlayerId: target.id,
+      });
+      expect(state.turn!.pendingAction).not.toBeNull();
+
+      // Stall the bot past the watchdog threshold. Accepting on behalf of the
+      // last unresponded target resolves the action, so the watchdog's own
+      // follow-up resolve finds nothing pending — that must not throw, or the
+      // room-manager tick takes the whole process down.
+      state.lastActivityAt = Date.now() - 31_000;
+
+      expect(() => engine.handleTurnTimeout(state)).not.toThrow();
+      expect(state.turn!.pendingAction).toBeNull();
+    });
+
+    it("clears a stuck wildcard assignment and advances the turn", () => {
+      const { state, engine, players } = startTestGame(2);
+      const bot = currentPlayer(state);
+      bot.isBot = true;
+
+      state.turn!.pendingWildcardAssignments = [
+        {
+          playerId: bot.id,
+          cardId: "nonexistent-card",
+          availableColors: [PropertyColor.Brown],
+        },
+      ];
+      state.turn!.pendingWildcardAssignment =
+        state.turn!.pendingWildcardAssignments[0]!;
+      state.turn!.phase = TurnPhase.ActionPending;
+      state.lastActivityAt = Date.now() - 31_000;
+
+      expect(() => engine.handleTurnTimeout(state)).not.toThrow();
+      expect(state.turn!.playerId).toBe(
+        players.find((p) => p.id !== bot.id)!.id,
+      );
+    });
+  });
 });
