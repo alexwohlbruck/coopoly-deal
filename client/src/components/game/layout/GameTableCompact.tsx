@@ -110,6 +110,7 @@ export function GameTableCompact({
   const timeLeft = useTurnTimer(
     gameState.turn?.expiresAt ?? null,
     gameState.turn?.pausedTimeLeft ?? null,
+    gameState.serverNow,
     play,
   );
 
