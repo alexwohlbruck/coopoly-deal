@@ -183,6 +183,7 @@ export function GameTable({
     gameState.phase === GamePhase.Finished
       ? null
       : (gameState.turn?.pausedTimeLeft ?? null),
+    gameState.serverNow,
     play,
   );
   const pendingAction = gameState.turn?.pendingAction;

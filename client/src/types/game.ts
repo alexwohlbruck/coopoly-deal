@@ -243,6 +243,8 @@ export interface ClientGameState {
   lastActivityAt: number;
   startedAt?: number;
   settings: GameSettings;
+  /** Server clock when this snapshot was sent — see useTurnTimer. */
+  serverNow?: number;
 }
 
 export const SET_SIZE: Record<PropertyColor, number> = {

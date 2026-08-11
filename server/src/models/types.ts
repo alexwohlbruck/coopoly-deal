@@ -197,6 +197,11 @@ export interface GameState {
 export type ClientGameState = Omit<GameState, "deck" | "players"> & {
   deckCount: number;
   players: ClientPlayer[];
+  // Server clock at the moment this snapshot was built. turn.expiresAt is a
+  // server timestamp, so a client whose clock disagrees (a drifted container
+  // or device clock) can't compare it to its own Date.now(). Pairing the two
+  // lets the client work out how much time is actually left.
+  serverNow: number;
 };
 
 export interface ClientPlayer {
@@ -218,6 +223,7 @@ export function toClientState(
   return {
     ...rest,
     deckCount: deck.length,
+    serverNow: Date.now(),
     players: players.map((p) => ({
       id: p.id,
       name: p.name,
