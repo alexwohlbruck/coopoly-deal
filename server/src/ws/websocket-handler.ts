@@ -906,20 +906,36 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   return {
-    open(ws: GameWebSocket) {
-      ws.data.playerId = null;
-      ws.data.roomCode = null;
-      allSockets.add(ws);
-      broadcastOnlineCount();
+    handlers: {
+      open(ws: GameWebSocket) {
+        ws.data.playerId = null;
+        ws.data.roomCode = null;
+        allSockets.add(ws);
+        broadcastOnlineCount();
+      },
+      message(ws: GameWebSocket, message: string | Buffer) {
+        const raw = typeof message === "string" ? message : message.toString();
+        handleMessage(ws, raw);
+      },
+      close(ws: GameWebSocket) {
+        handleClose(ws);
+        allSockets.delete(ws);
+        broadcastOnlineCount();
+      },
     },
-    message(ws: GameWebSocket, message: string | Buffer) {
-      const raw = typeof message === "string" ? message : message.toString();
-      handleMessage(ws, raw);
-    },
-    close(ws: GameWebSocket) {
-      handleClose(ws);
-      allSockets.delete(ws);
-      broadcastOnlineCount();
+
+    /**
+     * Kick bot turns back off for rooms restored from a snapshot.
+     *
+     * A bot turn is a running async loop, not game state, so it does not
+     * survive a restart: a room whose snapshot caught it on a bot's turn comes
+     * back frozen. Harmless to call for a room whose turn belongs to a human —
+     * runBotTurnLoop checks and returns.
+     */
+    resumeBotTurns(roomCodes: string[]): void {
+      for (const code of roomCodes) {
+        checkBotTurn(code);
+      }
     },
   };
 }
