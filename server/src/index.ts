@@ -32,7 +32,12 @@ const server = Bun.serve({
 
     if (url.pathname === "/ws") {
       const upgraded = server.upgrade(req, {
-        data: { playerId: null, roomCode: null },
+        data: {
+          playerId: null,
+          roomCode: null,
+          spectatingRoom: null,
+          watchingLobby: false,
+        },
       });
       if (upgraded) return undefined;
       return new Response("WebSocket upgrade failed", { status: 400 });
@@ -61,6 +66,7 @@ console.log(`  Network: http://${localIP}:${server.port}`);
 
 function shutdown() {
   console.log("Shutting down...");
+  wsHandlers.stopBroadcasting();
   roomManager.destroy();
   server.stop();
   process.exit(0);

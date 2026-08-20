@@ -164,7 +164,7 @@ export function QrScannerModal({
                 textTransform: "uppercase",
               }}
             >
-              {t.lobby.scanQrHint ?? "Point your camera at a room QR code"}
+              {t.lobby.scanQrHint ?? "Point your camera at a game QR code"}
             </p>
           </div>
         </motion.div>

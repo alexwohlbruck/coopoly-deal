@@ -4,7 +4,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Settings } from "lucide-react";
+import { ChevronDown, ChevronUp, Settings, Globe } from "lucide-react";
 import {
   type GameSettings,
   type SettingsRuleSet,
@@ -21,6 +21,12 @@ interface GameSettingsPanelProps {
   settings: GameSettings;
   onSettingsChange: (settings: GameSettings) => void;
   defaultExpanded?: boolean;
+  /**
+   * Room visibility lives on the room, not in GameSettings — keeping it out
+   * of the settings object means it can't break rule-set matching.
+   */
+  isPublic?: boolean;
+  onPublicChange?: (isPublic: boolean) => void;
 }
 
 const LABEL_STYLE: React.CSSProperties = {
@@ -55,6 +61,8 @@ export function GameSettingsPanel({
   settings,
   onSettingsChange,
   defaultExpanded = false,
+  isPublic = false,
+  onPublicChange,
 }: GameSettingsPanelProps) {
   const { t } = useI18n();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
@@ -191,6 +199,47 @@ export function GameSettingsPanel({
                 borderTop: "1px solid rgba(255,255,255,0.06)",
               }}
             >
+              {/* ── Room visibility ── */}
+              {onPublicChange && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        ...ROW_LABEL_STYLE,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Globe
+                        className="w-3.5 h-3.5"
+                        style={{
+                          color: isPublic ? accent : "rgba(245,234,208,0.5)",
+                          flexShrink: 0,
+                        }}
+                      />
+                      {t.gameSettings.publicGame}
+                    </div>
+                    {/* Indent past the icon so the hint aligns to the title
+                        text, otherwise matching every other settings row. */}
+                    <div style={{ ...ROW_HINT_STYLE, paddingLeft: 20 }}>
+                      {t.gameSettings.publicGameHint}
+                    </div>
+                  </div>
+                  <CheckTile
+                    checked={isPublic}
+                    onChange={onPublicChange}
+                    disabled={!isHost}
+                  />
+                </div>
+              )}
+
               {/* ── Rule set selector ── */}
               <div>
                 <div style={{ ...LABEL_STYLE, marginBottom: 6 }}>
@@ -720,22 +769,6 @@ export function GameSettingsPanel({
                 </div>
               </div>
 
-              {!isHost && (
-                <div
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 10,
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "rgba(245,234,208,0.4)",
-                    textAlign: "center",
-                    paddingTop: 8,
-                    borderTop: "1px solid rgba(255,255,255,0.05)",
-                  }}
-                >
-                  {t.gameSettings.hostOnlyNote}
-                </div>
-              )}
             </div>
           </motion.div>
         )}

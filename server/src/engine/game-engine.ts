@@ -19,7 +19,7 @@ import {
 import { createDeck, shuffleDeck } from "./deck.ts";
 
 const MIN_PLAYERS = 2;
-const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 6;
 
 export class GameEngine {
   createGame(roomCode: string): GameState {
@@ -35,6 +35,7 @@ export class GameEngine {
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
       settings: DEFAULT_SETTINGS,
+      isPublic: false,
     };
   }
 
@@ -43,7 +44,7 @@ export class GameEngine {
       throw new Error("Game already started");
     }
     if (state.players.length >= MAX_PLAYERS) {
-      throw new Error("Room is full");
+      throw new Error("Game is full");
     }
     const id = crypto.randomUUID();
     const player: Player = {

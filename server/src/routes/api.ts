@@ -12,6 +12,12 @@ export function createApiRoutes(roomManager: RoomManager) {
     return c.json({ roomCode: game.id });
   });
 
+  // Public room browser. The lobby also subscribes over the WebSocket for
+  // live updates; this covers the first paint and the manual refresh.
+  api.get("/rooms/public", (c) => {
+    return c.json({ rooms: roomManager.listPublicRooms() });
+  });
+
   api.get("/rooms/:code", (c) => {
     const code = c.req.param("code");
     const game = roomManager.getRoom(code);
