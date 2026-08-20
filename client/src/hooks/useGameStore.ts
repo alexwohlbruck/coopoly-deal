@@ -24,6 +24,8 @@ interface GameStore {
   playerName: string | null;
   roomCode: string | null;
   gameState: ClientGameState | null;
+  /** True while watching a public game we aren't playing in. */
+  isSpectating: boolean;
   error: string | null;
   toast: string | null;
   sessionStats: {
@@ -37,8 +39,10 @@ interface GameStore {
   preferredSettings: GameSettings;
 
   setPlayer: (id: string, name: string) => void;
+  setPlayerName: (name: string) => void;
   setRoomCode: (code: string) => void;
   setGameState: (state: ClientGameState) => void;
+  setSpectating: (spectating: boolean) => void;
   setError: (error: string | null) => void;
   setToast: (toast: string | null) => void;
   recordWin: () => void;
@@ -56,6 +60,7 @@ export const useGameStore = create<GameStore>()(
       playerName: null,
       roomCode: null,
       gameState: null,
+      isSpectating: false,
       error: null,
       toast: null,
       sessionStats: {
@@ -69,8 +74,10 @@ export const useGameStore = create<GameStore>()(
       preferredSettings: DEFAULT_GAME_SETTINGS,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),
+      setPlayerName: (name) => set({ playerName: name }),
       setRoomCode: (code) => set({ roomCode: code }),
       setGameState: (state) => set({ gameState: state }),
+      setSpectating: (spectating) => set({ isSpectating: spectating }),
       setError: (error) => set({ error }),
       setToast: (toast) => set({ toast }),
       setTheme: (theme) => set({ theme }),
@@ -107,6 +114,7 @@ export const useGameStore = create<GameStore>()(
           playerId: null,
           roomCode: null,
           gameState: null,
+          isSpectating: false,
           error: null,
           toast: null,
         }),

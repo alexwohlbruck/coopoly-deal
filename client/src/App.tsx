@@ -13,10 +13,15 @@ import { useSoundManager } from "./hooks/useSoundManager";
 import { useHaptics } from "./hooks/useHaptics";
 import { useBackgroundMusic } from "./hooks/useBackgroundMusic";
 import { LobbyScreen } from "./components/lobby/LobbyScreen";
+import { PublicGamesScreen } from "./components/lobby/PublicGamesScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
 import { GameTable } from "./components/game/GameTable";
 import { CardTestScreen } from "./components/dev/CardTestScreen";
-import { GamePhase, type ServerMessage } from "./types/game";
+import {
+  GamePhase,
+  type PublicRoomSummary,
+  type ServerMessage,
+} from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "./i18n";
 
@@ -41,12 +46,14 @@ function AppMain() {
     playerId,
     playerName,
     gameState,
+    isSpectating,
     error,
     toast,
     sessionStats,
     setPlayer,
     setRoomCode,
     setGameState,
+    setSpectating,
     setError,
     setToast,
     recordWin,
@@ -63,7 +70,7 @@ function AppMain() {
       : "Monopoly Deal Online — Play the Card Game Free with Friends";
     const description = useSocialistTheme
       ? "Play Co-Opoly Deal online — the socialist twist on the classic property card game. Seize the means of production with friends!"
-      : "Play Monopoly Deal online for free with friends. Collect properties, charge rent, and steal sets in this fast-paced multiplayer card game. No download required — just share a room code and play!";
+      : "Play Monopoly Deal online for free with friends. Collect properties, charge rent, and steal sets in this fast-paced multiplayer card game. No download required — just share a game code and play!";
 
     document.title = title;
 
@@ -96,6 +103,8 @@ function AppMain() {
       const rc = stored?.state?.roomCode;
       const pn = stored?.state?.playerName;
       const path = window.location.pathname;
+      // Spectating is re-established from the URL alone — no credentials.
+      if (path.startsWith("/spectate/")) return true;
       return !!(
         rc &&
         pn &&
@@ -107,6 +116,9 @@ function AppMain() {
   });
 
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
+  const [publicRooms, setPublicRooms] = useState<PublicRoomSummary[] | null>(
+    null,
+  );
   const sendRef = useRef<(data: Record<string, unknown>) => void>(() => {});
 
   const { play } = useSoundManager();
@@ -116,11 +128,15 @@ function AppMain() {
 
   const handleMessage = useCallback(
     (msg: ServerMessage) => {
+      // Read fresh — the flag flips inside this same handler.
+      const isSpectatingNow = () => useGameStore.getState().isSpectating;
+
       switch (msg.type) {
         case "ROOM_JOINED":
           setPlayer(msg.payload.playerId, playerName ?? "Player");
           setRoomCode(msg.payload.roomCode);
           setGameState(msg.payload.state);
+          setSpectating(false);
           setIsReconnecting(false);
           // Navigate based on game phase (rejoin mid-game goes straight to game)
           if (
@@ -135,7 +151,10 @@ function AppMain() {
 
         case "GAME_STATE_UPDATE":
           setGameState(msg.payload.state);
+          // Spectators live on /spectate/:code and must not be pulled into
+          // the player-only /game route.
           if (
+            !isSpectatingNow() &&
             msg.payload.state.phase === GamePhase.Playing &&
             !location.pathname.startsWith("/game/")
           ) {
@@ -144,9 +163,27 @@ function AppMain() {
           break;
 
         case "GAME_STARTED":
-          if (gameState?.id) {
+          if (gameState?.id && !isSpectatingNow()) {
             navigate(`/game/${gameState.id}`, { replace: true });
           }
+          break;
+
+        case "PUBLIC_ROOMS":
+          setPublicRooms(msg.payload.rooms);
+          break;
+
+        case "SPECTATING":
+          setSpectating(true);
+          setRoomCode(msg.payload.roomCode);
+          setGameState(msg.payload.state);
+          setIsReconnecting(false);
+          navigate(`/spectate/${msg.payload.roomCode}`, { replace: true });
+          break;
+
+        case "SPECTATE_ENDED":
+          setSpectating(false);
+          setToast(msg.payload.reason);
+          navigate("/", { replace: true });
           break;
 
         case "PLAYER_JOINED":
@@ -171,6 +208,11 @@ function AppMain() {
           break;
 
         case "GAME_ENDED":
+          // A spectator neither won nor lost — don't touch session stats.
+          if (isSpectatingNow()) {
+            setToast(`${msg.payload.winnerName} wins!`);
+            break;
+          }
           if (msg.payload.winnerId === playerId) {
             play("gameWin");
             haptic("win");
@@ -188,6 +230,13 @@ function AppMain() {
           break;
 
         case "RETURNED_TO_LOBBY":
+          // Waiting rooms aren't spectatable, so send watchers home.
+          if (isSpectatingNow()) {
+            setSpectating(false);
+            setToast("That game returned to its lobby");
+            navigate("/", { replace: true });
+            break;
+          }
           if (gameState?.id) {
             navigate(`/room/${gameState.id}`, { replace: true });
           }
@@ -208,7 +257,8 @@ function AppMain() {
           if (
             !useGameStore.getState().gameState &&
             (window.location.pathname.startsWith("/game/") ||
-              window.location.pathname.startsWith("/room/"))
+              window.location.pathname.startsWith("/room/") ||
+              window.location.pathname.startsWith("/spectate/"))
           ) {
             setIsReconnecting(false);
             navigate("/", { replace: true });
@@ -228,6 +278,7 @@ function AppMain() {
       setPlayer,
       setRoomCode,
       setGameState,
+      setSpectating,
       setError,
       setToast,
       recordWin,
@@ -257,7 +308,20 @@ function AppMain() {
     const path = window.location.pathname;
     if (rc && pn && (path.startsWith("/room/") || path.startsWith("/game/"))) {
       sendRef.current({ type: "JOIN_ROOM", payload: { roomCode: rc, playerName: pn } });
+    } else if (path === "/games") {
+      sendRef.current({ type: "LIST_PUBLIC_ROOMS" });
+      setIsReconnecting(false);
+    } else if (path.startsWith("/spectate/")) {
+      // Stays "reconnecting" until SPECTATING (or an error) comes back.
+      const code = path.split("/")[2];
+      if (code) {
+        sendRef.current({ type: "SPECTATE_ROOM", payload: { roomCode: code } });
+      } else {
+        setIsReconnecting(false);
+      }
     } else {
+      // Sitting on the lobby — subscribe to the public room browser.
+      sendRef.current({ type: "LIST_PUBLIC_ROOMS" });
       setIsReconnecting(false);
     }
   }, []);
@@ -282,7 +346,8 @@ function AppMain() {
         if (
           !useGameStore.getState().gameState &&
           (window.location.pathname.startsWith("/game/") ||
-            window.location.pathname.startsWith("/room/"))
+            window.location.pathname.startsWith("/room/") ||
+            window.location.pathname.startsWith("/spectate/"))
         ) {
           navigate("/", { replace: true });
         }
@@ -290,6 +355,16 @@ function AppMain() {
       return () => clearTimeout(t);
     }
   }, [isReconnecting, navigate]);
+
+  // (Re)subscribe to the public room browser whenever we land on the lobby
+  // or the browser itself. handleWsOpen covers connecting while already
+  // here; this covers arriving later — leaving a game, or getting bounced
+  // off a dead link. The lobby only needs the count for its button badge.
+  useEffect(() => {
+    if (location.pathname === "/" || location.pathname === "/games") {
+      sendRef.current({ type: "LIST_PUBLIC_ROOMS" });
+    }
+  }, [location.pathname]);
 
   // Clear toast after delay
   useEffect(() => {
@@ -330,9 +405,36 @@ function AppMain() {
       const data = await res.json();
       handleJoinRoom(data.roomCode, name, true);
     } catch {
-      setError("Failed to create room");
+      setError("Failed to create game");
     }
   }, [setError, startMusic, handleJoinRoom]);
+
+  const handleBrowsePublicGames = useCallback(
+    (name: string) => {
+      // Carry the lobby's name over so the browser page starts prefilled.
+      if (name) useGameStore.getState().setPlayerName(name);
+      navigate("/games");
+    },
+    [navigate],
+  );
+
+  const handleSpectateRoom = useCallback(
+    (code: string) => {
+      startMusic();
+      send({ type: "SPECTATE_ROOM", payload: { roomCode: code } });
+    },
+    [send, startMusic],
+  );
+
+  const handleSetPublic = useCallback(
+    (isPublic: boolean) => {
+      send({
+        type: "SET_ROOM_VISIBILITY",
+        payload: { isPublic },
+      });
+    },
+    [send],
+  );
 
   const handleStartGame = useCallback(() => {
     startMusic();
@@ -474,7 +576,27 @@ function AppMain() {
               onJoinRoom={(code, name) => handleJoinRoom(code, name)}
               musicControls={musicProps}
               onlineCount={onlineCount}
+              publicRoomCount={publicRooms?.length ?? 0}
+              onBrowsePublicGames={handleBrowsePublicGames}
             />
+          }
+        />
+        <Route
+          path="/games"
+          element={
+            // The browser has no name field of its own — a direct visit
+            // without a stored name goes back to the lobby to pick one.
+            playerName ? (
+              <PublicGamesScreen
+                rooms={publicRooms}
+                onJoin={(code) => handleJoinRoom(code, playerName)}
+                onSpectate={handleSpectateRoom}
+                onBack={() => navigate("/")}
+                musicControls={musicProps}
+              />
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
         <Route
@@ -497,6 +619,7 @@ function AppMain() {
                   send({ type: "UPDATE_PLAYER_NAME", payload: { playerName: name } });
                   useGameStore.getState().setPlayer(playerId, name);
                 }}
+                onSetPublic={handleSetPublic}
                 onLeave={handleGoHome}
                 musicControls={musicProps}
               />
@@ -577,9 +700,60 @@ function AppMain() {
             )
           }
         />
+        <Route
+          path="/spectate/:code"
+          element={
+            gameState && isSpectating ? (
+              <SpectatorTable
+                gameState={gameState}
+                musicControls={musicProps}
+                onGoHome={handleGoHome}
+              />
+            ) : isReconnecting ? (
+              <ReconnectingScreen />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
+  );
+}
+
+// Spectator view — the normal table with an empty player id, so no hand,
+// no bottom bar and no dialogs render. Every play callback is inert.
+function SpectatorTable({
+  gameState,
+  musicControls,
+  onGoHome,
+}: {
+  gameState: NonNullable<ReturnType<typeof useGameStore.getState>["gameState"]>;
+  musicControls: {
+    isPlaying: boolean;
+    onToggle: () => void;
+    onNext: () => void;
+  };
+  onGoHome: () => void;
+}) {
+  const noop = () => {};
+  return (
+    <GameTable
+      gameState={gameState}
+      playerId=""
+      isSpectating
+      onPlayToBank={noop}
+      onPlayToProperty={noop}
+      onPlayAction={noop}
+      onEndTurn={noop}
+      onDiscardCards={noop}
+      onPayWithCards={noop}
+      onJustSayNo={noop}
+      onAcceptAction={noop}
+      onGoHome={onGoHome}
+      musicControls={musicControls}
+    />
   );
 }
 

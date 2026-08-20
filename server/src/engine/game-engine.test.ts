@@ -148,7 +148,7 @@ describe("GameEngine", () => {
 
     it("throws when adding a 7th player", () => {
       const { state, engine } = createTestGame(6);
-      expect(() => engine.addPlayer(state, "Extra")).toThrow("Room is full");
+      expect(() => engine.addPlayer(state, "Extra")).toThrow("Game is full");
     });
 
     it("throws when adding players to a started game", () => {
