@@ -28,6 +28,10 @@ function gameSettingsData(game: import("../models/types.ts").GameState) {
 interface WSData {
   playerId: string | null;
   roomCode: string | null;
+  /** Room this socket is spectating (never one it's playing in). */
+  spectatingRoom: string | null;
+  /** True while the socket sits on the lobby screen wanting room updates. */
+  watchingLobby: boolean;
 }
 
 type GameWebSocket = ServerWebSocket<WSData>;
@@ -36,6 +40,9 @@ const playerSockets = new Map<string, GameWebSocket>();
 
 // All connected WebSockets (for online count broadcasting).
 const allSockets = new Set<GameWebSocket>();
+
+// Spectator sockets per room code.
+const spectatorSockets = new Map<string, Set<GameWebSocket>>();
 
 // Pending auto-end timers per room (cancelled if a human reconnects)
 const autoEndTimers = new Map<string, Timer>();
@@ -62,12 +69,17 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   ): void {
     const game = roomManager.getRoom(roomCode);
     if (!game) return;
+    const json = JSON.stringify(message);
     for (const player of game.players) {
       if (player.id === excludePlayerId) continue;
       const sock = playerSockets.get(player.id);
       if (sock) {
-        sock.send(JSON.stringify(message));
+        sock.send(json);
       }
+    }
+    // Spectators see the same room-level events players do.
+    for (const sock of spectatorSockets.get(roomCode) ?? []) {
+      sock.send(json);
     }
   }
 
@@ -83,17 +95,95 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
         });
       }
     }
+
+    const spectators = spectatorSockets.get(roomCode);
+    if (spectators?.size) {
+      // An empty player id matches nobody, so no hand is ever revealed.
+      const json = JSON.stringify({
+        type: "GAME_STATE_UPDATE",
+        payload: { state: toClientState(game, "") },
+      });
+      for (const sock of spectators) {
+        sock.send(json);
+      }
+    }
+
+    broadcastPublicRoomsIfChanged();
   }
+
+  // ── Public room browser ────────────────────────────────────────────
+  // Lobby watchers get pushed the room list whenever it actually changes.
+  // sendStateToAll() covers most transitions; the interval catches the
+  // rest (room reaping, a lobby going quiet) without extra bookkeeping.
+  let lastPublicRoomsJson = "";
+
+  function publicRoomsJson(): string {
+    return JSON.stringify({
+      type: "PUBLIC_ROOMS",
+      payload: { rooms: roomManager.listPublicRooms() },
+    });
+  }
+
+  function sendPublicRooms(ws: GameWebSocket): void {
+    const json = publicRoomsJson();
+    lastPublicRoomsJson = json;
+    ws.send(json);
+  }
+
+  function broadcastPublicRoomsIfChanged(): void {
+    let hasWatchers = false;
+    for (const sock of allSockets) {
+      if (sock.data.watchingLobby) {
+        hasWatchers = true;
+        break;
+      }
+    }
+    if (!hasWatchers) return;
+
+    const json = publicRoomsJson();
+    if (json === lastPublicRoomsJson) return;
+    lastPublicRoomsJson = json;
+    for (const sock of allSockets) {
+      if (sock.data.watchingLobby) sock.send(json);
+    }
+  }
+
+  const publicRoomsInterval = setInterval(broadcastPublicRoomsIfChanged, 5000);
+
+  function spectatorCount(roomCode: string): number {
+    return spectatorSockets.get(roomCode)?.size ?? 0;
+  }
+
+  function removeSpectator(ws: GameWebSocket): void {
+    const roomCode = ws.data.spectatingRoom;
+    if (!roomCode) return;
+    ws.data.spectatingRoom = null;
+    const set = spectatorSockets.get(roomCode);
+    if (!set) return;
+    set.delete(ws);
+    if (set.size === 0) spectatorSockets.delete(roomCode);
+  }
+
+  roomManager.setSpectatorCountProvider(spectatorCount);
 
   roomManager.setOnStateChange((roomCode) => {
     sendStateToAll(roomCode);
     checkBotTurn(roomCode);
   });
 
-  roomManager.setOnRoomCleaned((_roomCode, playerIds) => {
+  roomManager.setOnRoomCleaned((roomCode, playerIds) => {
     for (const id of playerIds) {
       playerSockets.delete(id);
     }
+    for (const sock of spectatorSockets.get(roomCode) ?? []) {
+      sock.data.spectatingRoom = null;
+      send(sock, {
+        type: "SPECTATE_ENDED",
+        payload: { reason: "This game closed" },
+      });
+    }
+    spectatorSockets.delete(roomCode);
+    broadcastPublicRoomsIfChanged();
   });
 
   function handleMessage(ws: GameWebSocket, raw: string): void {
@@ -177,6 +267,24 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           handleUpdateSettings(ws, msg.payload.settings);
           break;
 
+        case "SET_ROOM_VISIBILITY":
+          handleSetRoomVisibility(ws, msg.payload.isPublic);
+          break;
+
+        case "LIST_PUBLIC_ROOMS":
+          ws.data.watchingLobby = true;
+          sendPublicRooms(ws);
+          break;
+
+        case "SPECTATE_ROOM":
+          handleSpectateRoom(ws, msg.payload.roomCode);
+          break;
+
+        case "LEAVE_SPECTATE":
+          removeSpectator(ws);
+          broadcastPublicRoomsIfChanged();
+          break;
+
         case "REMATCH":
           handleRematch(ws);
           break;
@@ -245,8 +353,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     roomCode: string,
     playerName: string,
   ): void {
+    // Throws "Game is full" / "Game already started" when a public room
+    // filled up or started between the browser listing and this join.
     const { game, player } = roomManager.joinRoom(roomCode, playerName);
 
+    removeSpectator(ws);
+    ws.data.watchingLobby = false;
     ws.data.playerId = player.id;
     ws.data.roomCode = roomCode;
     playerSockets.set(player.id, ws);
@@ -284,13 +396,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     playerName: string,
   ): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const trimmed = playerName.trim().slice(0, 20);
     if (!trimmed) throw new Error("Name cannot be empty");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
     if (game.phase !== GamePhase.Waiting)
       throw new Error("Cannot change name during a game");
 
@@ -303,7 +415,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleStartGame(ws: GameWebSocket): void {
     const { roomCode } = ws.data;
-    if (!roomCode) throw new Error("Not in a room");
+    if (!roomCode) throw new Error("Not in a game");
 
     roomManager.startGame(roomCode);
     broadcastToRoom(roomCode, { type: "GAME_STARTED" });
@@ -322,7 +434,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handlePlayCardToBank(ws: GameWebSocket, cardId: string): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -340,7 +452,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     createNewSet?: boolean,
   ): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -362,7 +474,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handlePlayActionCard(ws: GameWebSocket, payload: any): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -383,7 +495,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleEndTurn(ws: GameWebSocket): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -395,7 +507,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleDiscardCards(ws: GameWebSocket, cardIds: string[]): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     roomManager.getEngine().discardCards(game, playerId, cardIds);
@@ -404,7 +516,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handlePayWithCards(ws: GameWebSocket, cardIds: string[]): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -417,7 +529,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleJustSayNo(ws: GameWebSocket): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     roomManager.getEngine().respondJustSayNo(game, playerId);
@@ -427,7 +539,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleAcceptAction(ws: GameWebSocket): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     const turnPlayerBefore = game.turn?.playerId;
@@ -445,7 +557,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     createNewSet?: boolean,
   ): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     roomManager
@@ -462,7 +574,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     color: any,
   ): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode)!;
     roomManager
@@ -479,10 +591,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleAddBot(ws: GameWebSocket): void {
     const { roomCode } = ws.data;
-    if (!roomCode) throw new Error("Not in a room");
+    if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
     if (game.phase !== GamePhase.Waiting)
       throw new Error("Cannot add bot after game started");
 
@@ -503,10 +615,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     playerIdToRemove: string,
   ): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
     if (game.phase !== GamePhase.Waiting)
       throw new Error("Cannot remove player after game started");
 
@@ -716,10 +828,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     settings: Partial<any>,
   ): void {
     const { roomCode } = ws.data;
-    if (!roomCode) throw new Error("Not in a room");
+    if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
     if (game.phase !== GamePhase.Waiting)
       throw new Error("Cannot change settings after game started");
 
@@ -727,12 +839,58 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
   }
 
-  function handleRematch(ws: GameWebSocket): void {
-    const { roomCode } = ws.data;
-    if (!roomCode) throw new Error("Not in a room");
+  function handleSetRoomVisibility(ws: GameWebSocket, isPublic: boolean): void {
+    const { roomCode, playerId } = ws.data;
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
+    if (game.players[0]?.id !== playerId) {
+      throw new Error("Only the host can change game visibility");
+    }
+
+    roomManager.setRoomVisibility(roomCode, isPublic);
+    if (isPublic) track("room_made_public");
+    sendStateToAll(roomCode);
+  }
+
+  function handleSpectateRoom(ws: GameWebSocket, roomCode: string): void {
+    if (ws.data.playerId) {
+      throw new Error("Leave your current game before spectating");
+    }
+
+    const game = roomManager.getRoom(roomCode);
+    if (!game) throw new Error("Game not found");
+    if (!game.isPublic) throw new Error("This game isn't public");
+    if (game.phase === GamePhase.Waiting) {
+      throw new Error("That game hasn't started yet");
+    }
+
+    removeSpectator(ws);
+    ws.data.spectatingRoom = roomCode;
+    ws.data.watchingLobby = false;
+
+    let sockets = spectatorSockets.get(roomCode);
+    if (!sockets) {
+      sockets = new Set();
+      spectatorSockets.set(roomCode, sockets);
+    }
+    sockets.add(ws);
+
+    send(ws, {
+      type: "SPECTATING",
+      payload: { roomCode, state: toClientState(game, "") },
+    });
+    track("room_spectated");
+    broadcastPublicRoomsIfChanged();
+  }
+
+  function handleRematch(ws: GameWebSocket): void {
+    const { roomCode } = ws.data;
+    if (!roomCode) throw new Error("Not in a game");
+
+    const game = roomManager.getRoom(roomCode);
+    if (!game) throw new Error("Game not found");
 
     roomManager.getEngine().rematchGame(game);
     track("rematch", gameSettingsData(game));
@@ -751,10 +909,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleReturnToLobby(ws: GameWebSocket): void {
     const { roomCode } = ws.data;
-    if (!roomCode) throw new Error("Not in a room");
+    if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
 
     roomManager.getEngine().returnToLobby(game);
     broadcastToRoom(roomCode, { type: "RETURNED_TO_LOBBY" });
@@ -763,10 +921,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleResign(ws: GameWebSocket): void {
     const { roomCode, playerId } = ws.data;
-    if (!roomCode || !playerId) throw new Error("Not in a room");
+    if (!roomCode || !playerId) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
 
     roomManager.getEngine().resignPlayer(game, playerId);
     sendStateToAll(roomCode);
@@ -806,6 +964,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleClose(ws: GameWebSocket): void {
     const { playerId, roomCode } = ws.data;
+    removeSpectator(ws);
     if (playerId) {
       playerSockets.delete(playerId);
     }
@@ -857,7 +1016,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
 
     const card = devTools.createCard(cardType, { colors });
     devTools.injectCard(game, targetPlayerId, card);
@@ -877,7 +1036,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
 
     devTools.giveCompleteSet(game, targetPlayerId, color);
 
@@ -899,7 +1058,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!roomCode) throw new Error("Not in a game");
 
     const game = roomManager.getRoom(roomCode);
-    if (!game) throw new Error("Room not found");
+    if (!game) throw new Error("Game not found");
 
     devTools.setMoney(game, targetPlayerId, amount);
     sendStateToAll(roomCode);
@@ -909,6 +1068,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     open(ws: GameWebSocket) {
       ws.data.playerId = null;
       ws.data.roomCode = null;
+      ws.data.spectatingRoom = null;
+      ws.data.watchingLobby = false;
       allSockets.add(ws);
       broadcastOnlineCount();
     },
@@ -920,6 +1081,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       handleClose(ws);
       allSockets.delete(ws);
       broadcastOnlineCount();
+      broadcastPublicRoomsIfChanged();
+    },
+    stopBroadcasting() {
+      clearInterval(publicRoomsInterval);
     },
   };
 }

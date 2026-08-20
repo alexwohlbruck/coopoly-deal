@@ -243,6 +243,30 @@ export interface ClientGameState {
   lastActivityAt: number;
   startedAt?: number;
   settings: GameSettings;
+  /** Public rooms are listed in the lobby browser and can be spectated. */
+  isPublic?: boolean;
+}
+
+/** A public room as shown in the lobby browser. */
+export interface PublicRoomSummary {
+  roomCode: string;
+  hostName: string;
+  playerCount: number;
+  botCount: number;
+  maxPlayers: number;
+  spectatorCount: number;
+  phase: GamePhase;
+  createdAt: number;
+  /** False once the game has started or the room is full. */
+  joinable: boolean;
+  settings: Pick<
+    GameSettings,
+    | "turnTimer"
+    | "movesPerTurn"
+    | "setsToWin"
+    | "maxHandSize"
+    | "allowDuplicateSets"
+  >;
 }
 
 export const SET_SIZE: Record<PropertyColor, number> = {
@@ -490,4 +514,10 @@ export type ServerMessage =
   | { type: "GAME_ENDED"; payload: { winnerId: string; winnerName: string } }
   | { type: "REMATCH_STARTED"; payload: { state: ClientGameState } }
   | { type: "RETURNED_TO_LOBBY" }
-  | { type: "ONLINE_COUNT"; payload: { count: number } };
+  | { type: "ONLINE_COUNT"; payload: { count: number } }
+  | { type: "PUBLIC_ROOMS"; payload: { rooms: PublicRoomSummary[] } }
+  | {
+      type: "SPECTATING";
+      payload: { roomCode: string; state: ClientGameState };
+    }
+  | { type: "SPECTATE_ENDED"; payload: { reason: string } };

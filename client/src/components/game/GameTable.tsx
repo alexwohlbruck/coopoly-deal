@@ -33,7 +33,9 @@ import { useLayout } from "../../hooks/useLayout";
 
 interface GameTableProps {
   gameState: ClientGameState;
+  /** Empty for spectators — they match no player, so no hand is shown. */
   playerId: string;
+  isSpectating?: boolean;
   sessionStats?: {
     wins: number;
     losses: number;
@@ -80,6 +82,7 @@ interface GameTableProps {
 export function GameTable({
   gameState,
   playerId,
+  isSpectating = false,
   sessionStats,
   onPlayToBank,
   onPlayToProperty,
@@ -504,10 +507,14 @@ export function GameTable({
         onResign={onResign}
         onLeave={onGoHome}
         onDevTools={() => setShowDevTools(true)}
+        isSpectating={isSpectating}
         showResign={
-          gameState.phase === GamePhase.Playing && !hasResigned && !!onResign
+          !isSpectating &&
+          gameState.phase === GamePhase.Playing &&
+          !hasResigned &&
+          !!onResign
         }
-        showLeave={hasResigned && !!onGoHome}
+        showLeave={(hasResigned || isSpectating) && !!onGoHome}
         showDevTools={
           import.meta.env.MODE === "development" && !!onDevInjectCard
         }

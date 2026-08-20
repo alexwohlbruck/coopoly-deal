@@ -2,7 +2,7 @@
 // Decorative chrome that sits over the felt surface.
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { Settings, Hourglass } from "lucide-react";
+import { Settings, Hourglass, Eye } from "lucide-react";
 import { useI18n } from "../../../i18n";
 import { GoldStar } from "../../ui/GoldStar";
 
@@ -57,6 +57,7 @@ interface TopBarProps {
   showResign?: boolean;
   showLeave?: boolean;
   showDevTools?: boolean;
+  isSpectating?: boolean;
 }
 
 export function TopBar({
@@ -70,6 +71,7 @@ export function TopBar({
   showResign = false,
   showLeave = false,
   showDevTools = false,
+  isSpectating = false,
 }: TopBarProps) {
   const { t } = useI18n();
   const [confirmResign, setConfirmResign] = useState(false);
@@ -118,6 +120,28 @@ export function TopBar({
         >
           {roomCode}
         </div>
+        {isSpectating && (
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              padding: "3px 8px",
+              borderRadius: 6,
+              background: "rgba(0,0,0,0.4)",
+              border:
+                "1px solid color-mix(in oklab, var(--accent, #f0c14a) 35%, transparent)",
+              color: "var(--accent, #f0c14a)",
+            }}
+          >
+            <Eye className="w-3 h-3" />
+            {t.spectate.badge}
+          </div>
+        )}
       </div>
       <div
         style={{

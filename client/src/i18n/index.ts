@@ -11,8 +11,6 @@ export interface Translations {
     welcomeBack: string;
     welcomeBackName: string;
     createRoom: string;
-    joinRoom: string;
-    enterCode: string;
     enterName: string;
     join: string;
     back: string;
@@ -26,16 +24,24 @@ export interface Translations {
     joiningRoom: string;
     yourName: string;
     joinGame: string;
+    publicGames: string;
+    publicGamesSubtitle: string;
+    findPublicGame: string;
+    noPublicGames: string;
+    noPublicGamesHint: string;
+    inProgress: string;
+    waitingForPlayers: string;
+    full: string;
+    spectate: string;
+    nameRequiredToJoin: string;
   };
   waiting: {
-    roomCode: string;
     players: string;
     startGame: string;
     addBot: string;
     waitingForPlayers: string;
     needMorePlayers: string;
     leaveRoom: string;
-    waitingRoom: string;
     scanToJoin: string;
     scanToJoinClose: string;
     clickToEnlarge: string;
@@ -50,6 +56,8 @@ export interface Translations {
     removePlayer: string;
     needPlayers: string;
     waitingForMore: string;
+    publicRoom: string;
+    privateRoom: string;
   };
   game: {
     yourTurn: string;
@@ -242,7 +250,6 @@ export interface Translations {
     normal: string;
     fast: string;
     instant: string;
-    hostOnlyNote: string;
     movesPerTurn: string;
     movesPerTurnHint: string;
     setsToWin: string;
@@ -257,6 +264,14 @@ export interface Translations {
     deleteRuleSet: string;
     ruleSetName: string;
     custom: string;
+    publicGame: string;
+    publicGameHint: string;
+  };
+  spectate: {
+    badge: string;
+    leave: string;
+    joinedAs: string;
+    ended: string;
   };
   socialist: {
     title: string;
