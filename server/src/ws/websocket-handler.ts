@@ -87,6 +87,9 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   roomManager.setOnStateChange((roomCode) => {
     sendStateToAll(roomCode);
+    // A game can end without anyone sending a message — a turn timing out, or
+    // seats being swept after a restart leaving too few players to carry on.
+    checkGameEnd(roomCode, "resign");
     checkBotTurn(roomCode);
   });
 
@@ -818,6 +821,10 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
           payload: { playerId },
         });
         sendStateToAll(roomCode);
+
+        // Leaving can end the game outright, by taking the table below the
+        // minimum number of players.
+        checkGameEnd(roomCode, "resign");
 
         // End game if only bots remain (with grace period for reconnection)
         if (game.phase === GamePhase.Playing) {

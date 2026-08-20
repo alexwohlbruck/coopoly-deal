@@ -11,6 +11,15 @@ const ROOM_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
 const FINISHED_ROOM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes after game ends
 const MAX_ROOMS = 100;
 const SNAPSHOT_INTERVAL_MS = 10_000;
+/**
+ * How long players have to reclaim their seats after the server comes back.
+ *
+ * Dropping out of a game is normally final, but a restart closes every socket
+ * at once — that is the server leaving, not the players. Restored rooms get a
+ * window in which the people who were already sitting there can pick their
+ * seats back up; anyone who doesn't is treated as having dropped.
+ */
+const RECLAIM_WINDOW_MS = 90_000;
 
 export class RoomManager {
   private rooms = new Map<string, GameState>();
@@ -18,10 +27,15 @@ export class RoomManager {
   private cleanupInterval: ReturnType<typeof setInterval>;
   private tickInterval: ReturnType<typeof setInterval>;
   private snapshotInterval: ReturnType<typeof setInterval>;
+  /** Room code -> when unclaimed seats in that restored room get swept. */
+  private reclaimDeadlines = new Map<string, number>();
   private onStateChange?: (roomCode: string) => void;
   private onRoomCleaned?: (roomCode: string, playerIds: string[]) => void;
 
-  constructor(private readonly store: RoomStore = new NullRoomStore()) {
+  constructor(
+    private readonly store: RoomStore = new NullRoomStore(),
+    private readonly reclaimWindowMs: number = RECLAIM_WINDOW_MS,
+  ) {
     this.cleanupInterval = setInterval(
       () => this.cleanupInactiveRooms(),
       60_000,
@@ -65,6 +79,9 @@ export class RoomManager {
         continue;
       }
       this.rooms.set(game.id, game);
+      if (game.phase === GamePhase.Playing) {
+        this.reclaimDeadlines.set(game.id, now + this.reclaimWindowMs);
+      }
       restored.push(game.id);
     }
 
@@ -158,6 +175,8 @@ export class RoomManager {
   }
 
   private tick(): void {
+    this.sweepUnclaimedSeats();
+
     for (const [code, game] of this.rooms.entries()) {
       // One wedged room must not take the whole server with it: this runs on
       // an interval, so an uncaught throw here kills the process and every
@@ -169,6 +188,38 @@ export class RoomManager {
       } catch (err) {
         console.error(`[tick] room ${code} failed to advance:`, err);
       }
+    }
+  }
+
+  /**
+   * Drop anyone who never came back after a restart, and end the game if that
+   * leaves too few players to carry on. Runs on every tick; public so a test
+   * can drive it without waiting out the window.
+   */
+  sweepUnclaimedSeats(): void {
+    if (this.reclaimDeadlines.size === 0) return;
+    const now = Date.now();
+
+    for (const [code, deadline] of this.reclaimDeadlines) {
+      if (now < deadline) continue;
+      this.reclaimDeadlines.delete(code);
+
+      const game = this.rooms.get(code);
+      if (!game || game.phase !== GamePhase.Playing) continue;
+
+      const absent = game.players.filter((p) => !p.connected).map((p) => p.id);
+      if (absent.length === 0) continue;
+
+      try {
+        for (const id of absent) this.engine.removePlayer(game, id);
+      } catch (err) {
+        console.error(`[rooms] room ${code} failed to sweep seats:`, err);
+        continue;
+      }
+      console.log(
+        `[rooms] room ${code}: dropped ${absent.length} seat(s) nobody reclaimed`,
+      );
+      this.onStateChange?.(code);
     }
   }
 
@@ -241,6 +292,7 @@ export class RoomManager {
 
   removeRoom(code: string): void {
     this.rooms.delete(code);
+    this.reclaimDeadlines.delete(code);
   }
 
   private cleanupInactiveRooms(): void {
@@ -253,6 +305,7 @@ export class RoomManager {
       if (now - game.lastActivityAt > timeout) {
         const playerIds = game.players.map((p) => p.id);
         this.rooms.delete(code);
+        this.reclaimDeadlines.delete(code);
         this.onRoomCleaned?.(code, playerIds);
       }
     }
@@ -267,5 +320,6 @@ export class RoomManager {
     clearInterval(this.tickInterval);
     clearInterval(this.snapshotInterval);
     this.rooms.clear();
+    this.reclaimDeadlines.clear();
   }
 }

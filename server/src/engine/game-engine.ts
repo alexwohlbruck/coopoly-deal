@@ -62,14 +62,110 @@ export class GameEngine {
     return player;
   }
 
+  /**
+   * Take a player out of a game.
+   *
+   * Dropping out is final — there is no seat to come back to, because rejoining
+   * a game in progress isn't allowed. Their cards go back to the discard pile
+   * so they stay in circulation, and play carries on as long as two players
+   * remain.
+   */
   removePlayer(state: GameState, playerId: string): void {
-    if (state.phase === GamePhase.Waiting) {
-      state.players = state.players.filter((p) => p.id !== playerId);
-    } else {
-      const player = this.getPlayer(state, playerId);
-      player.connected = false;
-    }
+    const index = state.players.findIndex((p) => p.id === playerId);
+    if (index === -1) return;
+
+    // The result is already on everyone's screen; taking a name out of the
+    // standings now would rewrite what they are looking at.
+    if (state.phase === GamePhase.Finished) return;
+
+    const player = state.players.splice(index, 1)[0]!;
     state.lastActivityAt = Date.now();
+
+    if (state.phase === GamePhase.Waiting) return;
+
+    this.discardHoldings(state, player);
+
+    // Everyone after them shifted down one, so the pointer has to move with
+    // them to stay on the same player. If it was their own turn the pointer is
+    // already looking at whoever is next.
+    const wasTheirTurn = index === state.currentPlayerIndex;
+    if (index < state.currentPlayerIndex) state.currentPlayerIndex--;
+
+    if (state.players.length < MIN_PLAYERS) {
+      state.phase = GamePhase.Finished;
+      state.winner = state.players[0]?.id ?? null;
+      state.turn = null;
+      return;
+    }
+
+    state.currentPlayerIndex %= state.players.length;
+
+    if (wasTheirTurn) {
+      // startTurn builds a fresh turn, which drops any action they had in
+      // flight along with it.
+      this.startTurn(state);
+    } else {
+      this.detachFromPendingAction(state, playerId);
+    }
+  }
+
+  /** Return everything a departing player was holding to the discard pile. */
+  private discardHoldings(state: GameState, player: Player): void {
+    state.discardPile.push(...player.hand, ...player.bank);
+    for (const set of player.properties) {
+      state.discardPile.push(...set.cards);
+      if (set.house) state.discardPile.push(set.house);
+      if (set.hotel) state.discardPile.push(set.hotel);
+    }
+    player.hand = [];
+    player.bank = [];
+    player.properties = [];
+  }
+
+  /**
+   * Unpick a departing player from an action someone else has in flight, so the
+   * table isn't left waiting on a response that can never arrive.
+   */
+  private detachFromPendingAction(state: GameState, playerId: string): void {
+    const turn = state.turn;
+    if (!turn) return;
+
+    if (turn.pendingWildcardAssignments) {
+      turn.pendingWildcardAssignments = turn.pendingWildcardAssignments.filter(
+        (a) => a.playerId !== playerId,
+      );
+    }
+    if (turn.pendingWildcardAssignment?.playerId === playerId) {
+      turn.pendingWildcardAssignment = null;
+    }
+
+    const action = turn.pendingAction;
+    if (!action) return;
+
+    // Whoever played the card has gone; the action goes with them.
+    if (action.sourcePlayerId === playerId) {
+      turn.pendingAction = null;
+      turn.phase = TurnPhase.Play;
+      return;
+    }
+
+    action.targetPlayerIds = action.targetPlayerIds.filter(
+      (id) => id !== playerId,
+    );
+    action.respondedPlayerIds = action.respondedPlayerIds.filter(
+      (id) => id !== playerId,
+    );
+
+    const chain = action.justSayNoChain;
+    if (
+      chain &&
+      (chain.targetPlayerId === playerId ||
+        chain.initiatorTargetId === playerId)
+    ) {
+      action.justSayNoChain = undefined;
+    }
+
+    this.tryResolveAction(state);
   }
 
   startGame(state: GameState): void {
@@ -152,13 +248,12 @@ export class GameEngine {
   // -- Turn management --
 
   private startTurn(state: GameState): void {
-    const player = state.players[state.currentPlayerIndex]!;
-
-    // Skip disconnected players
-    if (!player.connected) {
-      this.advanceTurn(state);
-      return;
-    }
+    // Skip past anyone who isn't there to play. Scanning rather than recursing
+    // through advanceTurn matters when nobody is connected — every seat
+    // restored from a snapshot, say — which used to bounce between the two
+    // until the stack ran out.
+    const player = this.takeTurnFromNextPresentPlayer(state);
+    if (!player) return;
 
     const drawCount = player.hand.length === 0 ? 5 : state.settings.drawCardsPerTurn;
     this.drawCards(state, player, drawCount);
@@ -357,6 +452,23 @@ export class GameEngine {
     state.currentPlayerIndex =
       (state.currentPlayerIndex + 1) % state.players.length;
     this.startTurn(state);
+  }
+
+  /**
+   * Move the turn pointer onto the first connected player at or after where it
+   * already is, and hand that player back. Null when nobody is available, in
+   * which case the turn stays put until someone returns.
+   */
+  private takeTurnFromNextPresentPlayer(state: GameState): Player | null {
+    for (let i = 0; i < state.players.length; i++) {
+      const idx = (state.currentPlayerIndex + i) % state.players.length;
+      const candidate = state.players[idx]!;
+      if (candidate.connected) {
+        state.currentPlayerIndex = idx;
+        return candidate;
+      }
+    }
+    return null;
   }
 
   discardCards(state: GameState, playerId: string, cardIds: string[]): void {

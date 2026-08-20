@@ -21,8 +21,8 @@ let path: string;
 const managers: RoomManager[] = [];
 
 /** Stand in for a process restart: the store is the only thing carried over. */
-function boot(): RoomManager {
-  const manager = new RoomManager(new FileRoomStore(path));
+function boot(reclaimWindowMs?: number): RoomManager {
+  const manager = new RoomManager(new FileRoomStore(path), reclaimWindowMs);
   managers.push(manager);
   return manager;
 }
@@ -255,3 +255,76 @@ describe("snapshot resilience", () => {
 
 // ---------------------------------------------------------------------------
 // Abandoned lobbies
+
+// ---------------------------------------------------------------------------
+
+describe("reclaim window", () => {
+  it("ends the game when nobody comes back", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    // Window of zero: the very next sweep gives up on both seats.
+    const after = boot(0);
+    after.restore();
+    after.sweepUnclaimedSeats();
+
+    // Dropping the first seat already takes the table below two players, which
+    // ends the game and locks the standings — so the second seat stays put.
+    // Nobody is there to see it, and the finished room is swept minutes later.
+    const restored = after.getRoom(game.id)!;
+    expect(restored.phase).toBe(GamePhase.Finished);
+    expect(restored.players.length).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps the game going for the players who did come back", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace", "Alan"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.joinRoom(game.id, "Grace");
+    after.sweepUnclaimedSeats();
+
+    const restored = after.getRoom(game.id)!;
+    // Alan never showed up; two players is still a game.
+    expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Grace"]);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("leaves seats alone until the window is up", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    after.sweepUnclaimedSeats();
+
+    // A restart must not read as everyone dropping out at once.
+    const restored = after.getRoom(game.id)!;
+    expect(restored.players).toHaveLength(2);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("only sweeps once", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace", "Alan"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.joinRoom(game.id, "Grace");
+    after.sweepUnclaimedSeats();
+
+    // A later disconnect is an ordinary drop, not something the sweep should
+    // still be watching for.
+    const restored = after.getRoom(game.id)!;
+    restored.players[1]!.connected = false;
+    after.sweepUnclaimedSeats();
+    expect(restored.players).toHaveLength(2);
+  });
+});

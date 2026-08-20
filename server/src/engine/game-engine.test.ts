@@ -167,11 +167,14 @@ describe("GameEngine", () => {
       ).toBeUndefined();
     });
 
-    it("marks a player as disconnected when removed during active game", () => {
+    it("removes a player outright when removed during an active game", () => {
       const { state, engine, players } = startTestGame(3);
       engine.removePlayer(state, players[1]!.id);
-      expect(players[1]!.connected).toBe(false);
-      expect(state.players).toHaveLength(3);
+      expect(state.players).toHaveLength(2);
+      expect(
+        state.players.find((p) => p.id === players[1]!.id),
+      ).toBeUndefined();
+      expect(state.phase).toBe(GamePhase.Playing);
     });
   });
 
