@@ -14,6 +14,7 @@ import {
   setActiveDropZone,
   type TouchDropSpec,
 } from "../../utils/drop-zone";
+import { useI18n } from "../../i18n";
 
 const DRAG_THRESHOLD = 8; // px of movement before drag activates
 
@@ -56,6 +57,7 @@ export function PropertySetDisplay({
   onWildcardDrop,
   onDragActiveChange,
 }: PropertySetDisplayProps) {
+  const { t } = useI18n();
   const cardW = cardWidth;
   const compact = cardWidth < 88;
   const overlap = compact ? 22 : 28;
@@ -320,7 +322,7 @@ export function PropertySetDisplay({
               }}
             >
               <span style={{ fontSize: 9 }}>✓</span>
-              <span>SET</span>
+              <span>{t.cardFaces.set}</span>
             </span>
           )}
         </div>
