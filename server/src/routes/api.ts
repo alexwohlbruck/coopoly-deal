@@ -1,13 +1,26 @@
 import { Hono } from "hono";
 import { RoomManager } from "../rooms/room-manager.ts";
-import { toClientState } from "../models/types.ts";
+import { sanitizeSettings, toClientState } from "../models/types.ts";
 import { track } from "../analytics.ts";
 
 export function createApiRoutes(roomManager: RoomManager) {
   const api = new Hono();
 
-  api.post("/rooms", (c) => {
-    const game = roomManager.createRoom();
+  // The body is optional: a client may pass the settings and visibility it
+  // remembers from the creator's last game so the lobby opens already
+  // configured, rather than painting the defaults and correcting itself.
+  api.post("/rooms", async (c) => {
+    let body: unknown = null;
+    try {
+      body = await c.req.json();
+    } catch {
+      // No body, or not JSON — fall through to the defaults.
+    }
+    const prefs = (body ?? {}) as Record<string, unknown>;
+    const game = roomManager.createRoom({
+      settings: sanitizeSettings(prefs.settings),
+      isPublic: prefs.isPublic === true,
+    });
     track("room_created");
     return c.json({ roomCode: game.id });
   });

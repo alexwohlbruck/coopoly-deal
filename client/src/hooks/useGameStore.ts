@@ -37,6 +37,8 @@ interface GameStore {
   theme: ThemeName;
   useSocialistTheme: boolean;
   preferredSettings: GameSettings;
+  /** Whether the creator's last game was listed publicly. */
+  preferredIsPublic: boolean;
 
   setPlayer: (id: string, name: string) => void;
   setPlayerName: (name: string) => void;
@@ -50,6 +52,7 @@ interface GameStore {
   setTheme: (theme: ThemeName) => void;
   setUseSocialistTheme: (enabled: boolean) => void;
   setPreferredSettings: (settings: GameSettings) => void;
+  setPreferredIsPublic: (isPublic: boolean) => void;
   reset: () => void;
 }
 
@@ -72,6 +75,7 @@ export const useGameStore = create<GameStore>()(
       theme: isCoopolyDomain ? ("soviet" as ThemeName) : ("emerald" as ThemeName),
       useSocialistTheme: isCoopolyDomain,
       preferredSettings: DEFAULT_GAME_SETTINGS,
+      preferredIsPublic: false,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),
       setPlayerName: (name) => set({ playerName: name }),
@@ -91,6 +95,7 @@ export const useGameStore = create<GameStore>()(
             : {}),
         }),
       setPreferredSettings: (settings) => set({ preferredSettings: settings }),
+      setPreferredIsPublic: (isPublic) => set({ preferredIsPublic: isPublic }),
       recordWin: () =>
         set((state) => ({
           sessionStats: {
@@ -140,6 +145,7 @@ export const useGameStore = create<GameStore>()(
         playerName: state.playerName,
         roomCode: state.roomCode,
         preferredSettings: state.preferredSettings,
+        preferredIsPublic: state.preferredIsPublic,
         sessionStats: state.sessionStats,
       }),
     },

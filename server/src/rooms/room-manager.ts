@@ -1,4 +1,5 @@
 import {
+  type GameSettings,
   type GameState,
   type Player,
   type PublicRoomSummary,
@@ -263,12 +264,25 @@ export class RoomManager {
     return code;
   }
 
-  createRoom(): GameState {
+  /**
+   * `options` carries the creator's remembered preferences, applied here so
+   * the room's very first state already reflects them — a lobby that has to
+   * be corrected by a follow-up settings message visibly flips a second after
+   * it paints.
+   */
+  createRoom(options?: {
+    settings?: Partial<GameSettings>;
+    isPublic?: boolean;
+  }): GameState {
     if (this.rooms.size >= MAX_ROOMS) {
       throw new Error("Server is at capacity, please try again later");
     }
     const code = this.generateRoomCode();
     const game = this.engine.createGame(code);
+    if (options?.settings) {
+      game.settings = { ...game.settings, ...options.settings };
+    }
+    if (options?.isPublic) game.isPublic = true;
     this.rooms.set(code, game);
     return game;
   }
