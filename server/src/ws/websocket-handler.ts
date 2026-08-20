@@ -154,6 +154,9 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   roomManager.setOnStateChange((roomCode) => {
     sendStateToAll(roomCode);
+    // A game can end without anyone sending a message — a turn timing out, or
+    // seats being swept after a restart leaving too few players to carry on.
+    checkGameEnd(roomCode, "resign");
     checkBotTurn(roomCode);
   });
 
@@ -187,7 +190,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     try {
       switch (msg.type) {
         case "JOIN_ROOM":
-          handleJoinRoom(ws, msg.payload.roomCode, msg.payload.playerName);
+          handleJoinRoom(
+            ws,
+            msg.payload.roomCode,
+            msg.payload.playerName,
+            msg.payload.playerId,
+          );
           break;
 
         case "START_GAME":
@@ -338,10 +346,15 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     ws: GameWebSocket,
     roomCode: string,
     playerName: string,
+    previousPlayerId?: string,
   ): void {
     // Throws "Game is full" / "Game already started" when a public room
     // filled up or started between the browser listing and this join.
-    const { game, player } = roomManager.joinRoom(roomCode, playerName);
+    const { game, player, reclaimed } = roomManager.joinRoom(
+      roomCode,
+      playerName,
+      previousPlayerId,
+    );
 
     removeSpectator(ws);
     ws.data.watchingLobby = false;
@@ -365,14 +378,18 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       },
     });
 
-    broadcastToRoom(
-      roomCode,
-      {
-        type: "PLAYER_JOINED",
-        payload: { playerName: player.name, playerId: player.id },
-      },
-      player.id,
-    );
+    // Somebody sitting back down after a dropped socket is not an arrival, and
+    // announcing it would have the room applaud every flap.
+    if (!reclaimed) {
+      broadcastToRoom(
+        roomCode,
+        {
+          type: "PLAYER_JOINED",
+          payload: { playerName: player.name, playerId: player.id },
+        },
+        player.id,
+      );
+    }
 
     sendStateToAll(roomCode);
   }
@@ -950,6 +967,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   function handleClose(ws: GameWebSocket): void {
     const { playerId, roomCode } = ws.data;
     removeSpectator(ws);
+
+    // A socket that has already been replaced is a reconnected player's old
+    // one finally going away. Now that rejoining reclaims the same seat, acting
+    // on this close would evict the live session and pull its owner out of the
+    // room they are sitting in.
+    if (playerId && playerSockets.get(playerId) !== ws) return;
+
     if (playerId) {
       playerSockets.delete(playerId);
     }
@@ -1056,25 +1080,42 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
   }
 
   return {
-    open(ws: GameWebSocket) {
-      ws.data.playerId = null;
-      ws.data.roomCode = null;
-      ws.data.spectatingRoom = null;
-      ws.data.watchingLobby = false;
-      allSockets.add(ws);
-      broadcastOnlineCount();
+    handlers: {
+      open(ws: GameWebSocket) {
+        ws.data.playerId = null;
+        ws.data.roomCode = null;
+        ws.data.spectatingRoom = null;
+        ws.data.watchingLobby = false;
+        allSockets.add(ws);
+        broadcastOnlineCount();
+      },
+      message(ws: GameWebSocket, message: string | Buffer) {
+        const raw = typeof message === "string" ? message : message.toString();
+        handleMessage(ws, raw);
+      },
+      close(ws: GameWebSocket) {
+        handleClose(ws);
+        allSockets.delete(ws);
+        broadcastOnlineCount();
+        broadcastPublicRoomsIfChanged();
+      },
     },
-    message(ws: GameWebSocket, message: string | Buffer) {
-      const raw = typeof message === "string" ? message : message.toString();
-      handleMessage(ws, raw);
+
+    /**
+     * Kick bot turns back off for rooms restored from a snapshot.
+     *
+     * A bot turn is a running async loop, not game state, so it does not
+     * survive a restart: a room whose snapshot caught it on a bot's turn comes
+     * back frozen. Harmless to call for a room whose turn belongs to a human —
+     * runBotTurnLoop checks and returns.
+     */
+    resumeBotTurns(roomCodes: string[]): void {
+      for (const code of roomCodes) {
+        checkBotTurn(code);
+      }
     },
-    close(ws: GameWebSocket) {
-      handleClose(ws);
-      allSockets.delete(ws);
-      broadcastOnlineCount();
-      broadcastPublicRoomsIfChanged();
-    },
-    stopBroadcasting() {
+
+    stopBroadcasting(): void {
       clearInterval(publicRoomsInterval);
     },
   };

@@ -3,11 +3,27 @@ import { serveStatic } from "hono/bun";
 import { RoomManager } from "./rooms/room-manager.ts";
 import { createApiRoutes } from "./routes/api.ts";
 import { createWebSocketHandlers } from "./ws/websocket-handler.ts";
+import { FileRoomStore, NullRoomStore } from "./rooms/room-store.ts";
 
 const PORT = Number(process.env.PORT) || 3000;
 
-const roomManager = new RoomManager();
-const wsHandlers = createWebSocketHandlers(roomManager);
+// Live rooms are snapshotted to disk so a deploy doesn't end everyone's game.
+// Set ROOM_PERSISTENCE=false to keep the old in-memory-only behaviour.
+const ROOM_SNAPSHOT_PATH = process.env.ROOM_SNAPSHOT_PATH || "./data/rooms.json";
+const roomStore =
+  process.env.ROOM_PERSISTENCE === "false"
+    ? new NullRoomStore()
+    : new FileRoomStore(ROOM_SNAPSHOT_PATH);
+
+const roomManager = new RoomManager(roomStore);
+const { handlers: wsHandlers, resumeBotTurns, stopBroadcasting } =
+  createWebSocketHandlers(roomManager);
+
+// Pick up where the previous process left off. Clients reconnect on their own
+// (the socket retries after 2s and re-sends JOIN_ROOM from stored credentials),
+// so all that's needed here is having the rooms back before they arrive.
+const restoredRooms = roomManager.restore();
+resumeBotTurns(restoredRooms);
 
 const app = new Hono();
 
@@ -66,7 +82,11 @@ console.log(`  Network: http://${localIP}:${server.port}`);
 
 function shutdown() {
   console.log("Shutting down...");
-  wsHandlers.stopBroadcasting();
+  // Snapshot before anything else: stopping the server closes every socket,
+  // and each close is handled as a player leaving — which empties lobbies and
+  // marks players gone. Persist the state players actually left behind.
+  roomManager.persist();
+  stopBroadcasting();
   roomManager.destroy();
   server.stop();
   process.exit(0);

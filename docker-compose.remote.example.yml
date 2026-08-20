@@ -9,4 +9,11 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+    volumes:
+      # Live rooms are snapshotted here so a restart doesn't end anyone's game.
+      # A single file, rewritten in place — it does not grow over time.
+      - coopoly-data:/app/data
     restart: unless-stopped
+
+volumes:
+  coopoly-data:
