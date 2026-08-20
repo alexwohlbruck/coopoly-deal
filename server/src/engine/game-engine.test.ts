@@ -148,7 +148,7 @@ describe("GameEngine", () => {
 
     it("throws when adding a 7th player", () => {
       const { state, engine } = createTestGame(6);
-      expect(() => engine.addPlayer(state, "Extra")).toThrow("Room is full");
+      expect(() => engine.addPlayer(state, "Extra")).toThrow("Game is full");
     });
 
     it("throws when adding players to a started game", () => {
@@ -1937,14 +1937,16 @@ describe("GameEngine", () => {
       expect(state.winner).toBeNull();
     });
 
-    it("keeps players connected", () => {
+    it("does not resurrect players who left", () => {
       const { state, engine, players } = startTestGame(3);
       players[1]!.connected = false;
       engine.rematchGame(state);
 
-      for (const p of state.players) {
-        expect(p.connected).toBe(true);
-      }
+      expect(state.players[0]!.connected).toBe(true);
+      expect(state.players[1]!.connected).toBe(false);
+      expect(state.players[2]!.connected).toBe(true);
+      // The rematch must never wait on a seat nobody is sitting in.
+      expect(state.turn!.playerId).not.toBe(players[1]!.id);
     });
 
     it("starts a new turn", () => {
@@ -2040,6 +2042,141 @@ describe("GameEngine", () => {
       expect(() => {
         engine.resignPlayer(state, state.players[0]!.id);
       }).toThrow("Cannot resign when game is not in progress");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 14b. Leaving mid-game
+  // -------------------------------------------------------------------------
+  describe("Leaving mid-game", () => {
+    it("keeps the game going when two or more players remain", () => {
+      const { state, engine, players } = startTestGame(3);
+
+      engine.removePlayer(state, players[2]!.id);
+
+      expect(state.phase).toBe(GamePhase.Playing);
+      expect(state.winner).toBeNull();
+      expect(state.turn).not.toBeNull();
+    });
+
+    it("ends the game when only one player is left", () => {
+      const { state, engine, players } = startTestGame(2);
+
+      engine.removePlayer(state, players[1]!.id);
+
+      expect(state.phase).toBe(GamePhase.Finished);
+      expect(state.winner).toBe(players[0]!.id);
+    });
+
+    it("passes the turn on when the current player leaves", () => {
+      const { state, engine } = startTestGame(3);
+      const leaver = currentPlayer(state);
+
+      engine.removePlayer(state, leaver.id);
+
+      expect(state.turn!.playerId).not.toBe(leaver.id);
+      expect(currentPlayer(state).connected).toBe(true);
+    });
+
+    it("never hands the turn to a player who left", () => {
+      const { state, engine, players } = startTestGame(3);
+      const next = players[1]!;
+
+      engine.removePlayer(state, next.id);
+      engine.endTurn(state, currentPlayer(state).id);
+
+      expect(state.turn!.playerId).toBe(players[2]!.id);
+    });
+
+    it("settles a response the leaver owed so the turn isn't stuck", () => {
+      const { state, engine, players } = startTestGame(3);
+      const player = currentPlayer(state);
+      const leaver = players[1]!;
+
+      player.properties.push({
+        color: PropertyColor.Red,
+        cards: [
+          {
+            id: "r1",
+            type: CardType.Property,
+            value: 3,
+            colors: [PropertyColor.Red],
+          },
+        ],
+        house: null,
+        hotel: null,
+      });
+      leaver.bank.push({ id: "lm1", type: CardType.Money, value: 5 });
+
+      const rent = givePlayerCard(
+        player,
+        makeRentDual(PropertyColor.Red, PropertyColor.Yellow),
+      );
+      engine.playActionCard(state, player.id, {
+        action: "rentDual",
+        cardId: rent.id,
+        color: PropertyColor.Red,
+      });
+      expect(state.turn!.pendingAction!.targetPlayerIds).toContain(leaver.id);
+
+      engine.removePlayer(state, leaver.id);
+
+      // Their debt is auto-paid, so only the still-present opponent is owed.
+      const action = state.turn!.pendingAction;
+      expect(action === null || action.respondedPlayerIds).toBeTruthy();
+      if (action) {
+        expect(action.respondedPlayerIds).toContain(leaver.id);
+      }
+      expect(player.bank.some((c) => c.id === "lm1")).toBe(true);
+    });
+
+    it("resolves the action outright when the last owed player leaves", () => {
+      // Three seats so the game survives the leave and we can observe the
+      // action resolving rather than the game simply ending.
+      const { state, engine, players } = startTestGame(3);
+      const player = currentPlayer(state);
+      const other = players.find((p) => p.id !== player.id)!;
+
+      engine.playActionCard(state, player.id, {
+        action: "debtCollector",
+        cardId: givePlayerCard(player, makeAction(CardType.DebtCollector, 3))
+          .id,
+        targetPlayerId: other.id,
+      });
+      expect(state.turn!.phase).toBe(TurnPhase.ActionPending);
+
+      engine.removePlayer(state, other.id);
+
+      expect(state.turn!.pendingAction).toBeNull();
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
+    });
+
+    it("does not hang when an action targets someone who already left", () => {
+      const { state, engine, players } = startTestGame(3);
+      const player = currentPlayer(state);
+      const absent = players.find((p) => p.id !== player.id)!;
+      engine.removePlayer(state, absent.id);
+
+      engine.playActionCard(state, player.id, {
+        action: "debtCollector",
+        cardId: givePlayerCard(player, makeAction(CardType.DebtCollector, 3))
+          .id,
+        targetPlayerId: absent.id,
+      });
+
+      expect(state.turn!.pendingAction).toBeNull();
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
+    });
+
+    it("stops instead of recursing when everyone has left", () => {
+      const { state, engine, players } = startTestGame(3);
+      // Force the all-gone case directly: the last leave normally ends the
+      // game before startTurn ever runs out of connected seats.
+      for (const p of state.players) p.connected = false;
+      state.currentPlayerIndex = 0;
+      engine.endTurn(state, players[0]!.id);
+
+      expect(state.turn).toBeNull();
     });
   });
 
@@ -3552,6 +3689,59 @@ describe("GameEngine", () => {
       expect(state.turn!.playerId).toBe(
         players.find((p) => p.id !== bot.id)!.id,
       );
+    });
+
+    /**
+     * Sets up a bot whose turn has a pending action nobody responded to,
+     * with the bot idle long enough to trip the 30s watchdog. movesPerTurn
+     * is 1, so resolving the action auto-ends the turn — which makes
+     * startTurn assign a brand new object to state.turn. Any reference the
+     * watchdog captured beforehand is stale from that point on.
+     */
+    function stuckBotWhoseResolutionEndsTheTurn() {
+      const { state, engine } = startTestGame(2);
+      state.settings.movesPerTurn = 1;
+      state.settings.maxHandSize = 999;
+
+      const bot = currentPlayer(state);
+      bot.isBot = true;
+      const target = state.players.find((p) => p.id !== bot.id)!;
+
+      const dc = givePlayerCard(bot, makeAction(CardType.DebtCollector, 3));
+      engine.playActionCard(state, bot.id, {
+        action: "debtCollector",
+        cardId: dc.id,
+        targetPlayerId: target.id,
+      });
+      expect(state.turn!.pendingAction).not.toBeNull();
+
+      state.lastActivityAt = Date.now() - 31_000;
+      return { state, engine, bot, target };
+    }
+
+    it("does not throw when resolving the action also ends the turn", () => {
+      const { state, engine } = stuckBotWhoseResolutionEndsTheTurn();
+      expect(() => engine.handleTurnTimeout(state)).not.toThrow();
+    });
+
+    it("advances exactly one turn, not two", () => {
+      const { state, engine, target } = stuckBotWhoseResolutionEndsTheTurn();
+      engine.handleTurnTimeout(state);
+
+      // The bot's turn ended on its own, so it is now the target's turn. If
+      // the watchdog force-advances again it wraps past them, and in a
+      // 2-player game lands back on the bot.
+      expect(state.turn).not.toBeNull();
+      expect(state.turn!.playerId).toBe(target.id);
+    });
+
+    it("leaves the freshly started turn playable", () => {
+      const { state, engine } = stuckBotWhoseResolutionEndsTheTurn();
+      engine.handleTurnTimeout(state);
+
+      expect(state.turn!.pendingAction).toBeNull();
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
+      expect(state.turn!.cardsPlayed).toBe(0);
     });
   });
 });

@@ -270,7 +270,7 @@ export function ShareModal({
   const threadsUrl = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText)}`;
 
   const trackShare = (platform: string) => {
-    window.umami?.track("share_clicked", { platform, won: data.won });
+    window.umami?.track("share_clicked", { platform });
   };
 
   const openIntent = (url: string, platform: string) => {

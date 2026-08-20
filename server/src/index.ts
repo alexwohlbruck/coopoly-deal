@@ -16,7 +16,7 @@ const roomStore =
     : new FileRoomStore(ROOM_SNAPSHOT_PATH);
 
 const roomManager = new RoomManager(roomStore);
-const { handlers: wsHandlers, resumeBotTurns } =
+const { handlers: wsHandlers, resumeBotTurns, stopBroadcasting } =
   createWebSocketHandlers(roomManager);
 
 // Pick up where the previous process left off. Clients reconnect on their own
@@ -48,7 +48,12 @@ const server = Bun.serve({
 
     if (url.pathname === "/ws") {
       const upgraded = server.upgrade(req, {
-        data: { playerId: null, roomCode: null },
+        data: {
+          playerId: null,
+          roomCode: null,
+          spectatingRoom: null,
+          watchingLobby: false,
+        },
       });
       if (upgraded) return undefined;
       return new Response("WebSocket upgrade failed", { status: 400 });
@@ -81,6 +86,7 @@ function shutdown() {
   // and each close is handled as a player leaving — which empties lobbies and
   // marks players gone. Persist the state players actually left behind.
   roomManager.persist();
+  stopBroadcasting();
   roomManager.destroy();
   server.stop();
   process.exit(0);

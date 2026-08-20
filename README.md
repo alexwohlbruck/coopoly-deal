@@ -45,16 +45,29 @@ brief "Reconnecting…" flicker rather than a lost game.
 Under Docker the snapshot lives on the `coopoly-data` volume — mount something
 at `/app/data` or the rooms won't outlive the container.
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where the snapshot is written |
-| `ROOM_PERSISTENCE` | `true` | Set to `false` to keep rooms in memory only |
+See `ROOM_SNAPSHOT_PATH` and `ROOM_PERSISTENCE` under
+[Configuration](#configuration).
 
 The file is rewritten in place and never accumulates: no history, no rotation,
 at most the server's room cap (100) of live rooms at roughly 8 KB each, and it
 is deleted outright whenever no games are running. Finished games, empty
 lobbies and bot-only rooms are never written. Nothing about a game is kept once
 it ends.
+## Configuration
+
+| Variable            | Default             | Description                                                                 |
+| ------------------- | ------------------- | --------------------------------------------------------------------------- |
+| `PORT`              | `3000`              | HTTP/WebSocket port.                                                          |
+| `UMAMI_WEBSITE_ID`  | _(unset)_           | Umami website ID for server-side game events. **Analytics are off unless this is set** — self-hosted instances never report anywhere. |
+| `UMAMI_API_URL`     | Umami Cloud         | Collector endpoint, for a self-hosted Umami.                                  |
+| `ANALYTICS_ENABLED` | `true`              | Set to `false` to force analytics off even with a website ID set.              |
+| `ANALYTICS_DEBUG`   | `false`             | Log each event send and its response.                                          |
+| `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where live rooms are snapshotted so they survive a restart.                   |
+| `ROOM_PERSISTENCE`  | `true`              | Set to `false` to keep rooms in memory only.                                   |
+
+Browser-side analytics are additionally restricted by `data-domains` on the
+Umami script tag in `client/index.html`, so a self-hosted or local build sends
+no pageviews.
 
 ## How to Play
 

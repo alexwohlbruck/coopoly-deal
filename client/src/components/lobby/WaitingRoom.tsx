@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ArrowLeft } from "lucide-react";
+import { X, ArrowLeft, Globe } from "lucide-react";
 import type { ClientGameState } from "../../types/game";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
@@ -29,6 +29,7 @@ interface WaitingRoomProps {
   onAddBot: () => void;
   onRemovePlayer?: (playerIdToRemove: string) => void;
   onUpdateName?: (name: string) => void;
+  onSetPublic?: (isPublic: boolean) => void;
   onLeave: () => void;
   musicControls?: {
     isPlaying: boolean;
@@ -60,6 +61,7 @@ export function WaitingRoom({
   onAddBot,
   onRemovePlayer,
   onUpdateName,
+  onSetPublic,
   onLeave,
   musicControls,
 }: WaitingRoomProps) {
@@ -135,12 +137,14 @@ export function WaitingRoom({
             boxShadow: "var(--sh-panel)",
           }}
         >
+          {/* Header row — leave, room code, copy, visibility. Keeping the
+              code on the back-button row keeps the QR the visual anchor. */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              marginBottom: 12,
+              gap: 10,
+              marginBottom: 14,
             }}
           >
             <button
@@ -165,54 +169,39 @@ export function WaitingRoom({
               }}
               title={t.waiting.leaveRoom}
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
+
             <div
               style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 10,
-                letterSpacing: "0.1em",
-                color: "rgba(245,234,208,0.55)",
-                textTransform: "uppercase",
+                flex: 1,
+                minWidth: 0,
+                fontFamily: "var(--font-display)",
+                fontSize: isCompact ? 30 : 36,
+                fontWeight: 800,
+                color: "#f5ead0",
+                letterSpacing: "0.06em",
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1,
               }}
             >
-              {t.waiting.waitingRoom}
+              {gameState.id}
             </div>
+
+            <CopyRoomLinkButton roomCode={gameState.id} />
           </div>
+
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              gap: 12,
+              gap: 10,
               paddingBottom: 16,
               borderBottom: "1px solid rgba(255,255,255,0.06)",
               marginBottom: 14,
             }}
           >
-            {/* Room code + copy-the-join-link pill. */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: isCompact ? 40 : 48,
-                  fontWeight: 800,
-                  color: "#f5ead0",
-                  letterSpacing: "0.08em",
-                  fontVariantNumeric: "tabular-nums",
-                  lineHeight: 1,
-                }}
-              >
-                {gameState.id}
-              </div>
-              <CopyRoomLinkButton roomCode={gameState.id} />
-            </div>
             <button
               onClick={() => setQrEnlarged(true)}
               style={{
@@ -233,17 +222,41 @@ export function WaitingRoom({
             >
               <RoomQrCode roomCode={gameState.id} size={isCompact ? 140 : 180} />
             </button>
-            <span
+            {/* Visibility rides the "how to join" caption — same type
+                scale, and it reads as part of who can get in. */}
+            <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
                 fontFamily: "var(--font-mono)",
                 fontSize: 9,
                 letterSpacing: "0.08em",
-                color: "rgba(245,234,208,0.4)",
                 textTransform: "uppercase",
               }}
             >
-              {t.waiting.scanToJoin}
-            </span>
+              {gameState.isPublic && (
+                <>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      fontWeight: 700,
+                      color: "var(--accent, #f0c14a)",
+                    }}
+                    title={t.gameSettings.publicGameHint}
+                  >
+                    <Globe className="w-3 h-3" />
+                    {t.waiting.publicRoom}
+                  </span>
+                  <span style={{ color: "rgba(245,234,208,0.25)" }}>·</span>
+                </>
+              )}
+              <span style={{ color: "rgba(245,234,208,0.4)" }}>
+                {t.waiting.scanToJoin}
+              </span>
+            </div>
           </div>
 
           <div
@@ -486,6 +499,8 @@ export function WaitingRoom({
             settings={gameState.settings}
             onSettingsChange={onUpdateSettings}
             defaultExpanded={!isCompact}
+            isPublic={!!gameState.isPublic}
+            onPublicChange={onSetPublic}
           />
         </div>
       </motion.div>

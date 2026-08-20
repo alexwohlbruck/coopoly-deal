@@ -84,7 +84,8 @@ export function useGameTableState(
         return {
           complete,
           partial,
-          handCount: activeOpp.hand?.length ?? 0,
+          // Only our own player carries `hand`; everyone else has handCount.
+          handCount: activeOpp.hand?.length ?? activeOpp.handCount,
           setsToWin,
         };
       })()

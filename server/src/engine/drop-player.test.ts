@@ -203,11 +203,13 @@ describe("actions in flight when someone drops", () => {
 
     engine.removePlayer(state, players[1]!.id);
 
-    expect(state.turn!.pendingAction).not.toBeNull();
-    expect(state.turn!.pendingAction!.targetPlayerIds).toEqual([
-      players[2]!.id,
-      players[3]!.id,
-    ]);
+    // The leaver's response is settled on their way out; the other two are
+    // still owed, so the action stays open rather than resolving early.
+    const action = state.turn!.pendingAction;
+    expect(action).not.toBeNull();
+    expect(action!.respondedPlayerIds).toContain(players[1]!.id);
+    expect(action!.respondedPlayerIds).not.toContain(players[2]!.id);
+    expect(action!.respondedPlayerIds).not.toContain(players[3]!.id);
   });
 
   it("drops a wildcard assignment owed to a player who left", () => {

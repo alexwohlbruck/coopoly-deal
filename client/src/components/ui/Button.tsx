@@ -42,9 +42,16 @@ function withHaptic(
 }
 
 const SIZES = {
-  sm: { padding: "6px 12px", fontSize: 11 },
-  md: { padding: "9px 16px", fontSize: 12.5 },
-  lg: { padding: "11px 22px", fontSize: 14 },
+  sm: { padding: "6px 13px", fontSize: 12.5 },
+  md: { padding: "9px 17px", fontSize: 14 },
+  lg: { padding: "11px 22px", fontSize: 15.5 },
+};
+
+// Sentence case with the display face's own slight negative tracking —
+// all-caps + wide letter-spacing read as shouty and cramped the glyphs.
+const LABEL: CSSProperties = {
+  fontFamily: "var(--font-display)",
+  letterSpacing: "-0.01em",
 };
 
 export function PrimaryButton({
@@ -74,11 +81,9 @@ export function PrimaryButton({
       {...handlers}
       style={{
         padding: s.padding,
-        fontFamily: "var(--font-display)",
+        ...LABEL,
         fontSize: s.fontSize,
         fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
         borderRadius: 8,
         background: disabled
           ? "rgba(255,255,255,0.06)"
@@ -127,11 +132,9 @@ export function SecondaryButton({
       {...handlers}
       style={{
         padding: s.padding,
-        fontFamily: "var(--font-display)",
+        ...LABEL,
         fontSize: s.fontSize,
         fontWeight: 600,
-        letterSpacing: "0.06em",
-        textTransform: "uppercase",
         borderRadius: 8,
         background:
           "linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)",
@@ -177,11 +180,9 @@ export function DangerButton({
       {...handlers}
       style={{
         padding: s.padding,
-        fontFamily: "var(--font-display)",
+        ...LABEL,
         fontSize: s.fontSize,
         fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
         borderRadius: 8,
         background: disabled
           ? "rgba(255,255,255,0.06)"

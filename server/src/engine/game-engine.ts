@@ -19,7 +19,7 @@ import {
 import { createDeck, shuffleDeck } from "./deck.ts";
 
 const MIN_PLAYERS = 2;
-const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 6;
 
 export class GameEngine {
   createGame(roomCode: string): GameState {
@@ -38,15 +38,19 @@ export class GameEngine {
       // in-place write to a room's settings silently rewrites the defaults
       // for every room created afterwards.
       settings: { ...DEFAULT_SETTINGS },
+      isPublic: false,
     };
   }
 
   addPlayer(state: GameState, playerName: string): Player {
-    if (state.phase !== GamePhase.Waiting) {
+    // Finished rooms still take newcomers: the table sits on the end screen
+    // until someone hits rematch, and whoever joins in the meantime should
+    // be dealt into that next game.
+    if (state.phase === GamePhase.Playing) {
       throw new Error("Game already started");
     }
     if (state.players.length >= MAX_PLAYERS) {
-      throw new Error("Room is full");
+      throw new Error("Game is full");
     }
     const id = crypto.randomUUID();
     const player: Player = {
@@ -75,38 +79,54 @@ export class GameEngine {
     if (index === -1) return;
 
     // The result is already on everyone's screen; taking a name out of the
-    // standings now would rewrite what they are looking at.
-    if (state.phase === GamePhase.Finished) return;
-
-    const player = state.players.splice(index, 1)[0]!;
-    state.lastActivityAt = Date.now();
-
-    if (state.phase === GamePhase.Waiting) return;
-
-    this.discardHoldings(state, player);
-
-    // Everyone after them shifted down one, so the pointer has to move with
-    // them to stay on the same player. If it was their own turn the pointer is
-    // already looking at whoever is next.
-    const wasTheirTurn = index === state.currentPlayerIndex;
-    if (index < state.currentPlayerIndex) state.currentPlayerIndex--;
-
-    if (state.players.length < MIN_PLAYERS) {
-      state.phase = GamePhase.Finished;
-      state.winner = state.players[0]?.id ?? null;
-      state.turn = null;
+    // standings now would rewrite what they are looking at. Mark them absent
+    // all the same, so a finished public room whose players have all closed
+    // their tabs stops being listed.
+    if (state.phase === GamePhase.Finished) {
+      state.players[index]!.connected = false;
+      state.lastActivityAt = Date.now();
       return;
     }
 
-    state.currentPlayerIndex %= state.players.length;
-
-    if (wasTheirTurn) {
-      // startTurn builds a fresh turn, which drops any action they had in
-      // flight along with it.
-      this.startTurn(state);
-    } else {
-      this.detachFromPendingAction(state, playerId);
+    if (state.phase === GamePhase.Waiting) {
+      state.players.splice(index, 1);
+      state.lastActivityAt = Date.now();
+      return;
     }
+
+    const player = state.players[index]!;
+
+    // Settle whatever the table was waiting on them for while they are still
+    // in the roster — handlePlayerLeft looks players up by id, pays what they
+    // owe out of what they were holding, hands the turn on if it was theirs,
+    // and ends the game outright when it leaves one player standing.
+    player.connected = false;
+    this.handlePlayerLeft(state, player);
+
+    // Only then take them out for good. Dropping out is final, so they leave
+    // the roster rather than lingering as an empty seat, which also keeps them
+    // off the final standings.
+    state.players.splice(index, 1);
+    this.discardHoldings(state, player);
+    this.forgetPlayerReferences(state, playerId);
+
+    // Everyone after them shifted down one, so the pointer has to move with
+    // them to stay on the same player. handlePlayerLeft has already handed the
+    // turn on if it was theirs — starting one here would deal a second hand.
+    if (index < state.currentPlayerIndex) state.currentPlayerIndex--;
+    state.currentPlayerIndex = state.players.length
+      ? state.currentPlayerIndex % state.players.length
+      : 0;
+
+    // handlePlayerLeft ends the game when one player is left standing, but it
+    // counts connected players; a table can also fall below the minimum by
+    // seats being swept after a restart, with nobody connected to count.
+    if (state.phase === GamePhase.Playing && state.players.length < MIN_PLAYERS) {
+      state.phase = GamePhase.Finished;
+      state.winner = state.players[0]?.id ?? null;
+      state.turn = null;
+    }
+    state.lastActivityAt = Date.now();
   }
 
   /** Return everything a departing player was holding to the discard pile. */
@@ -123,10 +143,11 @@ export class GameEngine {
   }
 
   /**
-   * Unpick a departing player from an action someone else has in flight, so the
-   * table isn't left waiting on a response that can never arrive.
+   * Drop what is left pointing at a player who has gone, so nothing references
+   * a seat that no longer exists. handlePlayerLeft has already settled their
+   * obligations by this point; this only clears the leftovers.
    */
-  private detachFromPendingAction(state: GameState, playerId: string): void {
+  private forgetPlayerReferences(state: GameState, playerId: string): void {
     const turn = state.turn;
     if (!turn) return;
 
@@ -149,13 +170,6 @@ export class GameEngine {
       return;
     }
 
-    action.targetPlayerIds = action.targetPlayerIds.filter(
-      (id) => id !== playerId,
-    );
-    action.respondedPlayerIds = action.respondedPlayerIds.filter(
-      (id) => id !== playerId,
-    );
-
     const chain = action.justSayNoChain;
     if (
       chain &&
@@ -166,6 +180,111 @@ export class GameEngine {
     }
 
     this.tryResolveAction(state);
+  }
+
+  /**
+   * Unblock a game someone just walked out of. The table keeps playing as
+   * long as two are left; below that there's nobody to play against, so the
+   * last one standing wins. Anything the game was waiting on the leaver for
+   * — their turn, a response they owe — is settled here, because no socket
+   * is ever going to send it.
+   */
+  private handlePlayerLeft(state: GameState, player: Player): void {
+    const remaining = state.players.filter((p) => p.connected);
+    if (remaining.length <= 1) {
+      state.phase = GamePhase.Finished;
+      state.winner = remaining[0]?.id ?? null;
+      state.turn = null;
+      return;
+    }
+
+    const turn = state.turn;
+    if (!turn) return;
+
+    // A wildcard they were handed still blocks the turn until it's placed.
+    for (const assignment of [...(turn.pendingWildcardAssignments ?? [])]) {
+      if (assignment.playerId !== player.id) continue;
+      try {
+        this.assignReceivedWildcard(
+          state,
+          assignment.playerId,
+          assignment.cardId,
+          assignment.availableColors[0]!,
+        );
+      } catch {}
+    }
+
+    // "Waiting for responses..." never clears on its own if one of the
+    // players being waited on has gone.
+    const action = state.turn?.pendingAction;
+    if (
+      action &&
+      action.targetPlayerIds.includes(player.id) &&
+      !action.respondedPlayerIds.includes(player.id)
+    ) {
+      try {
+        this.autoRespondFor(state, action, player.id);
+      } catch {
+        action.respondedPlayerIds.push(player.id);
+        if (state.turn) this.tryResolveAction(state);
+      }
+    }
+
+    // Their own turn can't end itself — the timeout path only fires for
+    // games with a turn timer, so without this an untimed game hangs.
+    if (state.turn?.playerId === player.id) {
+      state.turn.pendingAction = null;
+      state.turn.pendingWildcardAssignments = [];
+      state.turn.pendingWildcardAssignment = null;
+      state.turn.phase = TurnPhase.Play;
+      this.advanceTurn(state);
+    }
+  }
+
+  /**
+   * Settle one target's outstanding response with a sensible default: pay up
+   * if they owe money, otherwise just take the hit.
+   */
+  private autoRespondFor(
+    state: GameState,
+    action: PendingAction,
+    targetId: string,
+  ): void {
+    if (
+      action.type === "rent" ||
+      action.type === "debtCollector" ||
+      action.type === "birthday"
+    ) {
+      const target = this.getPlayer(state, targetId);
+      const cardsToPay: string[] = [];
+      let paid = 0;
+
+      // Bank first, then properties if the bank doesn't cover it.
+      for (const card of target.bank) {
+        if (paid >= action.amount!) break;
+        cardsToPay.push(card.id);
+        paid += card.value;
+      }
+      if (paid < action.amount!) {
+        for (const set of target.properties) {
+          for (const card of set.cards) {
+            if (paid >= action.amount!) break;
+            cardsToPay.push(card.id);
+            paid += card.value;
+          }
+        }
+      }
+
+      try {
+        this.respondPayWithCards(state, targetId, cardsToPay);
+        return;
+      } catch {
+        // Payment couldn't be made — fall through and accept so the table
+        // isn't stuck on a debt that can't be settled.
+      }
+    }
+
+    this.respondAcceptAction(state, targetId);
   }
 
   startGame(state: GameState): void {
@@ -210,11 +329,13 @@ export class GameEngine {
     state.winner = null;
     state.gameEndedBroadcasted = false;
 
+    // Players who left stay listed as disconnected so they can reclaim their
+    // seat by name — but they must NOT be marked connected here, or the
+    // rematch will sit waiting on a turn nobody can take.
     for (const player of state.players) {
       player.hand = [];
       player.bank = [];
       player.properties = [];
-      player.connected = true;
     }
 
     for (const player of state.players) {
@@ -235,11 +356,15 @@ export class GameEngine {
     state.gameEndedBroadcasted = false;
     state.currentPlayerIndex = 0;
 
+    // Back in a lobby, anyone who left is just gone — they can walk back in
+    // through the normal join path. Keeping them would show phantom seats
+    // and count toward the player cap.
+    state.players = state.players.filter((p) => p.connected);
+
     for (const player of state.players) {
       player.hand = [];
       player.bank = [];
       player.properties = [];
-      player.connected = true;
     }
 
     state.lastActivityAt = Date.now();
@@ -247,13 +372,22 @@ export class GameEngine {
 
   // -- Turn management --
 
-  private startTurn(state: GameState): void {
-    // Skip past anyone who isn't there to play. Scanning rather than recursing
-    // through advanceTurn matters when nobody is connected — every seat
-    // restored from a snapshot, say — which used to bounce between the two
-    // until the stack ran out.
-    const player = this.takeTurnFromNextPresentPlayer(state);
-    if (!player) return;
+  private startTurn(state: GameState, skipped = 0): void {
+    const player = state.players[state.currentPlayerIndex]!;
+
+    // Skip disconnected players. Once we've been all the way around the
+    // table there's nobody left to hand the turn to, so stop rather than
+    // recursing until the stack blows.
+    if (!player.connected) {
+      if (skipped >= state.players.length - 1) {
+        state.turn = null;
+        return;
+      }
+      state.currentPlayerIndex =
+        (state.currentPlayerIndex + 1) % state.players.length;
+      this.startTurn(state, skipped + 1);
+      return;
+    }
 
     const drawCount = player.hand.length === 0 ? 5 : state.settings.drawCardsPerTurn;
     this.drawCards(state, player, drawCount);
@@ -290,7 +424,6 @@ export class GameEngine {
   handleTurnTimeout(state: GameState): boolean {
     if (state.phase !== GamePhase.Playing || !state.turn) return false;
 
-    const turn = state.turn;
     const now = Date.now();
 
     // Watchdog: if a bot's turn has been inactive for 30+ seconds,
@@ -303,10 +436,18 @@ export class GameEngine {
       currentPlayer?.isBot &&
       now - state.lastActivityAt > BOT_WATCHDOG_MS
     ) {
-      // Clear any stuck pending state
-      if (turn.pendingAction) {
-        const action = turn.pendingAction;
-        for (const targetId of action.targetPlayerIds) {
+      // Unsticking the turn can also *end* it: resolving the last pending
+      // response auto-ends the turn, and advanceTurn/startTurn assign a
+      // brand new object to state.turn (or checkWin nulls it outright).
+      // Hold the turn we set out to unstick so we can tell "already
+      // advanced" apart from "still stuck" instead of reading through a
+      // stale reference.
+      const stuckTurn = state.turn;
+
+      if (stuckTurn.pendingAction) {
+        for (const targetId of [...stuckTurn.pendingAction.targetPlayerIds]) {
+          const action = stuckTurn.pendingAction;
+          if (!action) break;
           if (!action.respondedPlayerIds.includes(targetId)) {
             try {
               this.respondAcceptAction(state, targetId);
@@ -316,13 +457,17 @@ export class GameEngine {
           }
         }
         // The loop above may already have resolved the action.
-        if (turn.pendingAction) this.tryResolveAction(state);
+        if (stuckTurn.pendingAction) this.tryResolveAction(state);
       }
+
+      // The turn resolved itself and moved on — nothing left to force.
+      if (state.turn !== stuckTurn) return true;
+
       if (
-        turn.pendingWildcardAssignments &&
-        turn.pendingWildcardAssignments.length > 0
+        stuckTurn.pendingWildcardAssignments &&
+        stuckTurn.pendingWildcardAssignments.length > 0
       ) {
-        for (const assignment of [...turn.pendingWildcardAssignments]) {
+        for (const assignment of [...stuckTurn.pendingWildcardAssignments]) {
           try {
             this.assignReceivedWildcard(
               state,
@@ -333,16 +478,23 @@ export class GameEngine {
           } catch {}
         }
       }
+
+      if (state.turn !== stuckTurn) return true;
+
       // Force advance if still stuck
-      if (turn.playerId === currentPlayer.id) {
-        turn.pendingAction = null;
-        turn.pendingWildcardAssignments = [];
-        turn.pendingWildcardAssignment = null;
-        turn.phase = TurnPhase.Play as any;
+      if (stuckTurn.playerId === currentPlayer.id) {
+        stuckTurn.pendingAction = null;
+        stuckTurn.pendingWildcardAssignments = [];
+        stuckTurn.pendingWildcardAssignment = null;
+        stuckTurn.phase = TurnPhase.Play as any;
         this.advanceTurn(state);
         return true;
       }
     }
+
+    // Re-read: the watchdog above may have replaced or cleared state.turn.
+    const turn = state.turn;
+    if (!turn) return false;
 
     if (!turn.expiresAt || now < turn.expiresAt) return false;
 
@@ -378,51 +530,14 @@ export class GameEngine {
       } else if (turn.pendingAction) {
         const action = turn.pendingAction;
 
-        // Auto-respond for anyone who hasn't
-        for (const targetId of action.targetPlayerIds) {
+        // Auto-respond for anyone who hasn't. Each response can resolve the
+        // action and start a new turn, so stop as soon as this action is no
+        // longer the live one rather than responding into a dead action.
+        for (const targetId of [...action.targetPlayerIds]) {
+          if (state.turn?.pendingAction !== action) break;
           if (!action.respondedPlayerIds.includes(targetId)) {
-            const target = this.getPlayer(state, targetId);
-
-            if (
-              action.type === "rent" ||
-              action.type === "debtCollector" ||
-              action.type === "birthday"
-            ) {
-              // Auto-pay: just pay with bank cards first, then properties if needed
-              const cardsToPay: string[] = [];
-              let paid = 0;
-
-              // Try bank first
-              for (const card of target.bank) {
-                if (paid >= action.amount!) break;
-                cardsToPay.push(card.id);
-                paid += card.value;
-              }
-
-              // If still need more, use properties
-              if (paid < action.amount!) {
-                for (const set of target.properties) {
-                  for (const card of set.cards) {
-                    if (paid >= action.amount!) break;
-                    cardsToPay.push(card.id);
-                    paid += card.value;
-                  }
-                }
-              }
-
-              try {
-                this.respondPayWithCards(state, targetId, cardsToPay);
-                changed = true;
-              } catch (e) {
-                // If payment fails for some reason, just accept action to unblock
-                this.respondAcceptAction(state, targetId);
-                changed = true;
-              }
-            } else {
-              // For steal, deal breaker, force deal, just accept
-              this.respondAcceptAction(state, targetId);
-              changed = true;
-            }
+            this.autoRespondFor(state, action, targetId);
+            changed = true;
           }
         }
       }
@@ -452,23 +567,6 @@ export class GameEngine {
     state.currentPlayerIndex =
       (state.currentPlayerIndex + 1) % state.players.length;
     this.startTurn(state);
-  }
-
-  /**
-   * Move the turn pointer onto the first connected player at or after where it
-   * already is, and hand that player back. Null when nobody is available, in
-   * which case the turn stays put until someone returns.
-   */
-  private takeTurnFromNextPresentPlayer(state: GameState): Player | null {
-    for (let i = 0; i < state.players.length; i++) {
-      const idx = (state.currentPlayerIndex + i) % state.players.length;
-      const candidate = state.players[idx]!;
-      if (candidate.connected) {
-        state.currentPlayerIndex = idx;
-        return candidate;
-      }
-    }
-    return null;
   }
 
   discardCards(state: GameState, playerId: string, cardIds: string[]): void {
@@ -875,13 +973,14 @@ export class GameEngine {
     const turn = this.getTurn(state);
     const finalRent = rentAmount * turn.rentMultiplier;
 
-    state.turn!.pendingAction = {
+    const action: PendingAction = {
       type: "rent",
       sourcePlayerId: player.id,
       targetPlayerIds: targetIds,
       respondedPlayerIds: [],
       amount: finalRent,
     };
+    state.turn!.pendingAction = action;
     state.turn!.phase = TurnPhase.ActionPending;
     if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
       state.turn!.pausedTimeLeft = Math.max(
@@ -893,6 +992,8 @@ export class GameEngine {
 
     // Reset multiplier after using it
     turn.rentMultiplier = 1;
+
+    this.settleAbsentTargets(state, action);
   }
 
   private executeRentWild(
@@ -912,13 +1013,14 @@ export class GameEngine {
     const turn = this.getTurn(state);
     const finalRent = rentAmount * turn.rentMultiplier;
 
-    state.turn!.pendingAction = {
+    const action: PendingAction = {
       type: "rent",
       sourcePlayerId: player.id,
       targetPlayerIds: [targetPlayerId],
       respondedPlayerIds: [],
       amount: finalRent,
     };
+    state.turn!.pendingAction = action;
     state.turn!.phase = TurnPhase.ActionPending;
     if (state.settings.turnTimer > 0 && state.turn!.expiresAt) {
       state.turn!.pausedTimeLeft = Math.max(
@@ -930,6 +1032,8 @@ export class GameEngine {
 
     // Reset multiplier after using it
     turn.rentMultiplier = 1;
+
+    this.settleAbsentTargets(state, action);
   }
 
   private executeDoubleTheRent(
@@ -1177,7 +1281,8 @@ export class GameEngine {
 
   private resolveActionForPlayer(state: GameState, playerId: string): void {
     const turn = this.getTurn(state);
-    const action = turn.pendingAction!;
+    const action = turn.pendingAction;
+    if (!action) throw new Error("No pending action");
 
     switch (action.type) {
       case "slyDeal": {
@@ -1578,6 +1683,33 @@ export class GameEngine {
       );
       state.turn!.expiresAt = null;
     }
+    this.settleAbsentTargets(state, action);
+  }
+
+  /**
+   * Answer on behalf of any target who isn't around — an action aimed at an
+   * empty seat would otherwise hang the turn waiting for a reply forever.
+   */
+  private settleAbsentTargets(state: GameState, action: PendingAction): void {
+    for (const targetId of [...action.targetPlayerIds]) {
+      if (state.turn?.pendingAction !== action) break;
+      if (action.respondedPlayerIds.includes(targetId)) continue;
+      const target = state.players.find((p) => p.id === targetId);
+      if (target?.connected) continue;
+      if (!target) {
+        // Not at the table at all — there is nothing to collect from them, and
+        // waiting on a seat that no longer exists hangs the turn for good.
+        action.respondedPlayerIds.push(targetId);
+        if (state.turn) this.tryResolveAction(state);
+        continue;
+      }
+      try {
+        this.autoRespondFor(state, action, targetId);
+      } catch {
+        action.respondedPlayerIds.push(targetId);
+        if (state.turn) this.tryResolveAction(state);
+      }
+    }
   }
 
   private addPropertyToPlayer(
@@ -1885,17 +2017,9 @@ export class GameEngine {
     player.bank = [];
     player.properties = [];
 
-    // If this was the current player's turn, advance to next player
-    if (state.turn?.playerId === playerId) {
-      this.advanceTurn(state);
-    }
-
-    // Check if only one player remains
-    const activePlayers = state.players.filter((p) => p.connected);
-    if (activePlayers.length === 1) {
-      state.phase = GamePhase.Finished;
-      state.winner = activePlayers[0]!.id;
-    }
+    // Same cleanup as walking out: settle what the table owed them, pass the
+    // turn on, and end the game only if fewer than two players are left.
+    this.handlePlayerLeft(state, player);
 
     state.lastActivityAt = Date.now();
   }

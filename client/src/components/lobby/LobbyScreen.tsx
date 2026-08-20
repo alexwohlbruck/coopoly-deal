@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Settings, Github, ScanLine } from "lucide-react";
+import { Settings, Github, ScanLine, Globe } from "lucide-react";
 import { MusicControls } from "../common/MusicControls";
 import { GameRulesModal } from "../common/GameRulesModal";
 import { CreditsModal } from "../common/CreditsModal";
@@ -25,6 +25,8 @@ interface LobbyScreenProps {
     onNext: () => void;
   };
   onlineCount?: number | null;
+  publicRoomCount?: number;
+  onBrowsePublicGames?: (name: string) => void;
 }
 
 export function LobbyScreen({
@@ -32,9 +34,12 @@ export function LobbyScreen({
   onJoinRoom,
   musicControls,
   onlineCount,
+  publicRoomCount = 0,
+  onBrowsePublicGames,
 }: LobbyScreenProps) {
   const { t } = useI18n();
-  const { playerName: savedPlayerName, theme, useSocialistTheme } = useGameStore();
+  const { playerName: savedPlayerName, theme, useSocialistTheme } =
+    useGameStore();
   const [roomCode, setRoomCode] = useState("");
   const [name, setName] = useState(savedPlayerName ?? "");
   const { modal, open, close } = useModalParam();
@@ -50,6 +55,7 @@ export function LobbyScreen({
       onJoinRoom(roomCode.trim(), name.trim());
     }
   };
+
 
   return (
     <div
@@ -318,6 +324,51 @@ export function LobbyScreen({
               {t.lobby.join}
             </SecondaryButton>
           </form>
+
+          {/* Don't have a code? Browse open games instead. Gated on a name
+              so the browser page can join in one click. */}
+          {onBrowsePublicGames && (
+            <SecondaryButton
+              onClick={() => onBrowsePublicGames(name.trim())}
+              disabled={!hasName}
+              title={hasName ? undefined : t.lobby.nameRequiredToJoin}
+              fullWidth
+              size="lg"
+              style={{
+                marginTop: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 9,
+              }}
+            >
+              <Globe className="w-4 h-4" />
+              {t.lobby.findPublicGame}
+              {/* Same green "live" dot as the online-player count above. */}
+              {publicRoomCount > 0 && (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    flexShrink: 0,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#4ade80",
+                      boxShadow: "0 0 6px rgba(74,222,128,0.5)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  {publicRoomCount}
+                </span>
+              )}
+            </SecondaryButton>
+          )}
         </div>
 
         {/* Tip jar — small, deferential. Sits beneath the create/join
