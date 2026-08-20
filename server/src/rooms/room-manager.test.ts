@@ -1,19 +1,480 @@
-import { describe, it, expect, afterEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { RoomManager } from "./room-manager.ts";
-import { GamePhase } from "../models/types.ts";
+import { FileRoomStore } from "./room-store.ts";
+import {
+  CardType,
+  GamePhase,
+  TurnPhase,
+  type Card,
+  type GameState,
+} from "../models/types.ts";
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+let dir: string;
+let path: string;
 const managers: RoomManager[] = [];
 
-/** RoomManager owns two intervals, so every instance must be torn down. */
+/** Stand in for a process restart: the store is the only thing carried over. */
+function boot(reclaimWindowMs?: number): RoomManager {
+  const manager = new RoomManager(new FileRoomStore(path), reclaimWindowMs);
+  managers.push(manager);
+  return manager;
+}
+
+function startedGame(manager: RoomManager, names: string[]): GameState {
+  const game = manager.createRoom();
+  for (const name of names) manager.joinRoom(game.id, name);
+  manager.startGame(game.id);
+  return game;
+}
+
+beforeEach(() => {
+  dir = mkdtempSync(join(tmpdir(), "coopoly-rooms-"));
+  path = join(dir, "rooms.json");
+});
+
+afterEach(() => {
+  for (const manager of managers.splice(0)) manager.destroy();
+  rmSync(dir, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// Round trip
+// ---------------------------------------------------------------------------
+
+describe("room persistence", () => {
+  it("carries an in-progress game across a restart", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    const hands = game.players.map((p) => p.hand.length);
+    before.persist();
+
+    const after = boot();
+    expect(after.restore()).toEqual([game.id]);
+
+    const restored = after.getRoom(game.id)!;
+    expect(restored).not.toBeNull();
+    expect(restored.phase).toBe(GamePhase.Playing);
+    expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Grace"]);
+    expect(restored.players.map((p) => p.hand.length)).toEqual(hands);
+    expect(restored.deck.length).toBe(game.deck.length);
+    expect(restored.turn?.playerId).toBe(game.turn!.playerId);
+  });
+
+  it("marks restored players absent so they can rejoin by name", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    expect(game.players.every((p) => p.connected)).toBe(true);
+    const adasHand = game.players.find((p) => p.name === "Ada")!.hand.length;
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    const restored = after.getRoom(game.id)!;
+    expect(restored.players.every((p) => p.connected)).toBe(false);
+
+    // The client reconnects and re-sends JOIN_ROOM with its stored name. That
+    // has to land on the existing seat, hand and all — not add a new player.
+    const { player } = after.joinRoom(game.id, "Ada");
+    expect(restored.players).toHaveLength(2);
+    expect(player.connected).toBe(true);
+    expect(player.hand).toHaveLength(adasHand);
+  });
+
+  it("rolls turn deadlines forward past the downtime", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    game.turn!.expiresAt = Date.now() + 20_000;
+    game.settings.turnTimer = 30;
+    before.persist();
+
+    // Fake a 15 second outage: rewind the whole snapshot, deadline included, so
+    // it reads as "written 15s ago with 20s left on the clock".
+    const store = new FileRoomStore(path);
+    const snapshot = store.load()!;
+    snapshot.savedAt -= 15_000;
+    snapshot.rooms[0]!.turn!.expiresAt! -= 15_000;
+    // save() stamps its own savedAt, so write the doctored snapshot directly.
+    writeFileSync(path, JSON.stringify(snapshot));
+
+    const after = boot();
+    after.restore();
+    const restored = after.getRoom(game.id)!;
+
+    // ~20s were left when the server went down; the player should still have
+    // ~20s, not 5s, and certainly not a deadline that already passed.
+    const remaining = restored.turn!.expiresAt! - Date.now();
+    expect(remaining).toBeGreaterThan(18_000);
+    expect(remaining).toBeLessThanOrEqual(21_000);
+  });
+
+  it("keeps a lobby's room code alive but empties its seats", () => {
+    const before = boot();
+    const game = before.createRoom();
+    before.joinRoom(game.id, "Ada");
+    game.settings.setsToWin = 2;
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    const restored = after.getRoom(game.id)!;
+
+    // Leaving a lobby already removes you from it, so everyone rejoins fresh —
+    // but the code on the shared join link keeps working, with settings intact.
+    expect(restored.phase).toBe(GamePhase.Waiting);
+    expect(restored.players).toHaveLength(0);
+    expect(restored.settings.setsToWin).toBe(2);
+
+    const { player } = after.joinRoom(game.id, "Ada");
+    expect(restored.players).toHaveLength(1);
+    expect(player.name).toBe("Ada");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// What must not be kept
+// ---------------------------------------------------------------------------
+
+describe("snapshot contents", () => {
+  it("drops finished, empty and bot-only rooms", () => {
+    const before = boot();
+
+    const finished = startedGame(before, ["Ada", "Grace"]);
+    finished.phase = GamePhase.Finished;
+    finished.winner = finished.players[0]!.id;
+
+    const emptyLobby = before.createRoom();
+
+    const botsOnly = startedGame(before, ["Ada", "Grace"]);
+    for (const p of botsOnly.players) p.isBot = true;
+
+    const live = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    const after = boot();
+    expect(after.restore()).toEqual([live.id]);
+    expect(after.getRoom(finished.id)).toBeNull();
+    expect(after.getRoom(emptyLobby.id)).toBeNull();
+    expect(after.getRoom(botsOnly.id)).toBeNull();
+  });
+
+  it("drops rooms that went stale while the server was down", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    game.lastActivityAt = Date.now() - 31 * 60 * 1000;
+    before.persist();
+
+    const after = boot();
+    expect(after.restore()).toEqual([]);
+    expect(after.getRoomCount()).toBe(0);
+  });
+
+  it("deletes the file once nothing is worth keeping", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+    expect(existsSync(path)).toBe(true);
+
+    before.removeRoom(game.id);
+    before.persist();
+    expect(existsSync(path)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bad input
+// ---------------------------------------------------------------------------
+
+describe("snapshot resilience", () => {
+  it("starts empty rather than throwing on an unreadable file", () => {
+    writeFileSync(path, "{ not json");
+    const manager = boot();
+    expect(manager.restore()).toEqual([]);
+  });
+
+  it("discards a snapshot written by an incompatible version", () => {
+    const before = boot();
+    startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    raw.version = 999;
+    writeFileSync(path, JSON.stringify(raw));
+
+    const after = boot();
+    expect(after.restore()).toEqual([]);
+  });
+
+  it("skips rooms whose shape no longer matches the engine", () => {
+    const before = boot();
+    const good = startedGame(before, ["Ada", "Grace"]);
+    const bad = startedGame(before, ["Alan", "Edsger"]);
+    before.persist();
+
+    const raw = JSON.parse(readFileSync(path, "utf8"));
+    const broken = raw.rooms.find((r: GameState) => r.id === bad.id);
+    delete broken.players[0].hand; // an older build's Player shape
+    writeFileSync(path, JSON.stringify(raw));
+
+    const after = boot();
+    expect(after.restore()).toEqual([good.id]);
+    expect(after.getRoom(bad.id)).toBeNull();
+  });
+
+  it("keeps a restored game playable", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    const restored = after.getRoom(game.id)!;
+    const { player } = after.joinRoom(game.id, restored.turn!.playerId === restored.players[0]!.id ? "Ada" : "Grace");
+
+    // Drive one real move through the engine to prove the state is not just
+    // shaped right but actually usable. Deal a known money card rather than
+    // reaching into the shuffled hand, which may be all property.
+    expect(restored.turn!.phase).toBe(TurnPhase.Play);
+    const handBefore = player.hand.length;
+    const card: Card = { id: "test_money", type: CardType.Money, value: 5 };
+    player.hand.push(card);
+
+    after.getEngine().playCardToBank(restored, player.id, card.id);
+
+    const seat = restored.players.find((p) => p.id === player.id)!;
+    expect(seat.bank).toEqual([card]);
+    expect(seat.hand).toHaveLength(handBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Abandoned lobbies
+// ---------------------------------------------------------------------------
+
+/** cleanupInactiveRooms is private and interval-driven; drive it by hand. */
+function sweep(manager: RoomManager): void {
+  (manager as unknown as { cleanupInactiveRooms(): void }).cleanupInactiveRooms();
+}
+
+/** A lobby whose players have all walked out. */
+function abandonedLobby(manager: RoomManager, ageMs: number): GameState {
+  const game = manager.createRoom();
+  const { player } = manager.joinRoom(game.id, "Ada");
+  manager.getEngine().removePlayer(game, player.id);
+  game.lastActivityAt = Date.now() - ageMs;
+  return game;
+}
+
+describe("abandoned lobbies", () => {
+  it("sweeps a lobby once everyone has left", () => {
+    const manager = boot();
+    const game = abandonedLobby(manager, 6 * 60 * 1000);
+
+    sweep(manager);
+
+    expect(manager.getRoom(game.id)).toBeNull();
+  });
+
+  it("keeps an empty lobby joinable inside the grace window", () => {
+    const manager = boot();
+    const game = abandonedLobby(manager, 60 * 1000);
+
+    sweep(manager);
+
+    // The link someone shared a minute ago still has to work.
+    expect(manager.getRoom(game.id)).not.toBeNull();
+  });
+
+  it("leaves an occupied lobby on the long timer", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    manager.joinRoom(game.id, "Ada");
+    game.lastActivityAt = Date.now() - 6 * 60 * 1000;
+
+    sweep(manager);
+
+    // Ada is still sitting there waiting for someone; six idle minutes in a
+    // lobby is nothing.
+    expect(manager.getRoom(game.id)).not.toBeNull();
+  });
+
+  it("gives a restored lobby its grace window from the reboot, not the crash", () => {
+    const before = boot();
+    const game = before.createRoom();
+    before.joinRoom(game.id, "Ada");
+    before.persist();
+
+    // Six minutes of downtime — longer than an empty lobby normally survives.
+    const snapshot = JSON.parse(readFileSync(path, "utf8"));
+    snapshot.savedAt -= 6 * 60 * 1000;
+    snapshot.rooms[0].lastActivityAt -= 6 * 60 * 1000;
+    writeFileSync(path, JSON.stringify(snapshot));
+
+    const after = boot();
+    after.restore();
+    sweep(after);
+
+    // Ada gets her five minutes to come back through the link; the outage
+    // must not have spent them for her.
+    expect(after.getRoom(game.id)).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rejoining
+// ---------------------------------------------------------------------------
+
+describe("rejoining a room", () => {
+  it("hands a returning player the seat they already hold", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: first } = manager.joinRoom(game.id, "Ada");
+
+    // The socket dropped without the server noticing, so Ada's row is still
+    // sitting there marked connected when she comes back.
+    const { player: again } = manager.joinRoom(game.id, "Ada", first.id);
+
+    expect(again.id).toBe(first.id);
+    expect(game.players).toHaveLength(1);
+  });
+
+  it("keeps a reconnecting host at the front of the lobby", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: host } = manager.joinRoom(game.id, "Ada");
+    manager.joinRoom(game.id, "Grace");
+
+    manager.joinRoom(game.id, "Ada", host.id);
+
+    // Host is whoever holds index 0, so a reconnect that appended a fresh row
+    // would quietly hand the room to Grace.
+    expect(game.players[0]!.id).toBe(host.id);
+    expect(game.players).toHaveLength(2);
+  });
+
+  it("picks up a name changed since the last visit", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: first } = manager.joinRoom(game.id, "Ada");
+
+    manager.joinRoom(game.id, "Ada Lovelace", first.id);
+
+    expect(game.players[0]!.name).toBe("Ada Lovelace");
+  });
+
+  it("seats a stranger who happens to share a name", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    manager.joinRoom(game.id, "Ada");
+
+    // No id: this is somebody else who typed the same name, not a reconnect.
+    manager.joinRoom(game.id, "Ada");
+
+    expect(game.players).toHaveLength(2);
+  });
+
+  it("ignores an id from a room the player is not in", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+
+    const { player } = manager.joinRoom(game.id, "Ada", crypto.randomUUID());
+
+    expect(game.players).toHaveLength(1);
+    expect(game.players[0]!.id).toBe(player.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reclaiming a seat after a restart
+// ---------------------------------------------------------------------------
+
+describe("reclaim window", () => {
+  it("ends the game when nobody comes back", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    // Window of zero: the very next sweep gives up on both seats.
+    const after = boot(0);
+    after.restore();
+    after.sweepUnclaimedSeats();
+
+    // Dropping the first seat already takes the table below two players, which
+    // ends the game and locks the standings — so the second seat stays put.
+    // Nobody is there to see it, and the finished room is swept minutes later.
+    const restored = after.getRoom(game.id)!;
+    expect(restored.phase).toBe(GamePhase.Finished);
+    expect(restored.players.length).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps the game going for the players who did come back", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace", "Alan"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.joinRoom(game.id, "Grace");
+    after.sweepUnclaimedSeats();
+
+    const restored = after.getRoom(game.id)!;
+    // Alan never showed up; two players is still a game.
+    expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Grace"]);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("leaves seats alone until the window is up", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace"]);
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    after.sweepUnclaimedSeats();
+
+    // A restart must not read as everyone dropping out at once.
+    const restored = after.getRoom(game.id)!;
+    expect(restored.players).toHaveLength(2);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("only sweeps once", () => {
+    const before = boot();
+    const game = startedGame(before, ["Ada", "Grace", "Alan"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.joinRoom(game.id, "Grace");
+    after.sweepUnclaimedSeats();
+
+    // A later disconnect is an ordinary drop, not something the sweep should
+    // still be watching for.
+    const restored = after.getRoom(game.id)!;
+    restored.players[1]!.connected = false;
+    after.sweepUnclaimedSeats();
+    expect(restored.players).toHaveLength(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Public room browser and rematch seating
+// ---------------------------------------------------------------------------
+
+/** RoomManager owns its intervals, so every instance must be torn down. */
 function makeManager(): RoomManager {
   const manager = new RoomManager();
   managers.push(manager);
   return manager;
 }
-
-afterEach(() => {
-  while (managers.length) managers.pop()!.destroy();
-});
 
 /** A public room whose game has ended, with one player still sitting on the
  *  end screen. */
@@ -100,7 +561,7 @@ describe("RoomManager", () => {
       );
     });
 
-    it("reconnects a player who left, rather than seating them twice", () => {
+    it("does not seat someone who left a game in progress", () => {
       const manager = makeManager();
       const room = manager.createRoom();
       manager.joinRoom(room.id, "Alexis");
@@ -109,13 +570,15 @@ describe("RoomManager", () => {
       manager.startGame(room.id);
       const alex = room.players.find((p) => p.name === "alex")!;
       manager.getEngine().removePlayer(room, alex.id);
-      expect(alex.connected).toBe(false);
 
-      const { player } = manager.joinRoom(room.id, "alex");
-
-      expect(player.id).toBe(alex.id);
-      expect(player.connected).toBe(true);
-      expect(room.players).toHaveLength(3);
+      // Dropping out is final: the seat is gone, so there is nothing to
+      // reconnect to and the game cannot be rejoined until it is back in the
+      // lobby.
+      expect(room.players.map((p) => p.name)).toEqual(["Alexis", "Henri"]);
+      expect(() => manager.joinRoom(room.id, "alex")).toThrow(
+        "Game already started",
+      );
+      expect(room.players).toHaveLength(2);
     });
   });
 });

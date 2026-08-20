@@ -34,7 +34,10 @@ export class GameEngine {
       winner: null,
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
-      settings: DEFAULT_SETTINGS,
+      // Copy, don't alias: sharing one object across every room means an
+      // in-place write to a room's settings silently rewrites the defaults
+      // for every room created afterwards.
+      settings: { ...DEFAULT_SETTINGS },
       isPublic: false,
     };
   }
@@ -63,19 +66,120 @@ export class GameEngine {
     return player;
   }
 
+  /**
+   * Take a player out of a game.
+   *
+   * Dropping out is final — there is no seat to come back to, because rejoining
+   * a game in progress isn't allowed. Their cards go back to the discard pile
+   * so they stay in circulation, and play carries on as long as two players
+   * remain.
+   */
   removePlayer(state: GameState, playerId: string): void {
-    if (state.phase === GamePhase.Waiting) {
-      state.players = state.players.filter((p) => p.id !== playerId);
+    const index = state.players.findIndex((p) => p.id === playerId);
+    if (index === -1) return;
+
+    // The result is already on everyone's screen; taking a name out of the
+    // standings now would rewrite what they are looking at. Mark them absent
+    // all the same, so a finished public room whose players have all closed
+    // their tabs stops being listed.
+    if (state.phase === GamePhase.Finished) {
+      state.players[index]!.connected = false;
       state.lastActivityAt = Date.now();
       return;
     }
 
-    const player = this.getPlayer(state, playerId);
+    if (state.phase === GamePhase.Waiting) {
+      state.players.splice(index, 1);
+      state.lastActivityAt = Date.now();
+      return;
+    }
+
+    const player = state.players[index]!;
+
+    // Settle whatever the table was waiting on them for while they are still
+    // in the roster — handlePlayerLeft looks players up by id, pays what they
+    // owe out of what they were holding, hands the turn on if it was theirs,
+    // and ends the game outright when it leaves one player standing.
     player.connected = false;
-    if (state.phase === GamePhase.Playing) {
-      this.handlePlayerLeft(state, player);
+    this.handlePlayerLeft(state, player);
+
+    // Only then take them out for good. Dropping out is final, so they leave
+    // the roster rather than lingering as an empty seat, which also keeps them
+    // off the final standings.
+    state.players.splice(index, 1);
+    this.discardHoldings(state, player);
+    this.forgetPlayerReferences(state, playerId);
+
+    // Everyone after them shifted down one, so the pointer has to move with
+    // them to stay on the same player. handlePlayerLeft has already handed the
+    // turn on if it was theirs — starting one here would deal a second hand.
+    if (index < state.currentPlayerIndex) state.currentPlayerIndex--;
+    state.currentPlayerIndex = state.players.length
+      ? state.currentPlayerIndex % state.players.length
+      : 0;
+
+    // handlePlayerLeft ends the game when one player is left standing, but it
+    // counts connected players; a table can also fall below the minimum by
+    // seats being swept after a restart, with nobody connected to count.
+    if (state.phase === GamePhase.Playing && state.players.length < MIN_PLAYERS) {
+      state.phase = GamePhase.Finished;
+      state.winner = state.players[0]?.id ?? null;
+      state.turn = null;
     }
     state.lastActivityAt = Date.now();
+  }
+
+  /** Return everything a departing player was holding to the discard pile. */
+  private discardHoldings(state: GameState, player: Player): void {
+    state.discardPile.push(...player.hand, ...player.bank);
+    for (const set of player.properties) {
+      state.discardPile.push(...set.cards);
+      if (set.house) state.discardPile.push(set.house);
+      if (set.hotel) state.discardPile.push(set.hotel);
+    }
+    player.hand = [];
+    player.bank = [];
+    player.properties = [];
+  }
+
+  /**
+   * Drop what is left pointing at a player who has gone, so nothing references
+   * a seat that no longer exists. handlePlayerLeft has already settled their
+   * obligations by this point; this only clears the leftovers.
+   */
+  private forgetPlayerReferences(state: GameState, playerId: string): void {
+    const turn = state.turn;
+    if (!turn) return;
+
+    if (turn.pendingWildcardAssignments) {
+      turn.pendingWildcardAssignments = turn.pendingWildcardAssignments.filter(
+        (a) => a.playerId !== playerId,
+      );
+    }
+    if (turn.pendingWildcardAssignment?.playerId === playerId) {
+      turn.pendingWildcardAssignment = null;
+    }
+
+    const action = turn.pendingAction;
+    if (!action) return;
+
+    // Whoever played the card has gone; the action goes with them.
+    if (action.sourcePlayerId === playerId) {
+      turn.pendingAction = null;
+      turn.phase = TurnPhase.Play;
+      return;
+    }
+
+    const chain = action.justSayNoChain;
+    if (
+      chain &&
+      (chain.targetPlayerId === playerId ||
+        chain.initiatorTargetId === playerId)
+    ) {
+      action.justSayNoChain = undefined;
+    }
+
+    this.tryResolveAction(state);
   }
 
   /**
@@ -1591,7 +1695,14 @@ export class GameEngine {
       if (state.turn?.pendingAction !== action) break;
       if (action.respondedPlayerIds.includes(targetId)) continue;
       const target = state.players.find((p) => p.id === targetId);
-      if (!target || target.connected) continue;
+      if (target?.connected) continue;
+      if (!target) {
+        // Not at the table at all — there is nothing to collect from them, and
+        // waiting on a seat that no longer exists hangs the turn for good.
+        action.respondedPlayerIds.push(targetId);
+        if (state.turn) this.tryResolveAction(state);
+        continue;
+      }
       try {
         this.autoRespondFor(state, action, targetId);
       } catch {

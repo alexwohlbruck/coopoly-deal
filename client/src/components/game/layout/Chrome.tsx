@@ -524,6 +524,12 @@ export interface OpponentSeatPlayer {
   isCurrentTurn?: boolean;
   /** Whether we're waiting for this player to respond to an action. */
   isWaitingForAction?: boolean;
+  /**
+   * False only while a seat restored after a server restart is waiting to be
+   * reclaimed — a player who actually drops out is removed from the game, not
+   * shown greyed out.
+   */
+  connected?: boolean;
 }
 
 interface OpponentSeatProps {
@@ -542,6 +548,7 @@ export function OpponentSeat({
 }: OpponentSeatProps & { compact?: boolean }) {
   const onTurn = !!player.isCurrentTurn;
   const waiting = !!player.isWaitingForAction;
+  const away = player.connected === false;
   const accent = "var(--accent, #f0c14a)";
 
   // ── Compact mode: small pill with avatar + name ──────────────
@@ -569,7 +576,7 @@ export function OpponentSeat({
               : "inset 0 0 0 1px rgba(255,255,255,0.04)",
           cursor: "pointer",
           color: "#f5ead0",
-          opacity: onTurn ? 1 : isActive ? 0.95 : 0.6,
+          opacity: away ? 0.4 : onTurn ? 1 : isActive ? 0.95 : 0.6,
           transition: "all var(--d-base) var(--ease-out-soft)",
           display: "flex",
           alignItems: "center",
@@ -678,7 +685,7 @@ export function OpponentSeat({
         cursor: "pointer",
         textAlign: "left",
         color: "#f5ead0",
-        opacity: onTurn ? 1 : isActive ? 0.92 : 0.65,
+        opacity: away ? 0.4 : onTurn ? 1 : isActive ? 0.92 : 0.65,
         transition: "all var(--d-base) var(--ease-out-soft)",
         display: "flex",
         flexDirection: "column",

@@ -45,10 +45,13 @@ export function toSeatPlayer(
     sets: completeSetsCount(player, allowDuplicateSets),
     totalSetsNeeded: gameState.settings.setsToWin,
     money,
-    handCount: player.hand?.length ?? 0,
+    // `hand` only comes down for yourself; everyone else gets a count. Reading
+    // the array here meant every opponent showed zero cards in hand.
+    handCount: player.handCount,
     isCurrentTurn:
       !!gameState.turn?.playerId && player.id === gameState.turn.playerId,
     isWaitingForAction: isPlayerWaitingForAction(gameState, player.id),
+    connected: player.connected,
   };
 }
 

@@ -34,6 +34,25 @@ bun dev
 
 The frontend dev server runs on `http://localhost:5173` and proxies API/WebSocket requests to the backend on port 3000.
 
+## Surviving Restarts
+
+Games live in memory, but they are snapshotted to a single JSON file so a deploy
+or crash doesn't end everyone's session. On boot the server reloads the rooms
+the previous process was serving; clients reconnect on their own within a couple
+of seconds and rejoin their seat by name. In practice a restart looks like a
+brief "Reconnecting…" flicker rather than a lost game.
+
+Under Docker the snapshot lives on the `coopoly-data` volume — mount something
+at `/app/data` or the rooms won't outlive the container.
+
+See `ROOM_SNAPSHOT_PATH` and `ROOM_PERSISTENCE` under
+[Configuration](#configuration).
+
+The file is rewritten in place and never accumulates: no history, no rotation,
+at most the server's room cap (100) of live rooms at roughly 8 KB each, and it
+is deleted outright whenever no games are running. Finished games, empty
+lobbies and bot-only rooms are never written. Nothing about a game is kept once
+it ends.
 ## Configuration
 
 | Variable            | Default             | Description                                                                 |
@@ -43,6 +62,8 @@ The frontend dev server runs on `http://localhost:5173` and proxies API/WebSocke
 | `UMAMI_API_URL`     | Umami Cloud         | Collector endpoint, for a self-hosted Umami.                                  |
 | `ANALYTICS_ENABLED` | `true`              | Set to `false` to force analytics off even with a website ID set.              |
 | `ANALYTICS_DEBUG`   | `false`             | Log each event send and its response.                                          |
+| `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where live rooms are snapshotted so they survive a restart.                   |
+| `ROOM_PERSISTENCE`  | `true`              | Set to `false` to keep rooms in memory only.                                   |
 
 Browser-side analytics are additionally restricted by `data-domains` on the
 Umami script tag in `client/index.html`, so a self-hosted or local build sends
