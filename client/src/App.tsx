@@ -243,20 +243,27 @@ function AppMain() {
   const handleWsOpen = useCallback(() => {
     let rc = useGameStore.getState().roomCode;
     let pn = useGameStore.getState().playerName;
-    if (!rc || !pn) {
+    // Sent so the server hands back the seat we already hold instead of
+    // dealing us a second one every time the socket drops.
+    let pid = useGameStore.getState().playerId;
+    if (!rc || !pn || !pid) {
       try {
         const stored = JSON.parse(
           localStorage.getItem("coopoly-settings") ?? "{}",
         );
         rc = rc || stored?.state?.roomCode;
         pn = pn || stored?.state?.playerName;
+        pid = pid || stored?.state?.playerId;
       } catch {
         // ignore
       }
     }
     const path = window.location.pathname;
     if (rc && pn && (path.startsWith("/room/") || path.startsWith("/game/"))) {
-      sendRef.current({ type: "JOIN_ROOM", payload: { roomCode: rc, playerName: pn } });
+      sendRef.current({
+        type: "JOIN_ROOM",
+        payload: { roomCode: rc, playerName: pn, playerId: pid || undefined },
+      });
     } else {
       setIsReconnecting(false);
     }
@@ -302,10 +309,20 @@ function AppMain() {
   const handleJoinRoom = useCallback(
     (code: string, name: string, isHost: boolean = false) => {
       startMusic();
+      // Read the stored seat before setPlayer clears it. Only reuse it for the
+      // room it belongs to — an id from a previous room would never match, but
+      // not sending it says so plainly.
+      const { roomCode: storedRoom, playerId: storedId } =
+        useGameStore.getState();
+      const previousId = storedRoom === code ? storedId : null;
       setPlayer("", name);
       send({
         type: "JOIN_ROOM",
-        payload: { roomCode: code, playerName: name },
+        payload: {
+          roomCode: code,
+          playerName: name,
+          playerId: previousId || undefined,
+        },
       });
 
       if (isHost) {

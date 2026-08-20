@@ -114,7 +114,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     try {
       switch (msg.type) {
         case "JOIN_ROOM":
-          handleJoinRoom(ws, msg.payload.roomCode, msg.payload.playerName);
+          handleJoinRoom(
+            ws,
+            msg.payload.roomCode,
+            msg.payload.playerName,
+            msg.payload.playerId,
+          );
           break;
 
         case "START_GAME":
@@ -247,8 +252,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     ws: GameWebSocket,
     roomCode: string,
     playerName: string,
+    previousPlayerId?: string,
   ): void {
-    const { game, player } = roomManager.joinRoom(roomCode, playerName);
+    const { game, player, reclaimed } = roomManager.joinRoom(
+      roomCode,
+      playerName,
+      previousPlayerId,
+    );
 
     ws.data.playerId = player.id;
     ws.data.roomCode = roomCode;
@@ -270,14 +280,18 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       },
     });
 
-    broadcastToRoom(
-      roomCode,
-      {
-        type: "PLAYER_JOINED",
-        payload: { playerName: player.name, playerId: player.id },
-      },
-      player.id,
-    );
+    // Somebody sitting back down after a dropped socket is not an arrival, and
+    // announcing it would have the room applaud every flap.
+    if (!reclaimed) {
+      broadcastToRoom(
+        roomCode,
+        {
+          type: "PLAYER_JOINED",
+          payload: { playerName: player.name, playerId: player.id },
+        },
+        player.id,
+      );
+    }
 
     sendStateToAll(roomCode);
   }
@@ -809,6 +823,13 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
 
   function handleClose(ws: GameWebSocket): void {
     const { playerId, roomCode } = ws.data;
+
+    // A socket that has already been replaced is a reconnected player's old
+    // one finally going away. Now that rejoining reclaims the same seat, acting
+    // on this close would evict the live session and pull its owner out of the
+    // room they are sitting in.
+    if (playerId && playerSockets.get(playerId) !== ws) return;
+
     if (playerId) {
       playerSockets.delete(playerId);
     }

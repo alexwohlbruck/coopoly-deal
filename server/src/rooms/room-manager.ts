@@ -9,6 +9,10 @@ import {
 const ROOM_CODE_LENGTH = 6;
 const ROOM_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity
 const FINISHED_ROOM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes after game ends
+// A lobby everyone has left keeps its code alive this long, so a join link or
+// QR code already in circulation still works and a restart is survivable. It is
+// far shorter than ROOM_TIMEOUT_MS because nobody is in the room to notice.
+const EMPTY_LOBBY_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_ROOMS = 100;
 const SNAPSHOT_INTERVAL_MS = 10_000;
 /**
@@ -114,6 +118,10 @@ export class RoomManager {
       // that are already out there keep working, and the host's settings hold.
       game.players = [];
       game.currentPlayerIndex = 0;
+      // An empty lobby is swept on EMPTY_LOBBY_TIMEOUT_MS, which is short. Roll
+      // the clock forward so the outage does not eat the window the returning
+      // players need to come back through their link.
+      game.lastActivityAt += downtime;
       return true;
     }
 
@@ -250,9 +258,30 @@ export class RoomManager {
   joinRoom(
     code: string,
     playerName: string,
-  ): { game: GameState; player: Player } {
+    playerId?: string,
+  ): { game: GameState; player: Player; reclaimed: boolean } {
     const game = this.rooms.get(code);
     if (!game) throw new Error("Room not found");
+
+    // A player coming back reclaims the seat they already hold instead of
+    // being dealt a second one. This matters most in a lobby, where a dropped
+    // socket the server has not noticed yet would otherwise leave a duplicate
+    // row behind, cost the host their place at index 0, and keep refreshing
+    // lastActivityAt so the room never ages out. Matching on the id is safe
+    // where matching on the name would not be: it is a UUID the client keeps
+    // to itself, so typing someone's name cannot take their seat.
+    if (playerId) {
+      const existing = game.players.find((p) => p.id === playerId);
+      if (existing) {
+        existing.connected = true;
+        // Renaming is a lobby-only privilege, same as UPDATE_PLAYER_NAME.
+        if (game.phase === GamePhase.Waiting && playerName) {
+          existing.name = playerName;
+        }
+        game.lastActivityAt = Date.now();
+        return { game, player: existing, reclaimed: true };
+      }
+    }
 
     // If game is in progress, try to reconnect a disconnected player with the same name
     if (game.phase !== GamePhase.Waiting) {
@@ -262,12 +291,12 @@ export class RoomManager {
       if (disconnected) {
         disconnected.connected = true;
         game.lastActivityAt = Date.now();
-        return { game, player: disconnected };
+        return { game, player: disconnected, reclaimed: true };
       }
     }
 
     const player = this.engine.addPlayer(game, playerName);
-    return { game, player };
+    return { game, player, reclaimed: false };
   }
 
   reconnectPlayer(code: string, playerId: string): GameState {
@@ -301,7 +330,9 @@ export class RoomManager {
       const timeout =
         game.phase === GamePhase.Finished
           ? FINISHED_ROOM_TIMEOUT_MS
-          : ROOM_TIMEOUT_MS;
+          : game.players.length === 0
+            ? EMPTY_LOBBY_TIMEOUT_MS
+            : ROOM_TIMEOUT_MS;
       if (now - game.lastActivityAt > timeout) {
         const playerIds = game.players.map((p) => p.id);
         this.rooms.delete(code);

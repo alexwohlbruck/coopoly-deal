@@ -240,7 +240,12 @@ export function toClientState(
 // WebSocket message types
 
 export type ClientMessage =
-  | { type: "JOIN_ROOM"; payload: { roomCode: string; playerName: string } }
+  | {
+      type: "JOIN_ROOM";
+      // playerId is the caller's previous seat, if it has one. Optional: a
+      // first-time joiner has none, and an old client may not send it.
+      payload: { roomCode: string; playerName: string; playerId?: string };
+    }
   | { type: "REMOVE_PLAYER"; payload: { playerIdToRemove: string } }
   | { type: "START_GAME" }
   | { type: "PLAY_CARD_TO_BANK"; payload: { cardId: string } }

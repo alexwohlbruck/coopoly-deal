@@ -255,7 +255,143 @@ describe("snapshot resilience", () => {
 
 // ---------------------------------------------------------------------------
 // Abandoned lobbies
+// ---------------------------------------------------------------------------
 
+/** cleanupInactiveRooms is private and interval-driven; drive it by hand. */
+function sweep(manager: RoomManager): void {
+  (manager as unknown as { cleanupInactiveRooms(): void }).cleanupInactiveRooms();
+}
+
+/** A lobby whose players have all walked out. */
+function abandonedLobby(manager: RoomManager, ageMs: number): GameState {
+  const game = manager.createRoom();
+  const { player } = manager.joinRoom(game.id, "Ada");
+  manager.getEngine().removePlayer(game, player.id);
+  game.lastActivityAt = Date.now() - ageMs;
+  return game;
+}
+
+describe("abandoned lobbies", () => {
+  it("sweeps a lobby once everyone has left", () => {
+    const manager = boot();
+    const game = abandonedLobby(manager, 6 * 60 * 1000);
+
+    sweep(manager);
+
+    expect(manager.getRoom(game.id)).toBeNull();
+  });
+
+  it("keeps an empty lobby joinable inside the grace window", () => {
+    const manager = boot();
+    const game = abandonedLobby(manager, 60 * 1000);
+
+    sweep(manager);
+
+    // The link someone shared a minute ago still has to work.
+    expect(manager.getRoom(game.id)).not.toBeNull();
+  });
+
+  it("leaves an occupied lobby on the long timer", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    manager.joinRoom(game.id, "Ada");
+    game.lastActivityAt = Date.now() - 6 * 60 * 1000;
+
+    sweep(manager);
+
+    // Ada is still sitting there waiting for someone; six idle minutes in a
+    // lobby is nothing.
+    expect(manager.getRoom(game.id)).not.toBeNull();
+  });
+
+  it("gives a restored lobby its grace window from the reboot, not the crash", () => {
+    const before = boot();
+    const game = before.createRoom();
+    before.joinRoom(game.id, "Ada");
+    before.persist();
+
+    // Six minutes of downtime — longer than an empty lobby normally survives.
+    const snapshot = JSON.parse(readFileSync(path, "utf8"));
+    snapshot.savedAt -= 6 * 60 * 1000;
+    snapshot.rooms[0].lastActivityAt -= 6 * 60 * 1000;
+    writeFileSync(path, JSON.stringify(snapshot));
+
+    const after = boot();
+    after.restore();
+    sweep(after);
+
+    // Ada gets her five minutes to come back through the link; the outage
+    // must not have spent them for her.
+    expect(after.getRoom(game.id)).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rejoining
+// ---------------------------------------------------------------------------
+
+describe("rejoining a room", () => {
+  it("hands a returning player the seat they already hold", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: first } = manager.joinRoom(game.id, "Ada");
+
+    // The socket dropped without the server noticing, so Ada's row is still
+    // sitting there marked connected when she comes back.
+    const { player: again } = manager.joinRoom(game.id, "Ada", first.id);
+
+    expect(again.id).toBe(first.id);
+    expect(game.players).toHaveLength(1);
+  });
+
+  it("keeps a reconnecting host at the front of the lobby", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: host } = manager.joinRoom(game.id, "Ada");
+    manager.joinRoom(game.id, "Grace");
+
+    manager.joinRoom(game.id, "Ada", host.id);
+
+    // Host is whoever holds index 0, so a reconnect that appended a fresh row
+    // would quietly hand the room to Grace.
+    expect(game.players[0]!.id).toBe(host.id);
+    expect(game.players).toHaveLength(2);
+  });
+
+  it("picks up a name changed since the last visit", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    const { player: first } = manager.joinRoom(game.id, "Ada");
+
+    manager.joinRoom(game.id, "Ada Lovelace", first.id);
+
+    expect(game.players[0]!.name).toBe("Ada Lovelace");
+  });
+
+  it("seats a stranger who happens to share a name", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+    manager.joinRoom(game.id, "Ada");
+
+    // No id: this is somebody else who typed the same name, not a reconnect.
+    manager.joinRoom(game.id, "Ada");
+
+    expect(game.players).toHaveLength(2);
+  });
+
+  it("ignores an id from a room the player is not in", () => {
+    const manager = boot();
+    const game = manager.createRoom();
+
+    const { player } = manager.joinRoom(game.id, "Ada", crypto.randomUUID());
+
+    expect(game.players).toHaveLength(1);
+    expect(game.players[0]!.id).toBe(player.id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Reclaiming a seat after a restart
 // ---------------------------------------------------------------------------
 
 describe("reclaim window", () => {
