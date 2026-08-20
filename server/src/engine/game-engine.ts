@@ -34,7 +34,10 @@ export class GameEngine {
       winner: null,
       createdAt: Date.now(),
       lastActivityAt: Date.now(),
-      settings: DEFAULT_SETTINGS,
+      // Copy, don't alias: sharing one object across every room means an
+      // in-place write to a room's settings silently rewrites the defaults
+      // for every room created afterwards.
+      settings: { ...DEFAULT_SETTINGS },
     };
   }
 
