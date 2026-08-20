@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap");
+/* Outfit / DM Sans / Space Mono cover Latin only. The Noto Sans script
+   families back them for Devanagari (Hindi, Marathi), Bengali, Tamil,
+   Telugu, Arabic and Urdu — without them those locales render as tofu
+   boxes. Urdu gets Nastaliq (the script Urdu readers expect) rather than
+   the Naskh used for Arabic. Google serves
+   each family with a unicode-range, so a Latin-only player downloads the
+   extra CSS but none of the extra woff2 files. */
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=DM+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&family=Noto+Sans+Tamil:wght@400;500;600;700;800&family=Noto+Sans+Telugu:wght@400;500;600;700;800&family=Noto+Naskh+Arabic:wght@400;500;600;700&family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap");
 
 /* Tailwind theme tokens (kept for property-color utility classes).
    Values MUST match PROPERTY_COLOR_HEX in client/src/types/game.ts —
@@ -33,10 +40,15 @@
    ============================================================ */
 
 :root {
-  /* Type */
-  --font-display: "Outfit", system-ui, sans-serif;
-  --font-ui: "DM Sans", system-ui, sans-serif;
-  --font-mono: "Space Mono", ui-monospace, "SF Mono", monospace;
+  /* Type — the Noto Sans script families sit between the Latin face and
+     system-ui so Indic glyphs resolve to a face we actually loaded rather
+     than the platform's last-resort fallback. Per-glyph fallback means
+     Latin text still renders in Outfit / DM Sans / Space Mono. */
+  --font-indic: "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil",
+    "Noto Sans Telugu", "Noto Naskh Arabic";
+  --font-display: "Outfit", var(--font-indic), system-ui, sans-serif;
+  --font-ui: "DM Sans", var(--font-indic), system-ui, sans-serif;
+  --font-mono: "Space Mono", ui-monospace, "SF Mono", var(--font-indic), monospace;
 
   --t-display-xl: 56px;
   --t-display-l: 36px;
@@ -319,6 +331,41 @@
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   Non-Latin script adjustments (hi, mr, bn, ta, te, ur, ar)
+   ----------------------------------------------------------------
+   Two things the Latin type scale gets wrong for these scripts:
+
+   1. Tracking. Devanagari, Bengali, Tamil and Telugu render a syllable
+      as one glyph cluster; letter-spacing prises those clusters apart.
+      Arabic and Urdu are cursive — tracking breaks the joins outright.
+      The wide-tracked uppercase mono labels are the worst offenders.
+   2. Leading. Vowel signs stack above and below the base glyph, so the
+      display line-heights tuned for Outfit (1.0–1.1) clip them. 1.35 is
+      the floor that keeps matras and descenders inside the box.
+
+   Both are scoped to :lang() so Latin locales are untouched, and both
+   need !important because the values they correct are inline styles on
+   shared components.
+   ============================================================ */
+:where(
+  html:lang(hi), html:lang(mr), html:lang(bn), html:lang(ta), html:lang(te),
+  html:lang(ur), html:lang(ar)
+) * {
+  letter-spacing: normal !important;
+}
+
+/* Urdu is written in Nastaliq. Both Noto faces cover the Arabic block, so
+   whichever comes first in the stack wins — put Nastaliq in front for ur
+   only, leaving Arabic itself on Naskh. Nastaliq's steep descenders also
+   need more leading than Naskh. */
+html:lang(ur) {
+  --font-indic: "Noto Nastaliq Urdu", "Noto Naskh Arabic";
+}
+html:lang(ur) body {
+  line-height: 2;
 }
 
 /* ============================================================

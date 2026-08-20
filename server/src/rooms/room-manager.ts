@@ -46,8 +46,15 @@ export class RoomManager {
 
   private tick(): void {
     for (const [code, game] of this.rooms.entries()) {
-      if (this.engine.handleTurnTimeout(game)) {
-        this.onStateChange?.(code);
+      // One wedged room must not take the whole server with it: this runs on
+      // an interval, so an uncaught throw here kills the process and every
+      // other game along with it.
+      try {
+        if (this.engine.handleTurnTimeout(game)) {
+          this.onStateChange?.(code);
+        }
+      } catch (err) {
+        console.error(`[tick] room ${code} failed to advance:`, err);
       }
     }
   }

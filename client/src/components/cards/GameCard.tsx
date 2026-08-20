@@ -9,6 +9,8 @@ import {
   RENT_VALUES,
   SET_SIZE,
 } from "../../types/game";
+import { useI18n } from "../../i18n";
+import type { Translations } from "../../i18n";
 
 interface GameCardProps {
   card: Card;
@@ -85,30 +87,37 @@ const MONEY_BG_VAR: Record<number, string> = {
 };
 
 function getActionSubtitle(
+  t: Translations,
   type: CardType,
   useSocialistTheme = false,
 ): string | null {
+  // The four cards whose subtitle differs between the standard and Co-Opoly
+  // decks read from socialist.cardFaces; the rest are shared.
+  const faces = useSocialistTheme
+    ? { ...t.cardFaces, ...t.socialist.cardFaces }
+    : t.cardFaces;
+  const rent = useSocialistTheme ? t.socialist.rent : t.actions.rent.toLowerCase();
   switch (type) {
     case CardType.DebtCollector:
-      return "Pay 5M";
+      return faces.payFive;
     case CardType.Birthday:
-      return useSocialistTheme ? "All comrades contribute 2M" : "Everyone pays 2M";
+      return faces.everyonePays;
     case CardType.PassGo:
-      return "Draw 2 cards";
+      return faces.drawTwo;
     case CardType.DoubleTheRent:
-      return useSocialistTheme ? "2× Levy" : "2× Rent";
+      return `2× ${rent}`;
     case CardType.SlyDeal:
-      return useSocialistTheme ? "Expropriate 1 property" : "Steal 1 property";
+      return faces.stealOneProperty;
     case CardType.ForceDeal:
-      return "Swap properties";
+      return faces.swapProperties;
     case CardType.DealBreaker:
-      return useSocialistTheme ? "Expropriate full set" : "Steal full set";
+      return faces.stealFullSet;
     case CardType.JustSayNo:
-      return useSocialistTheme ? "Block directive" : "Block action";
+      return faces.blockAction;
     case CardType.House:
-      return useSocialistTheme ? "+3M levy" : "+3M rent";
+      return `+3M ${rent}`;
     case CardType.Hotel:
-      return useSocialistTheme ? "+4M levy" : "+4M rent";
+      return `+4M ${rent}`;
     default:
       return null;
   }
@@ -197,6 +206,7 @@ function PropertyBody({
   fontScale?: number;
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div
       className="paper-grain"
@@ -220,7 +230,7 @@ function PropertyBody({
           fontWeight: 600,
         }}
       >
-        {useSocialistTheme ? "Levy" : "Rent"}
+        {useSocialistTheme ? t.socialist.rent : t.actions.rent}
       </div>
       <div
         style={{
@@ -274,12 +284,13 @@ function PropertyCardContent({
   fontScale: number;
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   const color = card.colors?.[0] ?? PropertyColor.Brown;
   const rents = RENT_VALUES[color] ?? [];
   const setSize = SET_SIZE[color] ?? 0;
   const name = card.name
     ? getPropertyName(card.name, useSocialistTheme)
-    : getPropertyColorLabel(color, useSocialistTheme);
+    : getPropertyColorLabel(t, color, useSocialistTheme);
   return (
     <>
       <PropertyBanner
@@ -311,6 +322,7 @@ function WildcardPropertyContent({
   orientation?: "top" | "bottom";
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   const colors = card.colors ?? [];
   const isMulti = colors.length > 2;
   const isRainbow = isMulti || colors[0] === PropertyColor.Unassigned;
@@ -372,9 +384,9 @@ function WildcardPropertyContent({
               color: "var(--card-ink)",
             }}
           >
-            PROPERTY
+            {t.cardFaces.property}
             <br />
-            WILDCARD
+            {t.cardFaces.wildcard}
           </div>
           <div
             style={{
@@ -385,7 +397,7 @@ function WildcardPropertyContent({
               textTransform: "uppercase",
             }}
           >
-            Any Color
+            {t.cardFaces.anyColor}
           </div>
         </div>
         {stripeBand(true)}
@@ -439,7 +451,7 @@ function WildcardPropertyContent({
         ${card.value}M
       </span>
       <span>
-        {getPropertyColorLabel(color, useSocialistTheme).toUpperCase()}
+        {getPropertyColorLabel(t, color, useSocialistTheme).toUpperCase()}
       </span>
     </div>
   );
@@ -480,7 +492,7 @@ function WildcardPropertyContent({
             marginBottom: 2 * fontScale,
           }}
         >
-          {useSocialistTheme ? "Levy" : "Rent"}
+          {useSocialistTheme ? t.socialist.rent : t.actions.rent}
         </div>
         <div
           style={{
@@ -565,6 +577,7 @@ function MoneyCardContent({
   card: Card;
   fontScale: number;
 }) {
+  const { t } = useI18n();
   const bg = MONEY_BG_VAR[card.value] ?? MONEY_BG_VAR[1];
   return (
     <div
@@ -590,7 +603,7 @@ function MoneyCardContent({
           textShadow: "0 1px 0 rgba(0,0,0,0.2)",
         }}
       >
-        Money
+        {t.cardFaces.money}
       </div>
       <div
         style={{
@@ -673,9 +686,10 @@ function ActionCardContent({
   fontScale: number;
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   const accent = ACTION_ACCENT[card.type] ?? "#e8c878";
-  const subtitle = getActionSubtitle(card.type, useSocialistTheme);
-  const title = getCardTypeLabel(card.type, useSocialistTheme);
+  const subtitle = getActionSubtitle(t, card.type, useSocialistTheme);
+  const title = getCardTypeLabel(t, card.type, useSocialistTheme);
   const value = card.value > 0 ? card.value : null;
   return (
     <div
@@ -792,6 +806,7 @@ function RentCardContent({
   fontScale: number;
   useSocialistTheme?: boolean;
 }) {
+  const { t } = useI18n();
   const isWild = card.type === CardType.RentWild;
   const colors = card.colors ?? [];
   const c1 = colors[0];
@@ -799,7 +814,7 @@ function RentCardContent({
   const subtitle = isWild
     ? "Any color"
     : c1 && c2
-      ? `${getPropertyColorLabel(c1, useSocialistTheme)} / ${getPropertyColorLabel(c2, useSocialistTheme)}`
+      ? `${getPropertyColorLabel(t, c1, useSocialistTheme)} / ${getPropertyColorLabel(t, c2, useSocialistTheme)}`
       : null;
   // Use the dual-color stripe across the top as visual signal.
   const stripeBg = isWild
@@ -1022,6 +1037,7 @@ export function CardBack({
   useSocialistTheme?: boolean;
   width?: number;
 }) {
+  const { t } = useI18n();
   const cardWidth = width * scale;
   const cardHeight = width * 1.5 * scale;
   const fontScale = Math.max(0.7, Math.min(1.4, width / 96));
@@ -1109,7 +1125,7 @@ export function CardBack({
                 opacity: 0.8,
               }}
             >
-              DEAL
+              {t.cardFaces.deal}
             </span>
           </div>
         )}

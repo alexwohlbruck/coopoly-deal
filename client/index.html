@@ -53,7 +53,7 @@
         "url": "https://alex.wohlbruck.com"
       },
       "browserRequirements": "Requires a modern web browser",
-      "inLanguage": ["en", "es"]
+      "inLanguage": ["en", "hi", "ur", "bn", "mr", "ta", "te", "ar", "id", "fil", "vi", "es", "pt-BR", "fr", "de"]
     }
     </script>
 
@@ -70,6 +70,8 @@
       // into a single :code placeholder before Umami sends them. Runs for
       // both auto-tracked pageviews and any explicit umami.track() calls.
       // Must be defined before the deferred Umami script fires.
+      // (data-domains on the script tag keeps localhost and self-hosted
+      // deployments from reporting at all.)
       window.umamiBeforeSend = function (_type, payload) {
         if (payload && typeof payload.url === "string") {
           payload.url = payload.url.replace(
@@ -85,6 +87,7 @@
       src="https://cloud.umami.is/script.js"
       data-website-id="55098436-d592-4e49-b350-9b9b9a09d07b"
       data-before-send="umamiBeforeSend"
+      data-domains="coopoly.deal,www.coopoly.deal,monopolydeal.online,www.monopolydeal.online"
     ></script>
   </head>
   <body>

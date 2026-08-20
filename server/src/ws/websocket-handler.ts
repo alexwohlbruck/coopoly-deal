@@ -11,20 +11,6 @@ import { getRandomBotName } from "../utils/bot-names.ts";
 import { devTools } from "../dev-tools.ts";
 import { track } from "../analytics.ts";
 
-function gameSettingsData(game: import("../models/types.ts").GameState) {
-  const bots = game.players.filter((p) => p.isBot).length;
-  return {
-    players: game.players.length,
-    bots,
-    humans: game.players.length - bots,
-    max_hand_size: game.settings.maxHandSize,
-    turn_timer: game.settings.turnTimer,
-    allow_duplicate_sets: game.settings.allowDuplicateSets,
-    wildcard_flip_counts_as_move: game.settings.wildcardFlipCountsAsMove,
-    bot_speed: game.settings.botSpeed,
-  };
-}
-
 interface WSData {
   playerId: string | null;
   roomCode: string | null;
@@ -422,7 +408,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     sendStateToAll(roomCode);
 
     const game = roomManager.getRoom(roomCode)!;
-    track("game_started", gameSettingsData(game));
+    track("game_started");
     const currentPlayer = game.players[game.currentPlayerIndex]!;
     broadcastToRoom(roomCode, {
       type: "TURN_STARTED",
@@ -893,7 +879,7 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (!game) throw new Error("Game not found");
 
     roomManager.getEngine().rematchGame(game);
-    track("rematch", gameSettingsData(game));
+    track("rematch");
 
     broadcastToRoom(roomCode, { type: "GAME_STARTED" });
     sendStateToAll(roomCode);
@@ -954,10 +940,8 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
         ? Math.round((Date.now() - game.startedAt) / 1000)
         : 0;
       track("game_ended", {
-        ...gameSettingsData(game),
         duration_seconds: duration,
         ended_by: endedBy,
-        winner_was_bot: winner?.isBot ?? false,
       });
     }
   }

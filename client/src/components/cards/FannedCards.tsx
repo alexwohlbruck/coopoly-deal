@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { Card } from "../../types/game";
 import { GameCard, CardBack } from "./GameCard";
 import { useHaptics } from "../../hooks/useHaptics";
+import { useI18n } from "../../i18n";
 import {
   findDropZoneAt,
   setActiveDropZone,
@@ -426,6 +427,7 @@ export function DragPeekHand({
   onTouchDragStart,
   onTouchDragEnd,
 }: DragPeekHandProps) {
+  const { t } = useI18n();
   const n = items.length;
   const mid = (n - 1) / 2;
   const railRef = useRef<HTMLDivElement>(null);
@@ -771,7 +773,7 @@ export function DragPeekHand({
           pointerEvents: "none",
         }}
       >
-        tap or drag card to play · drag to peek
+        {t.game.dragHint}
       </div>
     </div>
   );

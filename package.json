@@ -1,6 +1,6 @@
 {
   "name": "coopoly-deal",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && bun dev\" --names \"client,server\" --prefix-colors \"cyan,yellow\"",

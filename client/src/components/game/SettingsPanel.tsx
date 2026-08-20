@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Github } from "lucide-react";
-import { useI18n, type Locale } from "../../i18n";
+import { useI18n, LOCALES, type Locale } from "../../i18n";
 import { useGameStore, isMonopolyDealDomain } from "../../hooks/useGameStore";
 import { THEME_IDS, themes, type ThemeName } from "../../theme/colors";
 import { BottomSheet } from "../common/BottomSheet";
@@ -188,8 +188,11 @@ export function SettingsPanel({
             onChange={(e) => setLocale(e.target.value as Locale)}
             style={SELECT_STYLE}
           >
-            <option value="en">English</option>
-            <option value="es">Español</option>
+            {LOCALES.map(({ code, label }) => (
+              <option key={code} value={code}>
+                {label}
+              </option>
+            ))}
           </select>
         </div>
 

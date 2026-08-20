@@ -93,7 +93,11 @@ export function TopBar({
           "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.0) 100%)",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* minWidth/overflow: the header has a fixed height, so if the brand
+          wraps it spills out of the bar. Locales with a long resign label
+          (de "AUFGEBEN", pt-BR "DESISTIR") squeeze this group — let the
+          brand ellipsize instead of wrapping. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, overflow: "hidden" }}>
         <div
           style={{
             fontFamily: "var(--font-display)",
@@ -102,6 +106,9 @@ export function TopBar({
             letterSpacing: "-0.02em",
             color: "#f5ead0",
             textShadow: "0 1px 0 rgba(0,0,0,0.5)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
           {useSocialistTheme ? <><GoldStar size={compact ? 16 : 19} /> {t.socialist.title}</> : t.lobby.title}
@@ -116,6 +123,7 @@ export function TopBar({
             color: "rgba(255,255,255,0.75)",
             border: "1px solid rgba(255,255,255,0.06)",
             letterSpacing: "0.12em",
+            flexShrink: 0,
           }}
         >
           {roomCode}
@@ -183,9 +191,13 @@ export function TopBar({
               fontFamily: "var(--font-display)",
               fontSize: 12,
               fontWeight: 700,
-              letterSpacing: "0.12em",
+              // Tighter tracking + padding on compact so a long translated
+              // label ("AUFGEBEN", "ОТКАЗ") doesn't crowd out the brand.
+              letterSpacing: compact ? "0.06em" : "0.12em",
               textTransform: "uppercase",
-              padding: "7px 14px",
+              padding: compact ? "7px 10px" : "7px 14px",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
               background: "linear-gradient(180deg, #4a1a1a 0%, #2a0e0e 100%)",
               color: "#f0c8c8",
               border: "none",
@@ -779,6 +791,7 @@ export function OpponentRail({
   onScrollLeft,
   onScrollRight,
 }: OpponentRailProps) {
+  const { t } = useI18n();
   const scale = compact ? 0.78 : 1;
   const showArrows = !compact && players.length > 1 && !!onScrollLeft && !!onScrollRight;
 
@@ -870,7 +883,7 @@ export function OpponentRail({
         <>
           <button
             onClick={onScrollLeft}
-            aria-label="Previous opponent"
+            aria-label={t.ui.previousOpponent}
             style={{
               position: "absolute",
               top: "50%",
@@ -897,7 +910,7 @@ export function OpponentRail({
           </button>
           <button
             onClick={onScrollRight}
-            aria-label="Next opponent"
+            aria-label={t.ui.nextOpponent}
             style={{
               position: "absolute",
               top: "50%",

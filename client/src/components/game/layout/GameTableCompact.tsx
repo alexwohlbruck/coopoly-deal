@@ -18,6 +18,7 @@ import {
   TurnPhase,
 } from "../../../types/game";
 import { useI18n } from "../../../i18n";
+import { fmt } from "../../../i18n/format";
 import {
   OpponentRail,
   TurnPill,
@@ -110,6 +111,7 @@ export function GameTableCompact({
   const timeLeft = useTurnTimer(
     gameState.turn?.expiresAt ?? null,
     gameState.turn?.pausedTimeLeft ?? null,
+    gameState.serverNow,
     play,
   );
 
@@ -179,7 +181,12 @@ export function GameTableCompact({
               textTransform: "uppercase",
             }}
           >
-            {activeOpp ? `${activeOpp.name}'s ${t.game.table.toLowerCase()}` : "no opponent"}
+            {activeOpp
+              ? fmt(t.ui.playersTable, {
+                  name: activeOpp.name,
+                  table: t.game.table.toLowerCase(),
+                })
+              : t.ui.noOpponent}
           </div>
           <div
             style={{
@@ -196,7 +203,10 @@ export function GameTableCompact({
                   color: "rgba(245,234,208,0.4)",
                 }}
               >
-                {activeOppStats.complete} sets · {activeOppStats.handCount}c
+                {fmt(t.ui.oppStats, {
+                  n: activeOppStats.complete,
+                  cards: activeOppStats.handCount,
+                })}
               </div>
             )}
             {opponents.length > 1 && (
@@ -209,7 +219,7 @@ export function GameTableCompact({
                   textTransform: "uppercase",
                 }}
               >
-                ← swipe →
+                {t.ui.swipe}
               </div>
             )}
           </div>
@@ -275,7 +285,10 @@ export function GameTableCompact({
             status="waiting"
             label={
               currentTurnPlayer
-                ? `${currentTurnPlayer.name}'s ${useSocialistTheme ? t.socialist.shift : t.common.turn}`
+                ? fmt(t.ui.playersTurn, {
+                    name: currentTurnPlayer.name,
+                    turn: useSocialistTheme ? t.socialist.shift : t.common.turn,
+                  })
                 : `${t.game.waitingForResponses.replace("...", "")}`
             }
             sub={
@@ -328,7 +341,7 @@ export function GameTableCompact({
               flexShrink: 0,
             }}
           >
-            Your sets · bank
+            {t.ui.yourSetsAndBank}
           </div>
           <div
             style={{

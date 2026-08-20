@@ -23,6 +23,7 @@ import {
   type ServerMessage,
 } from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
+import { useI18n } from "./i18n";
 
 // Module-level flag: set by handleGoHome so DeepLinkRedirect sends us to "/"
 // instead of "/join/:code" during the leaving transition.
@@ -757,6 +758,7 @@ function SpectatorTable({
 }
 
 function ReconnectingScreen() {
+  const { t } = useI18n();
   return (
     <div
       className="min-h-screen flex items-center justify-center"
@@ -775,7 +777,7 @@ function ReconnectingScreen() {
             opacity: 0.7,
           }}
         >
-          Reconnecting…
+          {t.ui.reconnecting}
         </p>
       </div>
     </div>
