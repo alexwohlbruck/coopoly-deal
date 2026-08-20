@@ -1,5 +1,8 @@
-const UMAMI_WEBSITE_ID =
-  process.env.UMAMI_WEBSITE_ID || "55098436-d592-4e49-b350-9b9b9a09d07b";
+// Opt-in: without UMAMI_WEBSITE_ID set, nothing is sent. Previously this
+// fell back to a hardcoded website ID, which meant every local `bun dev`
+// run and every self-hosted copy of the Docker image reported into the
+// project's Umami account and burned its event quota.
+const UMAMI_WEBSITE_ID = process.env.UMAMI_WEBSITE_ID || "";
 const UMAMI_API_URL =
   process.env.UMAMI_API_URL || "https://cloud.umami.is/api/send";
 const UMAMI_HOSTNAME = process.env.UMAMI_HOSTNAME || "coopoly-deal";
@@ -15,6 +18,12 @@ const SERVER_USER_AGENT =
 
 type EventData = Record<string, string | number | boolean>;
 
+/**
+ * Umami Cloud bills every event *and* every event-data property as one event
+ * against the monthly quota, so a game that fired 4 events each carrying the
+ * 8-field settings blob cost ~22 events, not 4. Keep `data` empty unless a
+ * property earns its place.
+ */
 export function track(eventName: string, data?: EventData): void {
   if (!ANALYTICS_ENABLED || !UMAMI_WEBSITE_ID) return;
 
