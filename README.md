@@ -34,25 +34,33 @@ bun dev
 
 The frontend dev server runs on `http://localhost:5173` and proxies API/WebSocket requests to the backend on port 3000.
 
-## Surviving Restarts
+## Graceful Updates
 
-Games live in memory, but they are snapshotted to a single JSON file so a deploy
-or crash doesn't end everyone's session. On boot the server reloads the rooms
-the previous process was serving; clients reconnect on their own within a couple
-of seconds and rejoin their seat by name. In practice a restart looks like a
-brief "Reconnecting…" flicker rather than a lost game.
+Games live in memory. On `SIGTERM` — which is what a deploy sends — the server
+writes its live rooms to a single JSON file and exits; the next process reads
+them back on boot. Clients reconnect on their own within a couple of seconds and
+reclaim their seats, so a deploy looks like a brief "Reconnecting…" rather than
+a lost game.
+
+There is no periodic snapshot. Writing every few seconds on the chance the
+process dies unexpectedly costs a great deal of disk churn to insure against
+something far rarer than a deploy, so the default is one write per release. Set
+`ROOM_SNAPSHOT_INTERVAL_MS` if you would rather also survive a kill the process
+never sees coming (OOM, `SIGKILL`, the host going down), at that cost.
+
+A game nobody is connected to is **suspended, not abandoned**. A restart marks
+every seat absent at once — that is the server leaving, not the players — so
+while the room is empty the turn clock stops rather than running down, and
+whoever comes back gets the time that was left on it. Players have 90 seconds to
+reclaim a seat before it is treated as having dropped.
 
 Under Docker the snapshot lives on the `coopoly-data` volume — mount something
-at `/app/data` or the rooms won't outlive the container.
+at `/app/data` or the rooms won't outlive the container. The file is rewritten
+in place and never accumulates: no history, no rotation, at most the server's
+room cap (100) of live rooms at roughly 8 KB each, and it is deleted outright
+whenever no games are running. Finished games, empty lobbies and bot-only rooms
+are never written. Nothing about a game is kept once it ends.
 
-See `ROOM_SNAPSHOT_PATH` and `ROOM_PERSISTENCE` under
-[Configuration](#configuration).
-
-The file is rewritten in place and never accumulates: no history, no rotation,
-at most the server's room cap (100) of live rooms at roughly 8 KB each, and it
-is deleted outright whenever no games are running. Finished games, empty
-lobbies and bot-only rooms are never written. Nothing about a game is kept once
-it ends.
 ## Configuration
 
 | Variable            | Default             | Description                                                                 |
@@ -64,6 +72,7 @@ it ends.
 | `ANALYTICS_DEBUG`   | `false`             | Log each event send and its response.                                          |
 | `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where live rooms are snapshotted so they survive a restart.                   |
 | `ROOM_PERSISTENCE`  | `true`              | Set to `false` to keep rooms in memory only.                                   |
+| `ROOM_SNAPSHOT_INTERVAL_MS` | `0` (off)   | Also snapshot on a timer. Off by default — rooms are written once, on shutdown. |
 
 Browser-side analytics are additionally restricted by `data-domains` on the
 Umami script tag in `client/index.html`, so a self-hosted or local build sends

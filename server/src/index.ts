@@ -15,7 +15,12 @@ const roomStore =
     ? new NullRoomStore()
     : new FileRoomStore(ROOM_SNAPSHOT_PATH);
 
-const roomManager = new RoomManager(roomStore);
+// Rooms are snapshotted on the way down, not on a timer. Set a millisecond
+// value here to also snapshot periodically, trading steady disk writes for
+// surviving a kill the process never sees coming.
+const SNAPSHOT_INTERVAL_MS = Number(process.env.ROOM_SNAPSHOT_INTERVAL_MS) || 0;
+
+const roomManager = new RoomManager(roomStore, undefined, SNAPSHOT_INTERVAL_MS);
 const { handlers: wsHandlers, resumeBotTurns, stopBroadcasting } =
   createWebSocketHandlers(roomManager);
 
