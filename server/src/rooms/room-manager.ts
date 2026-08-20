@@ -124,15 +124,15 @@ export class RoomManager {
   }
 
   /**
-   * Public rooms worth showing in the lobby browser. Finished games and
-   * lobbies with nobody connected are dropped; started games stay listed
-   * (marked not joinable) so they can still be spectated.
+   * Public rooms worth showing in the lobby browser. Rooms with nobody
+   * connected are dropped; in-progress games stay listed (marked not
+   * joinable) so they can still be spectated, and games sitting on the end
+   * screen are joinable — whoever joins is dealt into the rematch.
    */
   listPublicRooms(): PublicRoomSummary[] {
     const summaries: PublicRoomSummary[] = [];
     for (const game of this.rooms.values()) {
       if (!game.isPublic) continue;
-      if (game.phase === GamePhase.Finished) continue;
       if (!game.players.some((p) => p.connected && !p.isBot)) continue;
 
       const botCount = game.players.filter((p) => p.isBot).length;
@@ -147,7 +147,7 @@ export class RoomManager {
         phase: game.phase,
         createdAt: game.createdAt,
         joinable:
-          game.phase === GamePhase.Waiting &&
+          game.phase !== GamePhase.Playing &&
           game.players.length < MAX_PLAYERS,
         settings: {
           turnTimer: game.settings.turnTimer,

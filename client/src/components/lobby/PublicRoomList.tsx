@@ -98,19 +98,26 @@ function PublicRoomRow({
   onSpectate: (roomCode: string) => void;
 }) {
   const { t } = useI18n();
-  const started = room.phase !== GamePhase.Waiting;
+  // A finished game is joinable, not watchable — it's parked on the end
+  // screen waiting for a rematch, and joiners are dealt into it.
+  const started = room.phase === GamePhase.Playing;
+  const finished = room.phase === GamePhase.Finished;
   const isFull = !room.joinable && !started;
 
   const statusLabel = started
     ? t.lobby.inProgress
     : isFull
       ? t.lobby.full
-      : t.lobby.waitingForPlayers;
+      : finished
+        ? t.finished.gameOver
+        : t.lobby.waitingForPlayers;
   const statusColor = started
     ? "#6c9bd2"
     : isFull
       ? "rgba(245,234,208,0.45)"
-      : "#7adb88";
+      : finished
+        ? "#d8a657"
+        : "#7adb88";
 
   return (
     <motion.div

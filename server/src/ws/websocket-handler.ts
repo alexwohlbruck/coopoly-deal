@@ -884,11 +884,12 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     broadcastToRoom(roomCode, { type: "GAME_STARTED" });
     sendStateToAll(roomCode);
 
-    const currentPlayer = game.players[game.currentPlayerIndex]!;
-    broadcastToRoom(roomCode, {
-      type: "TURN_STARTED",
-      payload: { playerId: currentPlayer.id },
-    });
+    if (game.turn) {
+      broadcastToRoom(roomCode, {
+        type: "TURN_STARTED",
+        payload: { playerId: game.turn.playerId },
+      });
+    }
 
     checkBotTurn(roomCode);
   }
@@ -955,12 +956,18 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
     if (roomCode && playerId) {
       const game = roomManager.getRoom(roomCode);
       if (game) {
+        const turnPlayerBefore = game.turn?.playerId;
         roomManager.getEngine().removePlayer(game, playerId);
         broadcastToRoom(roomCode, {
           type: "PLAYER_LEFT",
           payload: { playerId },
         });
         sendStateToAll(roomCode);
+        // Leaving can hand the turn to someone else (or to a bot), and with
+        // one player left it ends the game outright.
+        checkTurnChanged(roomCode, turnPlayerBefore);
+        checkGameEnd(roomCode, "resign");
+        checkBotTurn(roomCode);
 
         // End game if only bots remain (with grace period for reconnection)
         if (game.phase === GamePhase.Playing) {
