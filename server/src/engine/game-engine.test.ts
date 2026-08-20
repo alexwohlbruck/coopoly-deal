@@ -3550,5 +3550,58 @@ describe("GameEngine", () => {
         players.find((p) => p.id !== bot.id)!.id,
       );
     });
+
+    /**
+     * Sets up a bot whose turn has a pending action nobody responded to,
+     * with the bot idle long enough to trip the 30s watchdog. movesPerTurn
+     * is 1, so resolving the action auto-ends the turn — which makes
+     * startTurn assign a brand new object to state.turn. Any reference the
+     * watchdog captured beforehand is stale from that point on.
+     */
+    function stuckBotWhoseResolutionEndsTheTurn() {
+      const { state, engine } = startTestGame(2);
+      state.settings.movesPerTurn = 1;
+      state.settings.maxHandSize = 999;
+
+      const bot = currentPlayer(state);
+      bot.isBot = true;
+      const target = state.players.find((p) => p.id !== bot.id)!;
+
+      const dc = givePlayerCard(bot, makeAction(CardType.DebtCollector, 3));
+      engine.playActionCard(state, bot.id, {
+        action: "debtCollector",
+        cardId: dc.id,
+        targetPlayerId: target.id,
+      });
+      expect(state.turn!.pendingAction).not.toBeNull();
+
+      state.lastActivityAt = Date.now() - 31_000;
+      return { state, engine, bot, target };
+    }
+
+    it("does not throw when resolving the action also ends the turn", () => {
+      const { state, engine } = stuckBotWhoseResolutionEndsTheTurn();
+      expect(() => engine.handleTurnTimeout(state)).not.toThrow();
+    });
+
+    it("advances exactly one turn, not two", () => {
+      const { state, engine, target } = stuckBotWhoseResolutionEndsTheTurn();
+      engine.handleTurnTimeout(state);
+
+      // The bot's turn ended on its own, so it is now the target's turn. If
+      // the watchdog force-advances again it wraps past them, and in a
+      // 2-player game lands back on the bot.
+      expect(state.turn).not.toBeNull();
+      expect(state.turn!.playerId).toBe(target.id);
+    });
+
+    it("leaves the freshly started turn playable", () => {
+      const { state, engine } = stuckBotWhoseResolutionEndsTheTurn();
+      engine.handleTurnTimeout(state);
+
+      expect(state.turn!.pendingAction).toBeNull();
+      expect(state.turn!.phase).toBe(TurnPhase.Play);
+      expect(state.turn!.cardsPlayed).toBe(0);
+    });
   });
 });
