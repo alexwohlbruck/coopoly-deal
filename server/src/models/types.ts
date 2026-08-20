@@ -62,6 +62,59 @@ export const DEFAULT_SETTINGS: GameSettings = {
   drawCardsPerTurn: 2,
 };
 
+/**
+ * Settings handed to us by a client are untrusted — they arrive on the
+ * room-creation endpoint before anybody has joined, so there is no host to
+ * vouch for them. Keep only known keys carrying a plausible value; anything
+ * else falls back to the room's default rather than reaching the engine.
+ */
+export function sanitizeSettings(input: unknown): Partial<GameSettings> {
+  if (!input || typeof input !== "object") return {};
+  const raw = input as Record<string, unknown>;
+  const out: Partial<GameSettings> = {};
+
+  type NumericKey =
+    | "maxHandSize"
+    | "turnTimer"
+    | "movesPerTurn"
+    | "setsToWin"
+    | "drawCardsPerTurn";
+  type BooleanKey =
+    | "allowDuplicateSets"
+    | "wildcardFlipCountsAsMove"
+    | "requireHouseBeforeHotel";
+
+  const int = (key: NumericKey, min: number, max: number) => {
+    const value = raw[key];
+    if (typeof value !== "number" || !Number.isFinite(value)) return;
+    out[key] = Math.round(Math.min(max, Math.max(min, value)));
+  };
+  const bool = (key: BooleanKey) => {
+    const value = raw[key];
+    if (typeof value === "boolean") out[key] = value;
+  };
+
+  // maxHandSize 999 is the panel's "no limit"; turnTimer 0 is "off".
+  int("maxHandSize", 1, 999);
+  int("turnTimer", 0, 600);
+  int("movesPerTurn", 1, 5);
+  int("setsToWin", 1, 5);
+  int("drawCardsPerTurn", 1, 5);
+  bool("allowDuplicateSets");
+  bool("wildcardFlipCountsAsMove");
+  bool("requireHouseBeforeHotel");
+  if (
+    raw.botSpeed === "slow" ||
+    raw.botSpeed === "normal" ||
+    raw.botSpeed === "fast" ||
+    raw.botSpeed === "instant"
+  ) {
+    out.botSpeed = raw.botSpeed;
+  }
+
+  return out;
+}
+
 export const SET_SIZE: Record<PropertyColor, number> = {
   [PropertyColor.Brown]: 2,
   [PropertyColor.LightBlue]: 3,

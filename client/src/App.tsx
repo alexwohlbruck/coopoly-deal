@@ -382,7 +382,7 @@ function AppMain() {
   }, [toast, setToast]);
 
   const handleJoinRoom = useCallback(
-    (code: string, name: string, isHost: boolean = false) => {
+    (code: string, name: string) => {
       startMusic();
       // Read the stored seat before setPlayer clears it. Only reuse it for the
       // room it belongs to — an id from a previous room would never match, but
@@ -399,28 +399,27 @@ function AppMain() {
           playerId: previousId || undefined,
         },
       });
-
-      if (isHost) {
-        setTimeout(() => {
-          const { preferredSettings, gameState: gs } = useGameStore.getState();
-          if (gs?.phase === GamePhase.Waiting) {
-            send({
-              type: "UPDATE_SETTINGS",
-              payload: { settings: preferredSettings },
-            });
-          }
-        }, 500);
-      }
     },
     [send, setPlayer, startMusic],
   );
 
+  // Remembered settings ride along with the create request, so the room is
+  // born with them. Applying them afterwards over the socket meant the lobby
+  // painted the defaults first and visibly rewrote itself a beat later.
   const handleCreateRoom = useCallback(async (name: string) => {
     startMusic();
+    const { preferredSettings, preferredIsPublic } = useGameStore.getState();
     try {
-      const res = await fetch("/api/rooms", { method: "POST" });
+      const res = await fetch("/api/rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: preferredSettings,
+          isPublic: preferredIsPublic,
+        }),
+      });
       const data = await res.json();
-      handleJoinRoom(data.roomCode, name, true);
+      handleJoinRoom(data.roomCode, name);
     } catch {
       setError("Failed to create game");
     }
@@ -449,6 +448,9 @@ function AppMain() {
         type: "SET_ROOM_VISIBILITY",
         payload: { isPublic },
       });
+      // Only the host can flip this, and the next room they create should
+      // open the same way.
+      useGameStore.getState().setPreferredIsPublic(isPublic);
     },
     [send],
   );
