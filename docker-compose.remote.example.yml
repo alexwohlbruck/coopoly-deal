@@ -10,8 +10,8 @@ services:
     environment:
       - PORT=3000
     volumes:
-      # Live rooms are snapshotted here so a restart doesn't end anyone's game.
-      # A single file, rewritten in place — it does not grow over time.
+      # Live rooms are written here on shutdown so a deploy doesn't end
+      # anyone's game. One file, one write per release — it does not grow.
       - coopoly-data:/app/data
     restart: unless-stopped
 

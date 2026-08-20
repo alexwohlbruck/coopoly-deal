@@ -18,7 +18,16 @@ const FINISHED_ROOM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes after game ends
 // browser doesn't fill up with lobbies whose host closed the tab.
 const ABANDONED_LOBBY_TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_ROOMS = 100;
-const SNAPSHOT_INTERVAL_MS = 10_000;
+/**
+ * Off by default: rooms are written once, on the way down.
+ *
+ * A deploy sends SIGTERM, so the snapshot that matters is the one taken then —
+ * a few KB per release rather than a write every few seconds for the lifetime
+ * of the process. Set a non-zero interval to also snapshot periodically, which
+ * buys insurance against the process being killed outright (OOM, SIGKILL, the
+ * host going down) at the cost of steady disk writes.
+ */
+const DEFAULT_SNAPSHOT_INTERVAL_MS = 0;
 /**
  * How long players have to reclaim their seats after the server comes back.
  *
@@ -34,7 +43,7 @@ export class RoomManager {
   private engine = new GameEngine();
   private cleanupInterval: ReturnType<typeof setInterval>;
   private tickInterval: ReturnType<typeof setInterval>;
-  private snapshotInterval: ReturnType<typeof setInterval>;
+  private snapshotInterval: ReturnType<typeof setInterval> | null;
   /** Room code -> when unclaimed seats in that restored room get swept. */
   private reclaimDeadlines = new Map<string, number>();
   private onStateChange?: (roomCode: string) => void;
@@ -45,16 +54,17 @@ export class RoomManager {
   constructor(
     private readonly store: RoomStore = new NullRoomStore(),
     private readonly reclaimWindowMs: number = RECLAIM_WINDOW_MS,
+    snapshotIntervalMs: number = DEFAULT_SNAPSHOT_INTERVAL_MS,
   ) {
     this.cleanupInterval = setInterval(
       () => this.cleanupInactiveRooms(),
       60_000,
     );
     this.tickInterval = setInterval(() => this.tick(), 1000);
-    this.snapshotInterval = setInterval(
-      () => this.persist(),
-      SNAPSHOT_INTERVAL_MS,
-    );
+    this.snapshotInterval =
+      snapshotIntervalMs > 0
+        ? setInterval(() => this.persist(), snapshotIntervalMs)
+        : null;
   }
 
   /**
@@ -200,9 +210,11 @@ export class RoomManager {
       // an interval, so an uncaught throw here kills the process and every
       // other game along with it.
       try {
-        if (this.engine.handleTurnTimeout(game)) {
-          this.onStateChange?.(code);
-        }
+        // Presence first: a suspended game has to come back before its clock
+        // means anything.
+        let changed = this.engine.updateTurnForPresence(game);
+        if (this.engine.handleTurnTimeout(game)) changed = true;
+        if (changed) this.onStateChange?.(code);
       } catch (err) {
         console.error(`[tick] room ${code} failed to advance:`, err);
       }
@@ -417,7 +429,7 @@ export class RoomManager {
   destroy(): void {
     clearInterval(this.cleanupInterval);
     clearInterval(this.tickInterval);
-    clearInterval(this.snapshotInterval);
+    if (this.snapshotInterval) clearInterval(this.snapshotInterval);
     this.rooms.clear();
     this.reclaimDeadlines.clear();
   }
