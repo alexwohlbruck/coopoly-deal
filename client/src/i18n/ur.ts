@@ -473,4 +473,13 @@ export const ur: Translations = {
     oppStats: "{n} سیٹ · {cards} کارڈ",
     swipe: "← سوائپ →",
   },
+  notice: {
+    maintenance: "{time} میں منصوبہ بند سرور کی دیکھ بھال۔ جاری کھیل رک جائیں گے۔",
+    maintenanceNow: "منصوبہ بند سرور کی دیکھ بھال شروع ہو رہی ہے۔ جاری کھیل رک جائیں گے۔",
+    in: "{time} میں",
+    hoursMinutes: "{h} گھنٹے {m} منٹ",
+    minutes: "{m} منٹ",
+    seconds: "{s} سیکنڈ",
+    dismiss: "بند کریں",
+  },
 };

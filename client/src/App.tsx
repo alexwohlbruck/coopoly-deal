@@ -17,10 +17,12 @@ import { PublicGamesScreen } from "./components/lobby/PublicGamesScreen";
 import { WaitingRoom } from "./components/lobby/WaitingRoom";
 import { GameTable } from "./components/game/GameTable";
 import { CardTestScreen } from "./components/dev/CardTestScreen";
+import { MaintenanceBanner } from "./components/common/MaintenanceBanner";
 import {
   GamePhase,
   type PublicRoomSummary,
   type ServerMessage,
+  type ServerNotice,
 } from "./types/game";
 import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "./i18n";
@@ -116,6 +118,10 @@ function AppMain() {
   });
 
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
+  // The maintenance banner, plus how far this browser's clock sits from the
+  // server's — the countdown is rendered against the corrected time.
+  const [notice, setNotice] = useState<ServerNotice | null>(null);
+  const [clockOffset, setClockOffset] = useState(0);
   const [publicRooms, setPublicRooms] = useState<PublicRoomSummary[] | null>(
     null,
   );
@@ -244,6 +250,11 @@ function AppMain() {
 
         case "ONLINE_COUNT":
           setOnlineCount(msg.payload.count);
+          break;
+
+        case "SERVER_NOTICE":
+          setNotice(msg.payload.notice);
+          setClockOffset(msg.payload.serverNow - Date.now());
           break;
 
         case "ERROR":
@@ -532,7 +543,19 @@ function AppMain() {
   };
 
   return (
-    <div className="min-h-screen">
+    <div
+      className="min-h-screen"
+      style={{
+        paddingTop: "var(--notice-height, 0px)",
+        minHeight: "calc(100vh - var(--notice-height, 0px))",
+      }}
+    >
+      <AnimatePresence>
+        {notice && (
+          <MaintenanceBanner notice={notice} clockOffset={clockOffset} />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -542,7 +565,9 @@ function AppMain() {
             transition={{ duration: 0.18, ease: [0.22, 0.9, 0.32, 1] }}
             className="fixed left-1/2 -translate-x-1/2 z-[100] pointer-events-none"
             style={{
-              top: 70,
+              // Fixed, so it sits against the viewport rather than the padded
+              // root — it has to clear the banner on its own.
+              top: "calc(70px + var(--notice-height, 0px))",
               padding: "8px 14px",
               borderRadius: 999,
               background:
@@ -579,7 +604,8 @@ function AppMain() {
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-red-600/90 backdrop-blur-lg text-white px-6 py-3 rounded-xl shadow-lg"
+            className="fixed left-1/2 -translate-x-1/2 z-[100] bg-red-600/90 backdrop-blur-lg text-white px-6 py-3 rounded-xl shadow-lg"
+            style={{ top: "calc(16px + var(--notice-height, 0px))" }}
           >
             {error}
           </motion.div>

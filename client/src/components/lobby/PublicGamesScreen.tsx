@@ -46,7 +46,7 @@ export function PublicGamesScreen({
       style={{ padding: isCompact ? "70px 12px 24px" : "92px 24px 32px" }}
     >
       {musicControls && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-4-below-notice right-4 z-50 flex items-center gap-2">
           <MusicControls
             isPlaying={musicControls.isPlaying}
             onToggle={musicControls.onToggle}
@@ -55,7 +55,7 @@ export function PublicGamesScreen({
         </div>
       )}
 
-      <div className="fixed top-4 left-4 z-50">
+      <div className="fixed top-4-below-notice left-4 z-50">
         <RulesButton onClick={() => open("rules")} />
       </div>
 

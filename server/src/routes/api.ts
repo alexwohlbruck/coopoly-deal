@@ -1,9 +1,15 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
+import { timingSafeEqual } from "node:crypto";
 import { RoomManager } from "../rooms/room-manager.ts";
-import { sanitizeSettings, toClientState } from "../models/types.ts";
+import { sanitizeSettings, toClientState, type ServerNotice } from "../models/types.ts";
+import { MAX_MESSAGE_LENGTH, NoticeService } from "../notice.ts";
 import { track } from "../analytics.ts";
 
-export function createApiRoutes(roomManager: RoomManager) {
+/** A notice can be announced at most this far ahead — a typo guard, mostly. */
+const MAX_LEAD_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function createApiRoutes(roomManager: RoomManager, notices: NoticeService) {
   const api = new Hono();
 
   // The body is optional: a client may pass the settings and visibility it
@@ -47,6 +53,64 @@ export function createApiRoutes(roomManager: RoomManager) {
         connected: p.connected,
       })),
     });
+  });
+
+  // ── Server notice ──────────────────────────────────────────────────
+  // The banner every connected client sees. Reads are public (the client
+  // gets pushed the same thing over the WebSocket; this covers curl and
+  // the deploy script). Writes need ADMIN_TOKEN, and without one set the
+  // write routes do not exist at all, so a self-hosted instance exposes
+  // nothing extra by upgrading.
+
+  api.get("/notice", (c) => {
+    return c.json({ notice: notices.get(), serverNow: Date.now() });
+  });
+
+  api.post("/notice", async (c) => {
+    const denied = checkAdmin(c);
+    if (denied) return denied;
+
+    let body: unknown = null;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Expected a JSON body" }, 400);
+    }
+    const { minutes, at, message } = (body ?? {}) as Record<string, unknown>;
+
+    let scheduledAt: number;
+    if (at != null) {
+      scheduledAt = typeof at === "number" ? at : Date.parse(String(at));
+    } else if (typeof minutes === "number" && Number.isFinite(minutes)) {
+      scheduledAt = Date.now() + minutes * 60_000;
+    } else {
+      return c.json({ error: "Pass `minutes` (from now) or `at` (epoch ms or ISO)" }, 400);
+    }
+    if (!Number.isFinite(scheduledAt)) {
+      return c.json({ error: "Could not read a time from `at`" }, 400);
+    }
+    if (scheduledAt - Date.now() > MAX_LEAD_MS) {
+      return c.json({ error: "That is more than a week out — check the units" }, 400);
+    }
+
+    const text = typeof message === "string" ? message.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
+    const notice: ServerNotice = {
+      id: crypto.randomUUID(),
+      // Free text can't be translated, so it is only used when given. The
+      // default reads in the player's own language.
+      kind: text ? "custom" : "maintenance",
+      scheduledAt,
+      ...(text ? { message: text } : {}),
+    };
+    notices.set(notice);
+    return c.json({ notice, serverNow: Date.now() });
+  });
+
+  api.delete("/notice", (c) => {
+    const denied = checkAdmin(c);
+    if (denied) return denied;
+    notices.clear();
+    return c.json({ notice: null, serverNow: Date.now() });
   });
 
   // Serve mp3 files (with Range-request support for HTMLAudioElement)
@@ -96,4 +160,34 @@ export function createApiRoutes(roomManager: RoomManager) {
   });
 
   return api;
+}
+
+/**
+ * Guards the notice write routes. Returns a response to send when the caller
+ * should not get through, or null when it may proceed.
+ *
+ * With no ADMIN_TOKEN configured the answer is 404 rather than 401: an
+ * instance that cannot take notices should look like one that never had the
+ * feature, not like one whose password has yet to be guessed.
+ */
+function checkAdmin(c: Context) {
+  const expected = process.env.ADMIN_TOKEN;
+  if (!expected) return c.json({ error: "Not found" }, 404);
+
+  const header = c.req.header("authorization") ?? "";
+  const supplied = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!constantTimeEquals(supplied, expected)) {
+    return c.json({ error: "Unauthorized" }, 401);
+  }
+  return null;
+}
+
+function constantTimeEquals(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  // timingSafeEqual throws on a length mismatch, which leaks the length by
+  // itself. Comparing against a fixed-length digest would avoid that; for a
+  // deploy token typed by one person it is not worth the ceremony.
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
 }

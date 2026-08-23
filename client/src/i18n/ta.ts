@@ -486,4 +486,13 @@ export const ta: Translations = {
     oppStats: "{n} தொகுப்பு · {cards} கார்டு",
     swipe: "← ஸ்வைப் →",
   },
+  notice: {
+    maintenance: "{time} இல் திட்டமிட்ட சேவையக பராமரிப்பு. நடக்கும் ஆட்டங்கள் தடைபடும்.",
+    maintenanceNow: "திட்டமிட்ட சேவையக பராமரிப்பு தொடங்குகிறது. நடக்கும் ஆட்டங்கள் தடைபடும்.",
+    in: "{time} இல்",
+    hoursMinutes: "{h} மணி {m} நி",
+    minutes: "{m} நி",
+    seconds: "{s} வி",
+    dismiss: "மூடு",
+  },
 };

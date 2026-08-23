@@ -62,7 +62,7 @@ export function LobbyScreen({
       className={`min-h-dynamic-screen ${themeData.feltClass} felt-surface flex items-center justify-center p-4`}
     >
       {/* Top-right chrome: source-code link + settings gear + music. */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+      <div className="fixed top-4-below-notice right-4 z-50 flex items-center gap-2">
         <IconButton
           href="https://github.com/alexwohlbruck/coopoly-deal"
           title={t.common.sourceCode}
@@ -82,7 +82,7 @@ export function LobbyScreen({
       </div>
 
       {/* Top-left rules pill — shared component matches waiting room. */}
-      <div className="fixed top-4 left-4 z-50">
+      <div className="fixed top-4-below-notice left-4 z-50">
         <RulesButton onClick={() => open("rules")} />
       </div>
 

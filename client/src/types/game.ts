@@ -534,6 +534,22 @@ export function calculateRent(set: PropertySet): number {
   return rent;
 }
 
+/**
+ * A banner shown to every connected client — a scheduled restart, most often.
+ *
+ * `scheduledAt` is absolute rather than a remaining duration so the countdown
+ * stays correct across reconnects and across the restart itself.
+ */
+export interface ServerNotice {
+  /** Stable across rebroadcasts, so a dismissal sticks to one announcement. */
+  id: string;
+  kind: "maintenance" | "custom";
+  /** Epoch ms — when the server expects to go down. */
+  scheduledAt: number;
+  /** Only for kind "custom". Shown verbatim, so it is not translated. */
+  message?: string;
+}
+
 export type ServerMessage =
   | {
       type: "ROOM_JOINED";
@@ -550,6 +566,10 @@ export type ServerMessage =
   | { type: "REMATCH_STARTED"; payload: { state: ClientGameState } }
   | { type: "RETURNED_TO_LOBBY" }
   | { type: "ONLINE_COUNT"; payload: { count: number } }
+  | {
+      type: "SERVER_NOTICE";
+      payload: { notice: ServerNotice | null; serverNow: number };
+    }
   | { type: "PUBLIC_ROOMS"; payload: { rooms: PublicRoomSummary[] } }
   | {
       type: "SPECTATING";

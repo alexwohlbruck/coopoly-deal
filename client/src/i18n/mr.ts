@@ -469,4 +469,13 @@ export const mr: Translations = {
     oppStats: "{n} सेट · {cards} कार्ड",
     swipe: "← स्वाइप →",
   },
+  notice: {
+    maintenance: "{time} मध्ये नियोजित सर्व्हर देखभाल. सुरू असलेले खेळ थांबतील.",
+    maintenanceNow: "नियोजित सर्व्हर देखभाल सुरू होत आहे. सुरू असलेले खेळ थांबतील.",
+    in: "{time} मध्ये",
+    hoursMinutes: "{h} ता {m} मि",
+    minutes: "{m} मि",
+    seconds: "{s} से",
+    dismiss: "बंद करा",
+  },
 };

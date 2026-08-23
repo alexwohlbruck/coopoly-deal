@@ -61,6 +61,48 @@ room cap (100) of live rooms at roughly 8 KB each, and it is deleted outright
 whenever no games are running. Finished games, empty lobbies and bot-only rooms
 are never written. Nothing about a game is kept once it ends.
 
+## Maintenance Notices
+
+A banner can be pushed to everyone connected — a countdown to a planned
+restart, most often, so a game ending mid-turn isn't the first anyone hears
+about it.
+
+Set `ADMIN_TOKEN` and announce it an hour ahead:
+
+```bash
+curl -X POST http://localhost:3000/api/notice \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"minutes": 60}'
+
+curl -X DELETE http://localhost:3000/api/notice -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+`{"at": "2026-08-23T22:00:00Z"}` sets an absolute time instead, and adding
+`{"message": "..."}` replaces the wording — at the cost of the translations,
+since free text is shown verbatim to everyone. `GET /api/notice` is public and
+needs no token.
+
+Better than either, `scripts/maintenance.sh 60` puts the banner up, waits out
+the hour, restarts, and clears the banner once `/health` answers again — the
+command that announces the downtime is the one that causes it, so the countdown
+can't promise a window nobody keeps.
+
+The notice carries an absolute timestamp, not a remaining duration: the server
+sends one message per connection and the countdown then runs in the browser,
+correcting for clock drift against the server time sent alongside it. It is
+written to `data/notice.json` so the announcement outlives the restart it is
+announcing, and expires on its own ten minutes past its moment if the
+maintenance is called off.
+
+**The banner does not promise your game survives.** Rooms are snapshotted (see
+above) and a tab that stays open reconnects within seconds, but a player who
+closes it and comes back after the 90-second reclaim window has lost their
+seat. The copy says games will be interrupted, and nothing more.
+
+Without `ADMIN_TOKEN` set, `POST` and `DELETE /api/notice` return 404 — a
+self-hosted instance exposes nothing it didn't before.
+
 ## Configuration
 
 | Variable            | Default             | Description                                                                 |
@@ -73,6 +115,8 @@ are never written. Nothing about a game is kept once it ends.
 | `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where live rooms are snapshotted so they survive a restart.                   |
 | `ROOM_PERSISTENCE`  | `true`              | Set to `false` to keep rooms in memory only.                                   |
 | `ROOM_SNAPSHOT_INTERVAL_MS` | `0` (off)   | Also snapshot on a timer. Off by default — rooms are written once, on shutdown. |
+| `ADMIN_TOKEN`       | _(unset)_           | Bearer token for posting maintenance notices. **Unset means the write endpoints 404** — nothing to attack. |
+| `NOTICE_PATH`       | `./data/notice.json` | Where the maintenance notice is kept so it survives the restart it announces. |
 
 Browser-side analytics are additionally restricted by `data-domains` on the
 Umami script tag in `client/index.html`, so a self-hosted or local build sends

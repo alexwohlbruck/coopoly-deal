@@ -478,4 +478,13 @@ export const hi: Translations = {
     oppStats: "{n} सेट · {cards} कार्ड",
     swipe: "← स्वाइप →",
   },
+  notice: {
+    maintenance: "{time} में नियोजित सर्वर रखरखाव। चल रहे खेल रुक जाएँगे।",
+    maintenanceNow: "नियोजित सर्वर रखरखाव शुरू हो रहा है। चल रहे खेल रुक जाएँगे।",
+    in: "{time} में",
+    hoursMinutes: "{h} घं {m} मि",
+    minutes: "{m} मि",
+    seconds: "{s} से",
+    dismiss: "हटाएँ",
+  },
 };
