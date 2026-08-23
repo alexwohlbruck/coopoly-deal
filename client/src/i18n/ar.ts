@@ -463,4 +463,13 @@ export const ar: Translations = {
     oppStats: "{n} مجموعات · {cards} بطاقة",
     swipe: "← اسحب →",
   },
+  notice: {
+    maintenance: "صيانة مجدولة للخادم بعد {time}. ستتوقف الألعاب الجارية.",
+    maintenanceNow: "بدأت الصيانة المجدولة للخادم. ستتوقف الألعاب الجارية.",
+    in: "بعد {time}",
+    hoursMinutes: "{h} س {m} د",
+    minutes: "{m} د",
+    seconds: "{s} ث",
+    dismiss: "إغلاق",
+  },
 };

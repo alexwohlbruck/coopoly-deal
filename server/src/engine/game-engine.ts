@@ -421,6 +421,58 @@ export class GameEngine {
     }
   }
 
+  /**
+   * Keep the turn in step with who is actually at the table.
+   *
+   * A game nobody is connected to is suspended, not abandoned. This matters
+   * because a restart marks every seat absent at once — that is the server
+   * leaving, not the players — and a turn handed on while the room is empty
+   * leaves the game with no turn at all, which nothing else recovers from.
+   *
+   * Runs every tick, so it heals a game whatever put it in that state: a timer
+   * that ran out during the outage, a rematch dealt into an empty room, or the
+   * last player finally reconnecting.
+   */
+  updateTurnForPresence(state: GameState): boolean {
+    if (state.phase !== GamePhase.Playing) return false;
+
+    const turn = state.turn;
+    const anybodyHere = state.players.some((p) => p.connected);
+
+    if (!anybodyHere) {
+      // Stop the clock. Running it down with nobody able to take the turn
+      // hands it to one empty seat after another until there is no turn left.
+      // A turn already paused for a pending action is left to that machinery.
+      if (turn && turn.expiresAt !== null) {
+        turn.pausedTimeLeft = Math.max(0, turn.expiresAt - Date.now());
+        turn.expiresAt = null;
+        return true;
+      }
+      return false;
+    }
+
+    if (!turn) {
+      // The game lost its turn while the room was empty. Deal a fresh one to
+      // whoever is back, or the game sits in Playing forever with no way in.
+      this.startTurn(state);
+      return state.turn !== null;
+    }
+
+    // Somebody is back and the clock was ours to stop — start it again with
+    // the time that was left, rather than expiring them on their first tick.
+    if (
+      turn.expiresAt === null &&
+      turn.pausedTimeLeft !== null &&
+      !turn.pendingAction
+    ) {
+      turn.expiresAt = Date.now() + turn.pausedTimeLeft;
+      turn.pausedTimeLeft = null;
+      return true;
+    }
+
+    return false;
+  }
+
   handleTurnTimeout(state: GameState): boolean {
     if (state.phase !== GamePhase.Playing || !state.turn) return false;
 

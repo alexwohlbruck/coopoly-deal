@@ -479,4 +479,13 @@ export const de: Translations = {
     oppStats: "{n} Sätze · {cards}K",
     swipe: "← wischen →",
   },
+  notice: {
+    maintenance: "Geplante Serverwartung in {time}. Laufende Spiele werden unterbrochen.",
+    maintenanceNow: "Die geplante Serverwartung beginnt. Laufende Spiele werden unterbrochen.",
+    in: "in {time}",
+    hoursMinutes: "{h} Std. {m} Min.",
+    minutes: "{m} Min.",
+    seconds: "{s} Sek.",
+    dismiss: "Ausblenden",
+  },
 };

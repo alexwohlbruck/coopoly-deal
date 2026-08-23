@@ -1,4 +1,5 @@
 import {
+  type GameSettings,
   type GameState,
   type Player,
   type PublicRoomSummary,
@@ -18,7 +19,16 @@ const FINISHED_ROOM_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes after game ends
 // browser doesn't fill up with lobbies whose host closed the tab.
 const ABANDONED_LOBBY_TIMEOUT_MS = 2 * 60 * 1000;
 const MAX_ROOMS = 100;
-const SNAPSHOT_INTERVAL_MS = 10_000;
+/**
+ * Off by default: rooms are written once, on the way down.
+ *
+ * A deploy sends SIGTERM, so the snapshot that matters is the one taken then —
+ * a few KB per release rather than a write every few seconds for the lifetime
+ * of the process. Set a non-zero interval to also snapshot periodically, which
+ * buys insurance against the process being killed outright (OOM, SIGKILL, the
+ * host going down) at the cost of steady disk writes.
+ */
+const DEFAULT_SNAPSHOT_INTERVAL_MS = 0;
 /**
  * How long players have to reclaim their seats after the server comes back.
  *
@@ -34,7 +44,7 @@ export class RoomManager {
   private engine = new GameEngine();
   private cleanupInterval: ReturnType<typeof setInterval>;
   private tickInterval: ReturnType<typeof setInterval>;
-  private snapshotInterval: ReturnType<typeof setInterval>;
+  private snapshotInterval: ReturnType<typeof setInterval> | null;
   /** Room code -> when unclaimed seats in that restored room get swept. */
   private reclaimDeadlines = new Map<string, number>();
   private onStateChange?: (roomCode: string) => void;
@@ -45,16 +55,17 @@ export class RoomManager {
   constructor(
     private readonly store: RoomStore = new NullRoomStore(),
     private readonly reclaimWindowMs: number = RECLAIM_WINDOW_MS,
+    snapshotIntervalMs: number = DEFAULT_SNAPSHOT_INTERVAL_MS,
   ) {
     this.cleanupInterval = setInterval(
       () => this.cleanupInactiveRooms(),
       60_000,
     );
     this.tickInterval = setInterval(() => this.tick(), 1000);
-    this.snapshotInterval = setInterval(
-      () => this.persist(),
-      SNAPSHOT_INTERVAL_MS,
-    );
+    this.snapshotInterval =
+      snapshotIntervalMs > 0
+        ? setInterval(() => this.persist(), snapshotIntervalMs)
+        : null;
   }
 
   /**
@@ -141,10 +152,17 @@ export class RoomManager {
     // Nothing to come back to if every human is gone.
     if (!game.players.some((p) => !p.isBot)) return false;
 
-    // The old process's sockets died with it. Everyone must be marked absent or
-    // the name match in joinRoom() won't fire, and players returning to their
+    // The old process's sockets died with it. Every human must be marked absent
+    // or the name match in joinRoom() won't fire, and players returning to their
     // own game would be seated again as strangers.
-    for (const player of game.players) player.connected = false;
+    //
+    // Bots are left as they were. A bot never held a socket, so it has nothing
+    // to come back from: marking one absent shows it as gone to everyone at the
+    // table and then hands it to sweepUnclaimedSeats at the reclaim deadline,
+    // which ends a one-human game 90 seconds after every restart.
+    for (const player of game.players) {
+      if (!player.isBot) player.connected = false;
+    }
 
     return true;
   }
@@ -200,9 +218,11 @@ export class RoomManager {
       // an interval, so an uncaught throw here kills the process and every
       // other game along with it.
       try {
-        if (this.engine.handleTurnTimeout(game)) {
-          this.onStateChange?.(code);
-        }
+        // Presence first: a suspended game has to come back before its clock
+        // means anything.
+        let changed = this.engine.updateTurnForPresence(game);
+        if (this.engine.handleTurnTimeout(game)) changed = true;
+        if (changed) this.onStateChange?.(code);
       } catch (err) {
         console.error(`[tick] room ${code} failed to advance:`, err);
       }
@@ -225,7 +245,12 @@ export class RoomManager {
       const game = this.rooms.get(code);
       if (!game || game.phase !== GamePhase.Playing) continue;
 
-      const absent = game.players.filter((p) => !p.connected).map((p) => p.id);
+      // Bots are excluded on principle rather than because of the line above:
+      // there is no socket that could ever reclaim one, so an absent bot is a
+      // bookkeeping mistake, never a player who left.
+      const absent = game.players
+        .filter((p) => !p.connected && !p.isBot)
+        .map((p) => p.id);
       if (absent.length === 0) continue;
 
       try {
@@ -251,12 +276,25 @@ export class RoomManager {
     return code;
   }
 
-  createRoom(): GameState {
+  /**
+   * `options` carries the creator's remembered preferences, applied here so
+   * the room's very first state already reflects them — a lobby that has to
+   * be corrected by a follow-up settings message visibly flips a second after
+   * it paints.
+   */
+  createRoom(options?: {
+    settings?: Partial<GameSettings>;
+    isPublic?: boolean;
+  }): GameState {
     if (this.rooms.size >= MAX_ROOMS) {
       throw new Error("Server is at capacity, please try again later");
     }
     const code = this.generateRoomCode();
     const game = this.engine.createGame(code);
+    if (options?.settings) {
+      game.settings = { ...game.settings, ...options.settings };
+    }
+    if (options?.isPublic) game.isPublic = true;
     this.rooms.set(code, game);
     return game;
   }
@@ -417,7 +455,7 @@ export class RoomManager {
   destroy(): void {
     clearInterval(this.cleanupInterval);
     clearInterval(this.tickInterval);
-    clearInterval(this.snapshotInterval);
+    if (this.snapshotInterval) clearInterval(this.snapshotInterval);
     this.rooms.clear();
     this.reclaimDeadlines.clear();
   }

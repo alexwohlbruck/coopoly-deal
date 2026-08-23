@@ -476,4 +476,13 @@ export const ptBR: Translations = {
     oppStats: "{n} conj. · {cards}c",
     swipe: "← deslize →",
   },
+  notice: {
+    maintenance: "Manutenção programada do servidor em {time}. As partidas em andamento serão interrompidas.",
+    maintenanceNow: "A manutenção programada do servidor está começando. As partidas em andamento serão interrompidas.",
+    in: "em {time}",
+    hoursMinutes: "{h} h {m} min",
+    minutes: "{m} min",
+    seconds: "{s} s",
+    dismiss: "Dispensar",
+  },
 };

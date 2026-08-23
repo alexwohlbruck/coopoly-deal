@@ -468,4 +468,13 @@ export const te: Translations = {
     oppStats: "{n} సెట్లు · {cards} కార్డులు",
     swipe: "← స్వైప్ →",
   },
+  notice: {
+    maintenance: "{time}లో నిర్ణీత సర్వర్ నిర్వహణ. నడుస్తున్న ఆటలు ఆగిపోతాయి.",
+    maintenanceNow: "నిర్ణీత సర్వర్ నిర్వహణ ప్రారంభమవుతోంది. నడుస్తున్న ఆటలు ఆగిపోతాయి.",
+    in: "{time}లో",
+    hoursMinutes: "{h} గం {m} ని",
+    minutes: "{m} ని",
+    seconds: "{s} సె",
+    dismiss: "మూసివేయి",
+  },
 };

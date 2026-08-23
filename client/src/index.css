@@ -404,13 +404,23 @@ body {
    dynamic-height value to win because it's authored after Tailwind's
    utilities in this stylesheet.
    ============================================================ */
+/* --notice-height is 0 unless the maintenance banner is up, in which case it
+   is the bar's measured height. Every full-screen surface gives up that much
+   room rather than being pushed off the bottom of the viewport. */
 .h-dynamic-screen {
-  height: 100vh; /* fallback for browsers without dvh */
-  height: 100dvh;
+  height: calc(100vh - var(--notice-height, 0px)); /* fallback: no dvh */
+  height: calc(100dvh - var(--notice-height, 0px));
 }
 .min-h-dynamic-screen {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh - var(--notice-height, 0px));
+  min-height: calc(100dvh - var(--notice-height, 0px));
+}
+
+/* Corner chrome (rules, settings, music) is fixed to the viewport, so unlike
+   everything inside the app root it does not get pushed down by the banner
+   on its own. This is the `top-4` those elements would otherwise use. */
+.top-4-below-notice {
+  top: calc(1rem + var(--notice-height, 0px));
 }
 
 /* ============================================================

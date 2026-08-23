@@ -34,25 +34,75 @@ bun dev
 
 The frontend dev server runs on `http://localhost:5173` and proxies API/WebSocket requests to the backend on port 3000.
 
-## Surviving Restarts
+## Graceful Updates
 
-Games live in memory, but they are snapshotted to a single JSON file so a deploy
-or crash doesn't end everyone's session. On boot the server reloads the rooms
-the previous process was serving; clients reconnect on their own within a couple
-of seconds and rejoin their seat by name. In practice a restart looks like a
-brief "Reconnecting…" flicker rather than a lost game.
+Games live in memory. On `SIGTERM` — which is what a deploy sends — the server
+writes its live rooms to a single JSON file and exits; the next process reads
+them back on boot. Clients reconnect on their own within a couple of seconds and
+reclaim their seats, so a deploy looks like a brief "Reconnecting…" rather than
+a lost game.
+
+There is no periodic snapshot. Writing every few seconds on the chance the
+process dies unexpectedly costs a great deal of disk churn to insure against
+something far rarer than a deploy, so the default is one write per release. Set
+`ROOM_SNAPSHOT_INTERVAL_MS` if you would rather also survive a kill the process
+never sees coming (OOM, `SIGKILL`, the host going down), at that cost.
+
+A game nobody is connected to is **suspended, not abandoned**. A restart marks
+every seat absent at once — that is the server leaving, not the players — so
+while the room is empty the turn clock stops rather than running down, and
+whoever comes back gets the time that was left on it. Players have 90 seconds to
+reclaim a seat before it is treated as having dropped.
 
 Under Docker the snapshot lives on the `coopoly-data` volume — mount something
-at `/app/data` or the rooms won't outlive the container.
+at `/app/data` or the rooms won't outlive the container. The file is rewritten
+in place and never accumulates: no history, no rotation, at most the server's
+room cap (100) of live rooms at roughly 8 KB each, and it is deleted outright
+whenever no games are running. Finished games, empty lobbies and bot-only rooms
+are never written. Nothing about a game is kept once it ends.
 
-See `ROOM_SNAPSHOT_PATH` and `ROOM_PERSISTENCE` under
-[Configuration](#configuration).
+## Maintenance Notices
 
-The file is rewritten in place and never accumulates: no history, no rotation,
-at most the server's room cap (100) of live rooms at roughly 8 KB each, and it
-is deleted outright whenever no games are running. Finished games, empty
-lobbies and bot-only rooms are never written. Nothing about a game is kept once
-it ends.
+A banner can be pushed to everyone connected — a countdown to a planned
+restart, most often, so a game ending mid-turn isn't the first anyone hears
+about it.
+
+Set `ADMIN_TOKEN` and announce it an hour ahead:
+
+```bash
+curl -X POST http://localhost:3000/api/notice \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"minutes": 60}'
+
+curl -X DELETE http://localhost:3000/api/notice -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+`{"at": "2026-08-23T22:00:00Z"}` sets an absolute time instead, and adding
+`{"message": "..."}` replaces the wording — at the cost of the translations,
+since free text is shown verbatim to everyone. `GET /api/notice` is public and
+needs no token.
+
+Better than either, `scripts/maintenance.sh 60` puts the banner up, waits out
+the hour, restarts, and clears the banner once `/health` answers again — the
+command that announces the downtime is the one that causes it, so the countdown
+can't promise a window nobody keeps.
+
+The notice carries an absolute timestamp, not a remaining duration: the server
+sends one message per connection and the countdown then runs in the browser,
+correcting for clock drift against the server time sent alongside it. It is
+written to `data/notice.json` so the announcement outlives the restart it is
+announcing, and expires on its own ten minutes past its moment if the
+maintenance is called off.
+
+**The banner does not promise your game survives.** Rooms are snapshotted (see
+above) and a tab that stays open reconnects within seconds, but a player who
+closes it and comes back after the 90-second reclaim window has lost their
+seat. The copy says games will be interrupted, and nothing more.
+
+Without `ADMIN_TOKEN` set, `POST` and `DELETE /api/notice` return 404 — a
+self-hosted instance exposes nothing it didn't before.
+
 ## Configuration
 
 | Variable            | Default             | Description                                                                 |
@@ -64,6 +114,9 @@ it ends.
 | `ANALYTICS_DEBUG`   | `false`             | Log each event send and its response.                                          |
 | `ROOM_SNAPSHOT_PATH` | `./data/rooms.json` | Where live rooms are snapshotted so they survive a restart.                   |
 | `ROOM_PERSISTENCE`  | `true`              | Set to `false` to keep rooms in memory only.                                   |
+| `ROOM_SNAPSHOT_INTERVAL_MS` | `0` (off)   | Also snapshot on a timer. Off by default — rooms are written once, on shutdown. |
+| `ADMIN_TOKEN`       | _(unset)_           | Bearer token for posting maintenance notices. **Unset means the write endpoints 404** — nothing to attack. |
+| `NOTICE_PATH`       | `./data/notice.json` | Where the maintenance notice is kept so it survives the restart it announces. |
 
 Browser-side analytics are additionally restricted by `data-domains` on the
 Umami script tag in `client/index.html`, so a self-hosted or local build sends
