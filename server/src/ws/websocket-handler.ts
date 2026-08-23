@@ -9,6 +9,7 @@ import { RoomManager } from "../rooms/room-manager.ts";
 import { BotPlayer } from "../engine/bot.ts";
 import { getRandomBotName } from "../utils/bot-names.ts";
 import { devTools } from "../dev-tools.ts";
+import { NoticeService } from "../notice.ts";
 import { track } from "../analytics.ts";
 
 interface WSData {
@@ -33,7 +34,10 @@ const spectatorSockets = new Map<string, Set<GameWebSocket>>();
 // Pending auto-end timers per room (cancelled if a human reconnects)
 const autoEndTimers = new Map<string, Timer>();
 
-export function createWebSocketHandlers(roomManager: RoomManager) {
+export function createWebSocketHandlers(
+  roomManager: RoomManager,
+  notices?: NoticeService,
+) {
   function send(ws: GameWebSocket, message: ServerMessage): void {
     ws.send(JSON.stringify(message));
   }
@@ -47,6 +51,31 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
       sock.send(msg);
     }
   }
+
+  // ── Server notice ──────────────────────────────────────────────────
+  // One global banner (scheduled maintenance, most often), pushed the same
+  // way the online count is. The countdown itself is the client's job: it
+  // gets an absolute time and ticks locally, so an hour-long warning costs
+  // exactly one message per connection.
+
+  function noticeJson(): string {
+    return JSON.stringify({
+      type: "SERVER_NOTICE",
+      // Clocks drift by minutes on phones. Sending the server's own idea of
+      // now lets the client render a countdown that matches when the server
+      // actually goes down, rather than when its own clock thinks it will.
+      payload: { notice: notices?.get() ?? null, serverNow: Date.now() },
+    });
+  }
+
+  function broadcastNotice(): void {
+    const json = noticeJson();
+    for (const sock of allSockets) {
+      sock.send(json);
+    }
+  }
+
+  notices?.subscribe(broadcastNotice);
 
   function broadcastToRoom(
     roomCode: string,
@@ -1088,6 +1117,9 @@ export function createWebSocketHandlers(roomManager: RoomManager) {
         ws.data.watchingLobby = false;
         allSockets.add(ws);
         broadcastOnlineCount();
+        // Sent even when there is no notice: a socket that reconnects after
+        // one was cleared has to be told to drop the banner it still shows.
+        ws.send(noticeJson());
       },
       message(ws: GameWebSocket, message: string | Buffer) {
         const raw = typeof message === "string" ? message : message.toString();

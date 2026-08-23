@@ -466,4 +466,13 @@ export const vi: Translations = {
     oppStats: "{n} bộ · {cards} lá",
     swipe: "← vuốt →",
   },
+  notice: {
+    maintenance: "Bảo trì máy chủ theo kế hoạch sau {time}. Các ván đang chơi sẽ bị gián đoạn.",
+    maintenanceNow: "Máy chủ bắt đầu bảo trì theo kế hoạch. Các ván đang chơi sẽ bị gián đoạn.",
+    in: "sau {time}",
+    hoursMinutes: "{h} giờ {m} phút",
+    minutes: "{m} phút",
+    seconds: "{s} giây",
+    dismiss: "Đóng",
+  },
 };

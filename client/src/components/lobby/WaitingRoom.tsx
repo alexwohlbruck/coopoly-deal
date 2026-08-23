@@ -90,7 +90,7 @@ export function WaitingRoom({
     >
       {/* Top-right music — shared chrome with the home lobby. */}
       {musicControls && (
-        <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <div className="fixed top-4-below-notice right-4 z-50 flex items-center gap-2">
           <MusicControls
             isPlaying={musicControls.isPlaying}
             onToggle={musicControls.onToggle}
@@ -100,7 +100,7 @@ export function WaitingRoom({
       )}
 
       {/* Top-left rules pill — shared component matches the home lobby. */}
-      <div className="fixed top-4 left-4 z-50">
+      <div className="fixed top-4-below-notice left-4 z-50">
         <RulesButton onClick={() => open("rules")} />
       </div>
 

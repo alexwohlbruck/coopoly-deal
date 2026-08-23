@@ -475,4 +475,13 @@ export const es: Translations = {
     oppStats: "{n} sets · {cards}c",
     swipe: "← desliza →",
   },
+  notice: {
+    maintenance: "Mantenimiento programado del servidor en {time}. Las partidas se interrumpirán.",
+    maintenanceNow: "Comienza el mantenimiento programado del servidor. Las partidas se interrumpirán.",
+    in: "en {time}",
+    hoursMinutes: "{h} h {m} min",
+    minutes: "{m} min",
+    seconds: "{s} s",
+    dismiss: "Descartar",
+  },
 };

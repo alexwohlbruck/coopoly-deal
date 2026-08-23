@@ -4,6 +4,7 @@ import { RoomManager } from "./rooms/room-manager.ts";
 import { createApiRoutes } from "./routes/api.ts";
 import { createWebSocketHandlers } from "./ws/websocket-handler.ts";
 import { FileRoomStore, NullRoomStore } from "./rooms/room-store.ts";
+import { NoticeService } from "./notice.ts";
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -21,8 +22,14 @@ const roomStore =
 const SNAPSHOT_INTERVAL_MS = Number(process.env.ROOM_SNAPSHOT_INTERVAL_MS) || 0;
 
 const roomManager = new RoomManager(roomStore, undefined, SNAPSHOT_INTERVAL_MS);
+
+// The maintenance banner. Written to disk alongside the room snapshot so the
+// announcement survives the restart it is announcing — see scripts/maintenance.sh.
+const notices = new NoticeService(process.env.NOTICE_PATH || "./data/notice.json");
+notices.load();
+
 const { handlers: wsHandlers, resumeBotTurns, stopBroadcasting } =
-  createWebSocketHandlers(roomManager);
+  createWebSocketHandlers(roomManager, notices);
 
 // Pick up where the previous process left off. Clients reconnect on their own
 // (the socket retries after 2s and re-sends JOIN_ROOM from stored credentials),
@@ -33,7 +40,7 @@ resumeBotTurns(restoredRooms);
 const app = new Hono();
 
 // API routes
-app.route("/api", createApiRoutes(roomManager));
+app.route("/api", createApiRoutes(roomManager, notices));
 
 // Health check
 app.get("/health", (c) => c.json({ status: "ok", rooms: roomManager.getRoomCount() }));
@@ -92,6 +99,7 @@ function shutdown() {
   // marks players gone. Persist the state players actually left behind.
   roomManager.persist();
   stopBroadcasting();
+  notices.destroy();
   roomManager.destroy();
   server.stop();
   process.exit(0);

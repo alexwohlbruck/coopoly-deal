@@ -468,4 +468,13 @@ export const en: Translations = {
     oppStats: "{n} sets · {cards}c",
     swipe: "← swipe →",
   },
+  notice: {
+    maintenance: "Planned server maintenance in {time}. Games will be interrupted.",
+    maintenanceNow: "Planned server maintenance is starting. Games will be interrupted.",
+    in: "in {time}",
+    hoursMinutes: "{h}h {m}m",
+    minutes: "{m}m",
+    seconds: "{s}s",
+    dismiss: "Dismiss",
+  },
 };

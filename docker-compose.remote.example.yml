@@ -9,6 +9,9 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+      # Uncomment to be able to push a maintenance banner to everyone playing.
+      # Without it the notice write endpoints do not exist. See the README.
+      # - ADMIN_TOKEN=${ADMIN_TOKEN}
     volumes:
       # Live rooms are written here on shutdown so a deploy doesn't end
       # anyone's game. One file, one write per release — it does not grow.

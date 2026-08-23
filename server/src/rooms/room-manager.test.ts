@@ -34,6 +34,22 @@ function startedGame(manager: RoomManager, names: string[]): GameState {
   return game;
 }
 
+/** A game of humans plus bots — what "Add Bot" in the lobby actually builds. */
+function startedGameWithBots(
+  manager: RoomManager,
+  humans: string[],
+  bots: string[],
+): GameState {
+  const game = manager.createRoom();
+  for (const name of humans) manager.joinRoom(game.id, name);
+  for (const name of bots) {
+    // Same two steps as handleAddBot: seat a player, then flag it.
+    manager.getEngine().addPlayer(game, name).isBot = true;
+  }
+  manager.startGame(game.id);
+  return game;
+}
+
 beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "coopoly-rooms-"));
   path = join(dir, "rooms.json");
@@ -427,6 +443,55 @@ describe("reclaim window", () => {
     const restored = after.getRoom(game.id)!;
     // Alan never showed up; two players is still a game.
     expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Grace"]);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("brings bots back still seated, not marked gone", () => {
+    const before = boot();
+    const game = startedGameWithBots(before, ["Ada"], ["Bender"]);
+    before.persist();
+
+    const after = boot();
+    after.restore();
+    const restored = after.getRoom(game.id)!;
+
+    // A bot has no socket to reconnect with, so a restart is not an absence.
+    // Marked absent it would show as gone at the table for the whole window.
+    const bot = restored.players.find((p) => p.name === "Bender")!;
+    expect(bot.connected).toBe(true);
+    expect(restored.players.find((p) => p.name === "Ada")!.connected).toBe(false);
+  });
+
+  it("keeps a game against a bot alive when the human comes back", () => {
+    const before = boot();
+    const game = startedGameWithBots(before, ["Ada"], ["Bender"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.sweepUnclaimedSeats();
+
+    // The bot can never reclaim a seat, so sweeping it would end this game
+    // 90 seconds after every restart — the common case, since a lobby with a
+    // bot in it is one click away.
+    const restored = after.getRoom(game.id)!;
+    expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Bender"]);
+    expect(restored.phase).toBe(GamePhase.Playing);
+  });
+
+  it("still drops humans who never came back, bots or no bots", () => {
+    const before = boot();
+    const game = startedGameWithBots(before, ["Ada", "Grace"], ["Bender"]);
+    before.persist();
+
+    const after = boot(0);
+    after.restore();
+    after.joinRoom(game.id, "Ada");
+    after.sweepUnclaimedSeats();
+
+    const restored = after.getRoom(game.id)!;
+    expect(restored.players.map((p) => p.name)).toEqual(["Ada", "Bender"]);
     expect(restored.phase).toBe(GamePhase.Playing);
   });
 

@@ -481,4 +481,13 @@ export const fr: Translations = {
     oppStats: "{n} séries · {cards}c",
     swipe: "← glisse →",
   },
+  notice: {
+    maintenance: "Maintenance planifiée du serveur dans {time}. Les parties en cours seront interrompues.",
+    maintenanceNow: "La maintenance planifiée du serveur commence. Les parties en cours seront interrompues.",
+    in: "dans {time}",
+    hoursMinutes: "{h} h {m} min",
+    minutes: "{m} min",
+    seconds: "{s} s",
+    dismiss: "Masquer",
+  },
 };

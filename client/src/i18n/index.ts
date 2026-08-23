@@ -453,6 +453,21 @@ export interface Translations {
     incompleteSetDropHint: string;
     justSayNoOnlyInResponse: string;
   };
+  /** Server-wide banner: scheduled maintenance and other announcements. */
+  notice: {
+    /** {time} is a rendered countdown — see the three unit templates below. */
+    maintenance: string;
+    /** Shown once the countdown reaches zero. States what is happening and
+     *  nothing about what survives it — the server cannot promise that. */
+    maintenanceNow: string;
+    /** Wraps the countdown when the server sent its own message text. */
+    in: string;
+    /** Countdown units. Separate per locale so the abbreviations translate. */
+    hoursMinutes: string;
+    minutes: string;
+    seconds: string;
+    dismiss: string;
+  };
   /** Small chrome/controls strings that aren't part of a larger screen. */
   ui: {
     close: string;

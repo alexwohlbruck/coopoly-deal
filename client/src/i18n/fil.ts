@@ -484,4 +484,13 @@ export const fil: Translations = {
     oppStats: "{n} set · {cards}k",
     swipe: "← mag-swipe →",
   },
+  notice: {
+    maintenance: "May nakaiskedyul na maintenance ang server sa loob ng {time}. Maaantala ang mga kasalukuyang laro.",
+    maintenanceNow: "Nagsisimula na ang nakaiskedyul na maintenance ng server. Maaantala ang mga kasalukuyang laro.",
+    in: "sa loob ng {time}",
+    hoursMinutes: "{h} oras {m} min",
+    minutes: "{m} min",
+    seconds: "{s} seg",
+    dismiss: "Isara",
+  },
 };

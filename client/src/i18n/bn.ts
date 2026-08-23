@@ -467,4 +467,13 @@ export const bn: Translations = {
     oppStats: "{n} সেট · {cards} কার্ড",
     swipe: "← সোয়াইপ →",
   },
+  notice: {
+    maintenance: "{time} পরে পরিকল্পিত সার্ভার রক্ষণাবেক্ষণ। চলমান খেলা বন্ধ হয়ে যাবে।",
+    maintenanceNow: "পরিকল্পিত সার্ভার রক্ষণাবেক্ষণ শুরু হচ্ছে। চলমান খেলা বন্ধ হয়ে যাবে।",
+    in: "{time} পরে",
+    hoursMinutes: "{h} ঘ {m} মি",
+    minutes: "{m} মি",
+    seconds: "{s} সে",
+    dismiss: "বন্ধ করুন",
+  },
 };

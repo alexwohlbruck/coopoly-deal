@@ -471,4 +471,13 @@ export const id: Translations = {
     oppStats: "{n} set · {cards}k",
     swipe: "← geser →",
   },
+  notice: {
+    maintenance: "Pemeliharaan server terjadwal dalam {time}. Permainan yang sedang berlangsung akan terhenti.",
+    maintenanceNow: "Pemeliharaan server terjadwal dimulai. Permainan yang sedang berlangsung akan terhenti.",
+    in: "dalam {time}",
+    hoursMinutes: "{h} jam {m} mnt",
+    minutes: "{m} mnt",
+    seconds: "{s} dtk",
+    dismiss: "Tutup",
+  },
 };
