@@ -152,10 +152,17 @@ export class RoomManager {
     // Nothing to come back to if every human is gone.
     if (!game.players.some((p) => !p.isBot)) return false;
 
-    // The old process's sockets died with it. Everyone must be marked absent or
-    // the name match in joinRoom() won't fire, and players returning to their
+    // The old process's sockets died with it. Every human must be marked absent
+    // or the name match in joinRoom() won't fire, and players returning to their
     // own game would be seated again as strangers.
-    for (const player of game.players) player.connected = false;
+    //
+    // Bots are left as they were. A bot never held a socket, so it has nothing
+    // to come back from: marking one absent shows it as gone to everyone at the
+    // table and then hands it to sweepUnclaimedSeats at the reclaim deadline,
+    // which ends a one-human game 90 seconds after every restart.
+    for (const player of game.players) {
+      if (!player.isBot) player.connected = false;
+    }
 
     return true;
   }
@@ -238,7 +245,12 @@ export class RoomManager {
       const game = this.rooms.get(code);
       if (!game || game.phase !== GamePhase.Playing) continue;
 
-      const absent = game.players.filter((p) => !p.connected).map((p) => p.id);
+      // Bots are excluded on principle rather than because of the line above:
+      // there is no socket that could ever reclaim one, so an absent bot is a
+      // bookkeeping mistake, never a player who left.
+      const absent = game.players
+        .filter((p) => !p.connected && !p.isBot)
+        .map((p) => p.id);
       if (absent.length === 0) continue;
 
       try {
