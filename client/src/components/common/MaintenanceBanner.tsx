@@ -41,7 +41,8 @@ export function MaintenanceBanner({ notice, clockOffset }: Props) {
   }, [notice.id]);
 
   const remaining = notice.scheduledAt - now;
-  const hidden = dismissedId === notice.id && remaining > REASSERT_MS;
+  const untilExpiry = (notice.expiresAt ?? notice.scheduledAt) - now;
+  const hidden = dismissedId === notice.id && untilExpiry > REASSERT_MS;
 
   // Everything else on screen sits below the bar, so its height has to be a
   // number the rest of the app can read. It wraps to two or three lines on a
@@ -72,7 +73,7 @@ export function MaintenanceBanner({ notice, clockOffset }: Props) {
 
   const countdown = formatRemaining(remaining, t);
   const text = notice.message
-    ? `${notice.message}${remaining > 0 ? ` — ${fmt(t.notice.in, { time: countdown })}` : ""}`
+    ? `${notice.message}${notice.showCountdown && remaining > 0 ? ` — ${fmt(t.notice.in, { time: countdown })}` : ""}`
     : remaining > 0
       ? fmt(t.notice.maintenance, { time: countdown })
       : t.notice.maintenanceNow;
@@ -118,7 +119,7 @@ export function MaintenanceBanner({ notice, clockOffset }: Props) {
       }}
     >
       <span
-        className={remaining <= REASSERT_MS ? "animate-pulse" : undefined}
+        className={notice.showCountdown && remaining <= REASSERT_MS ? "animate-pulse" : undefined}
         style={{
           width: 7,
           height: 7,
