@@ -76,7 +76,7 @@ export function createApiRoutes(roomManager: RoomManager, notices: NoticeService
     } catch {
       return c.json({ error: "Expected a JSON body" }, 400);
     }
-    const { minutes, at, message } = (body ?? {}) as Record<string, unknown>;
+    const { minutes, at, message, durationMinutes, showCountdown } = (body ?? {}) as Record<string, unknown>;
 
     let scheduledAt: number;
     if (at != null) {
@@ -94,6 +94,16 @@ export function createApiRoutes(roomManager: RoomManager, notices: NoticeService
     }
 
     const text = typeof message === "string" ? message.trim().slice(0, MAX_MESSAGE_LENGTH) : "";
+    let expiresAt: number | undefined;
+    if (durationMinutes != null) {
+      if (typeof durationMinutes !== "number" || !Number.isFinite(durationMinutes) || durationMinutes <= 0) {
+        return c.json({ error: "durationMinutes must be a positive number" }, 400);
+      }
+      expiresAt = Date.now() + durationMinutes * 60_000;
+      if (expiresAt - Date.now() > MAX_LEAD_MS) {
+        return c.json({ error: "durationMinutes cannot exceed one week" }, 400);
+      }
+    }
     const notice: ServerNotice = {
       id: crypto.randomUUID(),
       // Free text can't be translated, so it is only used when given. The
@@ -101,6 +111,8 @@ export function createApiRoutes(roomManager: RoomManager, notices: NoticeService
       kind: text ? "custom" : "maintenance",
       scheduledAt,
       ...(text ? { message: text } : {}),
+      ...(expiresAt ? { expiresAt } : {}),
+      ...(typeof showCountdown === "boolean" ? { showCountdown } : text ? { showCountdown: false } : { showCountdown: true }),
     };
     notices.set(notice);
     return c.json({ notice, serverNow: Date.now() });
