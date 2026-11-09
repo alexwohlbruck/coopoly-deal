@@ -178,6 +178,7 @@ export const id: Translations = {
     soundEffects: "Efek Suara",
     backgroundMusic: "Musik Latar",
     haptics: "Getaran",
+    tapToConfirm: "Ketuk lagi untuk memainkan",
     soundTheme: "Tema suara",
     unlimited: "Tanpa batas",
     save: "Simpan",

@@ -951,7 +951,8 @@ function renderCardContent(
  *   - rest:     visible depth, no lift
  *   - hover:    handled by Framer Motion (whileHover)
  *   - selected: ring + lift
- *   - disabled: desat + 55% opacity, no lift (legal-move signal)
+ *   - disabled: light dim, no lift. Colours stay readable so a hand can
+ *               still be planned while it isn't your turn.
  */
 export function GameCard({
   card,
@@ -1011,9 +1012,7 @@ export function GameCard({
           boxShadow: selected
             ? `0 0 0 3px var(--accent, #f0c14a), ${liftedShadow}`
             : baseShadow,
-          filter: disabled
-            ? "grayscale(1) brightness(0.55) contrast(0.92)"
-            : undefined,
+          filter: disabled ? "brightness(0.8)" : undefined,
           transition:
             "transform var(--d-base) var(--ease-out-soft), box-shadow var(--d-base) var(--ease-out-soft), filter var(--d-base) var(--ease-out-soft)",
         }}

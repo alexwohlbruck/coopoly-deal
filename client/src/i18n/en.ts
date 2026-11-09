@@ -174,6 +174,7 @@ export const en: Translations = {
     soundEffects: "Sound Effects",
     backgroundMusic: "Background Music",
     haptics: "Haptics",
+    tapToConfirm: "Tap again to play",
     soundTheme: "Sound theme",
     unlimited: "Unlimited",
     save: "Save",

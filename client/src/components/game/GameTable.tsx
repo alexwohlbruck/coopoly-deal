@@ -106,6 +106,9 @@ export function GameTable({
 }: GameTableProps) {
   const { t } = useI18n();
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  // With tap-to-confirm on: the hand card tapped once, waiting for the
+  // second tap that plays it.
+  const [armedCardId, setArmedCardId] = useState<string | null>(null);
   const { modal, open: openModal, close: closeModal } = useModalParam();
   const showSettings = modal === "settings";
   const [showDevTools, setShowDevTools] = useState(false);
@@ -120,7 +123,7 @@ export function GameTable({
   const [draggingCard, setDraggingCard] = useState<Card | null>(null);
   const { sfxEnabled, toggleSfx } = useSoundSettings();
   const { play } = useSoundManager();
-  const { theme, useSocialistTheme, setToast } = useGameStore();
+  const { theme, useSocialistTheme, setToast, tapToConfirm } = useGameStore();
   const themeData = getTheme(theme);
   const layoutMode = useLayout();
   const playerRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -170,6 +173,9 @@ export function GameTable({
   // close the dialog and toast a clear message instead of leaving an
   // orphaned prompt over a turn that's no longer ours.
   useEffect(() => {
+    // A card picked last turn must not play on the first tap of the next.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setArmedCardId(null);
     if (selectedCard && !isMyTurn) {
       console.log("[GameTable] Turn ended while dialog open, closing");
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -323,6 +329,26 @@ export function GameTable({
     console.log("[GameTable] Opening dialog for card", card.id);
     setSelectedCard(card);
   };
+
+  // A tap on a card in the hand. With tap-to-confirm on, the first tap only
+  // picks the card out, so nothing is played by a stray touch; tapping it
+  // again plays it. Drops go straight to handleCardClick and are unaffected.
+  const handleHandCardTap = (card: Card) => {
+    if (tapToConfirm && armedCardId !== card.id) {
+      if (isMyTurn && turnPhase !== TurnPhase.ActionPending) {
+        setArmedCardId(card.id);
+      }
+      return;
+    }
+    setArmedCardId(null);
+    handleCardClick(card);
+  };
+
+  // Only while it's still in the hand — a card played by dragging leaves
+  // its id behind.
+  const armedCard = armedCardId
+    ? (me?.hand?.find((c) => c.id === armedCardId) ?? null)
+    : null;
 
   const handlePlayToProperty = useCallback(
     (
@@ -490,10 +516,10 @@ export function GameTable({
         cardHandRef={cardHandRef}
         needsDiscard={needsDiscard ?? false}
         timeLeft={timeLeft}
-        selectedCard={selectedCard}
+        selectedCard={selectedCard ?? armedCard}
         shakingCardId={shakingCardId}
         onEndTurn={handleEndTurn}
-        onCardClick={handleCardClick}
+        onCardClick={handleHandCardTap}
         onPlayToBank={onPlayToBank}
         onDropToProperty={handleDropToProperty}
         onCreateNewSet={handleCreateNewSet}
@@ -552,7 +578,7 @@ export function GameTable({
             gameState={gameState}
             playerId={playerId}
             draggingCard={draggingCard}
-            selectedCard={selectedCard}
+            selectedCard={selectedCard ?? armedCard}
             shakingCardId={shakingCardId}
             needsDiscard={needsDiscard ?? false}
             onPlayToBank={onPlayToBank}
@@ -560,7 +586,7 @@ export function GameTable({
             onRainbowDrop={(card) => setRainbowDropData({ card })}
             onWildcardClick={handleWildcardClick}
             onRearrangeProperty={onRearrangeProperty}
-            onCardClick={handleCardClick}
+            onCardClick={handleHandCardTap}
             onPlayAction={handlePlayAction}
             onEndTurn={handleEndTurn}
             setDraggingCard={setDraggingCard}

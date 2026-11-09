@@ -366,6 +366,7 @@ export type ClientMessage =
   | { type: "RETURN_TO_LOBBY" }
   | { type: "ADD_BOT" }
   | { type: "RESIGN" }
+  | { type: "LEAVE_ROOM" }
   | { type: "UPDATE_PLAYER_NAME"; payload: { playerName: string } }
   | {
       type: "DEV_INJECT_CARD";
@@ -433,6 +434,10 @@ export interface ServerNotice {
   scheduledAt: number;
   /** Only for kind "custom". Shown verbatim, so it is not translated. */
   message?: string;
+  /** Epoch ms — when a non-maintenance announcement should disappear. */
+  expiresAt?: number;
+  /** Custom notices are announcements by default; opt in to a countdown. */
+  showCountdown?: boolean;
 }
 
 export type ServerMessage =

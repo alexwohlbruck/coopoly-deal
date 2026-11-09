@@ -492,6 +492,9 @@ function AppMain() {
     // reset() null out gameState while still on /game/:code, which triggers
     // DeepLinkRedirect → /join/:code before navigate("/") takes effect.
     isLeaving = true;
+    // Say so before hanging up: mid-game, a socket that just closes has its
+    // seat held for a minute in case its owner is coming straight back.
+    send({ type: "LEAVE_ROOM" });
     disconnect();
     reset();
     navigate("/", { replace: true });
@@ -499,7 +502,7 @@ function AppMain() {
       isLeaving = false;
       connect();
     }, 100);
-  }, [disconnect, reset, connect, navigate]);
+  }, [send, disconnect, reset, connect, navigate]);
 
   const handleResign = useCallback(() => {
     send({ type: "RESIGN" });

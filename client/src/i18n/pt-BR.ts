@@ -177,6 +177,7 @@ export const ptBR: Translations = {
     soundEffects: "Efeitos sonoros",
     backgroundMusic: "Música de fundo",
     haptics: "Vibração",
+    tapToConfirm: "Toque de novo para jogar",
     soundTheme: "Tema sonoro",
     unlimited: "Ilimitado",
     save: "Salvar",

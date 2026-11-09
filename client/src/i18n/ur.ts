@@ -178,6 +178,7 @@ export const ur: Translations = {
     soundEffects: "ساؤنڈ ایفیکٹ",
     backgroundMusic: "پس منظر موسیقی",
     haptics: "وائبریشن",
+    tapToConfirm: "کھیلنے کے لیے دوبارہ ٹیپ کریں",
     soundTheme: "ساؤنڈ تھیم",
     unlimited: "لامحدود",
     save: "محفوظ کریں",

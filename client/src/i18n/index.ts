@@ -211,6 +211,8 @@ export interface Translations {
     soundEffects: string;
     backgroundMusic: string;
     haptics: string;
+    /** Hand cards need a second tap to play. */
+    tapToConfirm: string;
     soundTheme: string;
     unlimited: string;
     save: string;

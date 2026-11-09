@@ -61,8 +61,7 @@ export class NoticeService {
       return;
     }
 
-    // The restart it announced has happened, so it has nothing left to say.
-    if (parsed.notice.scheduledAt + GRACE_MS <= Date.now()) {
+    if (expiresAt(parsed.notice) <= Date.now()) {
       this.erase();
       return;
     }
@@ -123,7 +122,7 @@ export class NoticeService {
     this.expiryTimer = null;
     if (!this.notice) return;
 
-    const delay = this.notice.scheduledAt + GRACE_MS - Date.now();
+    const delay = expiresAt(this.notice) - Date.now();
     if (delay <= 0) {
       this.clear();
       return;
@@ -144,5 +143,11 @@ function isPlausibleNotice(notice: unknown): notice is ServerNotice {
   if (n.kind !== "maintenance" && n.kind !== "custom") return false;
   if (typeof n.scheduledAt !== "number" || !Number.isFinite(n.scheduledAt)) return false;
   if (n.message != null && typeof n.message !== "string") return false;
+  if (n.expiresAt != null && (typeof n.expiresAt !== "number" || !Number.isFinite(n.expiresAt))) return false;
+  if (n.showCountdown != null && typeof n.showCountdown !== "boolean") return false;
   return true;
+}
+
+function expiresAt(notice: ServerNotice): number {
+  return notice.expiresAt ?? notice.scheduledAt + GRACE_MS;
 }

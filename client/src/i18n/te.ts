@@ -178,6 +178,7 @@ export const te: Translations = {
     soundEffects: "సౌండ్ ఎఫెక్ట్‌లు",
     backgroundMusic: "నేపథ్య సంగీతం",
     haptics: "వైబ్రేషన్",
+    tapToConfirm: "ఆడటానికి మళ్లీ నొక్కండి",
     soundTheme: "సౌండ్ థీమ్",
     unlimited: "అపరిమితం",
     save: "సేవ్ చేయి",

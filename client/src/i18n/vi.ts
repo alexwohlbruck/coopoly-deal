@@ -177,6 +177,7 @@ export const vi: Translations = {
     soundEffects: "Hiệu ứng âm thanh",
     backgroundMusic: "Nhạc nền",
     haptics: "Rung",
+    tapToConfirm: "Chạm lần nữa để đánh",
     soundTheme: "Kiểu âm thanh",
     unlimited: "Không giới hạn",
     save: "Lưu",
