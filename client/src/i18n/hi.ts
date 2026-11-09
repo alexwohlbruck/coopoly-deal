@@ -179,6 +179,7 @@ export const hi: Translations = {
     soundEffects: "साउंड इफेक्ट",
     backgroundMusic: "बैकग्राउंड म्यूज़िक",
     haptics: "वाइब्रेशन",
+    tapToConfirm: "खेलने के लिए फिर से टैप करें",
     soundTheme: "साउंड थीम",
     unlimited: "असीमित",
     save: "सेव करें",

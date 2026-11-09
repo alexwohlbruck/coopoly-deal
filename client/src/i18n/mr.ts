@@ -177,6 +177,7 @@ export const mr: Translations = {
     soundEffects: "साउंड इफेक्ट",
     backgroundMusic: "बॅकग्राउंड म्युझिक",
     haptics: "व्हायब्रेशन",
+    tapToConfirm: "खेळण्यासाठी पुन्हा टॅप करा",
     soundTheme: "साउंड थीम",
     unlimited: "अमर्यादित",
     save: "सेव्ह करा",

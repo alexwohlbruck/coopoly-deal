@@ -177,6 +177,7 @@ export const bn: Translations = {
     soundEffects: "সাউন্ড এফেক্ট",
     backgroundMusic: "ব্যাকগ্রাউন্ড মিউজিক",
     haptics: "কম্পন",
+    tapToConfirm: "খেলতে আবার ট্যাপ করুন",
     soundTheme: "সাউন্ড থিম",
     unlimited: "সীমাহীন",
     save: "সেভ করুন",

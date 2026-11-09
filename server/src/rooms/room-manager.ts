@@ -331,8 +331,11 @@ export class RoomManager {
       }
     }
 
-    // If game is in progress, try to reconnect a disconnected player with the same name
-    if (game.phase !== GamePhase.Waiting) {
+    // Straight after a restart, fall back to the name for a client that came
+    // back without its id. Only then: a seat held for someone who refreshed is
+    // also absent, and matching by name would let anyone who typed theirs sit
+    // down in it.
+    if (game.phase !== GamePhase.Waiting && this.reclaimDeadlines.has(code)) {
       const disconnected = game.players.find(
         (p) => !p.connected && p.name === playerName,
       );

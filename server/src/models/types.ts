@@ -366,6 +366,7 @@ export type ClientMessage =
   | { type: "RETURN_TO_LOBBY" }
   | { type: "ADD_BOT" }
   | { type: "RESIGN" }
+  | { type: "LEAVE_ROOM" }
   | { type: "UPDATE_PLAYER_NAME"; payload: { playerName: string } }
   | {
       type: "DEV_INJECT_CARD";

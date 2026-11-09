@@ -39,6 +39,8 @@ interface GameStore {
   preferredSettings: GameSettings;
   /** Whether the creator's last game was listed publicly. */
   preferredIsPublic: boolean;
+  /** First tap on a hand card selects it; a second tap plays it. */
+  tapToConfirm: boolean;
 
   setPlayer: (id: string, name: string) => void;
   setPlayerName: (name: string) => void;
@@ -53,6 +55,7 @@ interface GameStore {
   setUseSocialistTheme: (enabled: boolean) => void;
   setPreferredSettings: (settings: GameSettings) => void;
   setPreferredIsPublic: (isPublic: boolean) => void;
+  setTapToConfirm: (enabled: boolean) => void;
   reset: () => void;
 }
 
@@ -76,6 +79,7 @@ export const useGameStore = create<GameStore>()(
       useSocialistTheme: isCoopolyDomain,
       preferredSettings: DEFAULT_GAME_SETTINGS,
       preferredIsPublic: false,
+      tapToConfirm: false,
 
       setPlayer: (id, name) => set({ playerId: id, playerName: name }),
       setPlayerName: (name) => set({ playerName: name }),
@@ -95,6 +99,7 @@ export const useGameStore = create<GameStore>()(
             : {}),
         }),
       setPreferredSettings: (settings) => set({ preferredSettings: settings }),
+      setTapToConfirm: (enabled) => set({ tapToConfirm: enabled }),
       setPreferredIsPublic: (isPublic) => set({ preferredIsPublic: isPublic }),
       recordWin: () =>
         set((state) => ({
@@ -146,6 +151,7 @@ export const useGameStore = create<GameStore>()(
         roomCode: state.roomCode,
         preferredSettings: state.preferredSettings,
         preferredIsPublic: state.preferredIsPublic,
+        tapToConfirm: state.tapToConfirm,
         sessionStats: state.sessionStats,
       }),
     },

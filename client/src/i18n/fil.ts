@@ -178,6 +178,7 @@ export const fil: Translations = {
     soundEffects: "Sound Effects",
     backgroundMusic: "Background Music",
     haptics: "Vibration",
+    tapToConfirm: "I-tap ulit para laruin",
     soundTheme: "Tema ng tunog",
     unlimited: "Walang limitasyon",
     save: "I-save",

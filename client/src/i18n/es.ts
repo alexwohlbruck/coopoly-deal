@@ -175,6 +175,7 @@ export const es: Translations = {
     soundEffects: "Efectos de Sonido",
     backgroundMusic: "Música de Fondo",
     haptics: "Vibración",
+    tapToConfirm: "Toca de nuevo para jugar",
     soundTheme: "Tema de sonido",
     unlimited: "Ilimitado",
     save: "Guardar",

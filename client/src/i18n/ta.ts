@@ -179,6 +179,7 @@ export const ta: Translations = {
     soundEffects: "ஒலி விளைவுகள்",
     backgroundMusic: "பின்னணி இசை",
     haptics: "அதிர்வு",
+    tapToConfirm: "விளையாட மீண்டும் தட்டவும்",
     soundTheme: "ஒலி வகை",
     unlimited: "வரம்பில்லை",
     save: "சேமி",

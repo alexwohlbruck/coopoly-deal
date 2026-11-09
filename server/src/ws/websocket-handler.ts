@@ -34,6 +34,17 @@ const spectatorSockets = new Map<string, Set<GameWebSocket>>();
 // Pending auto-end timers per room (cancelled if a human reconnects)
 const autoEndTimers = new Map<string, Timer>();
 
+/**
+ * How long a seat in a game in progress is held for someone whose socket
+ * closed. A refresh, a phone locking or a network blip all close the socket
+ * exactly the way quitting does, so dropping on close threw people out of
+ * their own game. Within the window they sit back down where they were.
+ */
+const SEAT_HOLD_MS = 60_000;
+
+// Player id -> timer that drops them once their held seat runs out.
+const seatHoldTimers = new Map<string, Timer>();
+
 export function createWebSocketHandlers(
   roomManager: RoomManager,
   notices?: NoticeService,
@@ -328,6 +339,10 @@ export function createWebSocketHandlers(
           handleResign(ws);
           break;
 
+        case "LEAVE_ROOM":
+          handleLeaveRoom(ws);
+          break;
+
         case "UPDATE_PLAYER_NAME":
           handleUpdatePlayerName(ws, msg.payload.playerName);
           break;
@@ -390,6 +405,7 @@ export function createWebSocketHandlers(
     ws.data.playerId = player.id;
     ws.data.roomCode = roomCode;
     playerSockets.set(player.id, ws);
+    cancelSeatHold(player.id);
 
     // Cancel any pending auto-end timer (human reconnected)
     const pendingEnd = autoEndTimers.get(roomCode);
@@ -1006,45 +1022,101 @@ export function createWebSocketHandlers(
     if (playerId) {
       playerSockets.delete(playerId);
     }
-    if (roomCode && playerId) {
-      const game = roomManager.getRoom(roomCode);
-      if (game) {
-        const turnPlayerBefore = game.turn?.playerId;
-        roomManager.getEngine().removePlayer(game, playerId);
-        broadcastToRoom(roomCode, {
-          type: "PLAYER_LEFT",
-          payload: { playerId },
-        });
-        sendStateToAll(roomCode);
-        // Leaving can hand the turn to someone else (or to a bot), and with
-        // one player left it ends the game outright.
-        checkTurnChanged(roomCode, turnPlayerBefore);
-        checkGameEnd(roomCode, "resign");
-        checkBotTurn(roomCode);
+    if (!roomCode || !playerId) return;
 
-        // End game if only bots remain (with grace period for reconnection)
-        if (game.phase === GamePhase.Playing) {
-          const connectedHumans = game.players.filter(
+    const game = roomManager.getRoom(roomCode);
+    if (!game) return;
+
+    // Mid-game, a closed socket is far more often someone coming straight back
+    // than someone quitting, so hold the seat rather than dropping it. Lobbies
+    // and finished games have nothing to hold — leaving those costs nothing.
+    const player = game.players.find((p) => p.id === playerId);
+    if (game.phase === GamePhase.Playing && player?.connected) {
+      player.connected = false;
+      broadcastToRoom(roomCode, {
+        type: "PLAYER_LEFT",
+        payload: { playerId },
+      });
+      sendStateToAll(roomCode);
+      cancelSeatHold(playerId);
+      seatHoldTimers.set(
+        playerId,
+        setTimeout(() => {
+          seatHoldTimers.delete(playerId);
+          const g = roomManager.getRoom(roomCode);
+          const p = g?.players.find((x) => x.id === playerId);
+          // Back already, or gone some other way (resigned, swept, room ended).
+          if (!g || !p || p.connected || g.phase !== GamePhase.Playing) return;
+          dropPlayer(roomCode, playerId);
+        }, SEAT_HOLD_MS),
+      );
+      return;
+    }
+
+    dropPlayer(roomCode, playerId);
+  }
+
+  /** Leaving on purpose: give the seat up now rather than holding it. */
+  function handleLeaveRoom(ws: GameWebSocket): void {
+    const { playerId, roomCode } = ws.data;
+    if (!playerId || !roomCode) return;
+    if (playerSockets.get(playerId) === ws) playerSockets.delete(playerId);
+    // Detach first, so the close that follows has nothing left to act on.
+    ws.data.playerId = null;
+    ws.data.roomCode = null;
+    cancelSeatHold(playerId);
+    dropPlayer(roomCode, playerId);
+  }
+
+  function cancelSeatHold(playerId: string): void {
+    const timer = seatHoldTimers.get(playerId);
+    if (timer) {
+      clearTimeout(timer);
+      seatHoldTimers.delete(playerId);
+    }
+  }
+
+  /** Take a player out of their room for good and tell the table. */
+  function dropPlayer(roomCode: string, playerId: string): void {
+    const game = roomManager.getRoom(roomCode);
+    if (!game) return;
+    // Already out — a restored room's sweep can get there first.
+    if (!game.players.some((p) => p.id === playerId)) return;
+
+    const turnPlayerBefore = game.turn?.playerId;
+    roomManager.getEngine().removePlayer(game, playerId);
+    broadcastToRoom(roomCode, {
+      type: "PLAYER_LEFT",
+      payload: { playerId },
+    });
+    sendStateToAll(roomCode);
+    // Leaving can hand the turn to someone else (or to a bot), and with
+    // one player left it ends the game outright.
+    checkTurnChanged(roomCode, turnPlayerBefore);
+    checkGameEnd(roomCode, "resign");
+    checkBotTurn(roomCode);
+
+    // End game if only bots remain (with grace period for reconnection)
+    if (game.phase === GamePhase.Playing) {
+      const connectedHumans = game.players.filter(
+        (p) => p.connected && !p.isBot,
+      );
+      if (connectedHumans.length === 0 && !autoEndTimers.has(roomCode)) {
+        const timer = setTimeout(() => {
+          autoEndTimers.delete(roomCode);
+          const g = roomManager.getRoom(roomCode);
+          if (!g || g.phase !== GamePhase.Playing) return;
+          const stillNoHumans = g.players.filter(
             (p) => p.connected && !p.isBot,
           );
-          if (connectedHumans.length === 0 && !autoEndTimers.has(roomCode)) {
-            const timer = setTimeout(() => {
-              autoEndTimers.delete(roomCode);
-              const g = roomManager.getRoom(roomCode);
-              if (!g || g.phase !== GamePhase.Playing) return;
-              const stillNoHumans = g.players.filter(
-                (p) => p.connected && !p.isBot,
-              );
-              if (stillNoHumans.length === 0) {
-                g.phase = GamePhase.Finished;
-                g.winner = g.players.find((p) => p.connected)?.id ?? null;
-                sendStateToAll(roomCode);
-                checkGameEnd(roomCode, "resign");
-              }
-            }, 5000);
-            autoEndTimers.set(roomCode, timer);
+          if (stillNoHumans.length === 0) {
+            g.phase = GamePhase.Finished;
+            g.winner = g.players.find((p) => p.connected)?.id ?? null;
+            sendStateToAll(roomCode);
+            checkGameEnd(roomCode, "resign");
           }
-        }
+        }, 5000);
+        autoEndTimers.set(roomCode, timer);
       }
     }
   }

@@ -177,6 +177,7 @@ export const ar: Translations = {
     soundEffects: "المؤثرات الصوتية",
     backgroundMusic: "موسيقى الخلفية",
     haptics: "الاهتزاز",
+    tapToConfirm: "انقر مرة أخرى للعب",
     soundTheme: "نمط الصوت",
     unlimited: "بلا حد",
     save: "حفظ",
