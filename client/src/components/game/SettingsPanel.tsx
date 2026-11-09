@@ -111,7 +111,14 @@ export function SettingsPanel({
   musicControls,
 }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
-  const { theme, setTheme, useSocialistTheme, setUseSocialistTheme } = useGameStore();
+  const {
+    theme,
+    setTheme,
+    useSocialistTheme,
+    setUseSocialistTheme,
+    tapToConfirm,
+    setTapToConfirm,
+  } = useGameStore();
   const [handLimit, setHandLimit] = useState(currentHandLimit);
   const soundTheme = useSoundSettings((s) => s.soundTheme);
   const setSoundTheme = useSoundSettings((s) => s.setSoundTheme);
@@ -194,6 +201,15 @@ export function SettingsPanel({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Tap a card to select it, tap again to play it */}
+        <div style={ROW_STYLE}>
+          <span style={ROW_LABEL_STYLE}>{t.settings.tapToConfirm}</span>
+          <Toggle
+            checked={tapToConfirm}
+            onChange={(next) => setTapToConfirm(next)}
+          />
         </div>
 
         {/* Sound Effects + theme picker */}
