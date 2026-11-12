@@ -31,6 +31,13 @@ export function createApiRoutes(roomManager: RoomManager, notices: NoticeService
     return c.json({ roomCode: game.id });
   });
 
+  // How many people are playing right now, for status pages. A count and
+  // nothing else: no names, no room codes.
+  api.get("/online", (c) => {
+    c.header("Cache-Control", "no-store");
+    return c.json({ online: roomManager.getOnlineCount() });
+  });
+
   // Public room browser. The lobby also subscribes over the WebSocket for
   // live updates; this covers the first paint and the manual refresh.
   api.get("/rooms/public", (c) => {

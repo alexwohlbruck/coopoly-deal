@@ -455,6 +455,21 @@ export class RoomManager {
     return this.rooms.size;
   }
 
+  /**
+   * People at a table right now: connected human players across every room.
+   * Bots, players who dropped and have not come back, and spectators are not
+   * counted. This is the number the homelab dashboard shows.
+   */
+  getOnlineCount(): number {
+    let count = 0;
+    for (const game of this.rooms.values()) {
+      for (const player of game.players) {
+        if (player.connected && !player.isBot) count += 1;
+      }
+    }
+    return count;
+  }
+
   destroy(): void {
     clearInterval(this.cleanupInterval);
     clearInterval(this.tickInterval);

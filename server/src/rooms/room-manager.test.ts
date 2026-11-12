@@ -647,3 +647,15 @@ describe("RoomManager", () => {
     });
   });
 });
+
+describe("online count", () => {
+  it("counts connected humans across rooms, not bots or dropped players", () => {
+    const manager = boot();
+    const first = startedGameWithBots(manager, ["Ada", "Grace"], ["Botty"]);
+    startedGame(manager, ["Linus", "Ken"]);
+    expect(manager.getOnlineCount()).toBe(4);
+
+    first.players.find((p) => p.name === "Grace")!.connected = false;
+    expect(manager.getOnlineCount()).toBe(3);
+  });
+});
