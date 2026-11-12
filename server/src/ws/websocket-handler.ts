@@ -25,7 +25,7 @@ type GameWebSocket = ServerWebSocket<WSData>;
 
 const playerSockets = new Map<string, GameWebSocket>();
 
-// All connected WebSockets (for online count broadcasting).
+// All connected WebSockets, for broadcasts that go to everyone.
 const allSockets = new Set<GameWebSocket>();
 
 // Spectator sockets per room code.
@@ -53,11 +53,31 @@ export function createWebSocketHandlers(
     ws.send(JSON.stringify(message));
   }
 
-  function broadcastOnlineCount(): void {
-    const msg = JSON.stringify({
+  /**
+   * "N players online" on the home screen means people at a table: connected
+   * human players across every room, the same number /api/online reports.
+   * Counting sockets instead counted everyone with the site open, menu and
+   * lobby browser and spare tabs included, which read as far more players
+   * than there were.
+   *
+   * The count moves when people sit down, drop or leave, not only when a
+   * socket opens, so it is checked wherever room state is broadcast and sent
+   * on only when it has changed.
+   */
+  let lastOnlineCount = -1;
+
+  function onlineCountJson(): string {
+    return JSON.stringify({
       type: "ONLINE_COUNT",
-      payload: { count: allSockets.size },
+      payload: { count: roomManager.getOnlineCount() },
     });
+  }
+
+  function broadcastOnlineCountIfChanged(): void {
+    const count = roomManager.getOnlineCount();
+    if (count === lastOnlineCount) return;
+    lastOnlineCount = count;
+    const msg = onlineCountJson();
     for (const sock of allSockets) {
       sock.send(msg);
     }
@@ -157,6 +177,7 @@ export function createWebSocketHandlers(
   }
 
   function broadcastPublicRoomsIfChanged(): void {
+    broadcastOnlineCountIfChanged();
     let hasWatchers = false;
     for (const sock of allSockets) {
       if (sock.data.watchingLobby) {
@@ -1188,7 +1209,8 @@ export function createWebSocketHandlers(
         ws.data.spectatingRoom = null;
         ws.data.watchingLobby = false;
         allSockets.add(ws);
-        broadcastOnlineCount();
+        // A new socket has no count yet, changed or not.
+        ws.send(onlineCountJson());
         // Sent even when there is no notice: a socket that reconnects after
         // one was cleared has to be told to drop the banner it still shows.
         ws.send(noticeJson());
@@ -1200,7 +1222,6 @@ export function createWebSocketHandlers(
       close(ws: GameWebSocket) {
         handleClose(ws);
         allSockets.delete(ws);
-        broadcastOnlineCount();
         broadcastPublicRoomsIfChanged();
       },
     },
